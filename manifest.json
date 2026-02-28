@@ -1,0 +1,10 @@
+{
+  "name": "GymOps",
+  "short_name": "GymOps",
+  "description": "Friction-free workout logger",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0d",
+  "theme_color": "#0d0d0d"
+}

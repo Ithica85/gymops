@@ -1,0 +1,447 @@
+/* ═══════════════════════════════════
+   TOKENS
+════════════════════════════════════ */
+:root {
+  --bg:        #0d0d0d;
+  --surface:   #181818;
+  --surface2:  #222222;
+  --border:    #2c2c2c;
+  --text:      #f0f0f0;
+  --muted:     #777;
+  --accent:    #c8ff57;   /* lime */
+  --danger:    #ff4040;
+  --radius:    14px;
+  --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+}
+
+/* ═══════════════════════════════════
+   RESET
+════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
+  background: var(--bg);
+}
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════
+   SCREEN ROUTER
+════════════════════════════════════ */
+.screen {
+  display: none;
+  height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════
+   IDLE
+════════════════════════════════════ */
+.idle-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+}
+
+.app-title {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -2px;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.idle-subtitle {
+  font-size: 1rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════
+   BUTTONS
+════════════════════════════════════ */
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 16px 28px;
+  letter-spacing: 0.01em;
+  transition: opacity 0.1s;
+  -webkit-appearance: none;
+}
+.btn-primary:active { opacity: 0.75; }
+
+.btn-large {
+  width: 100%;
+  font-size: 1.1rem;
+  padding: 20px;
+}
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 16px 24px;
+  transition: background 0.1s;
+  -webkit-appearance: none;
+}
+.btn-secondary:active { background: var(--border); }
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 16px 24px;
+  transition: opacity 0.1s;
+  -webkit-appearance: none;
+}
+.btn-danger:active { opacity: 0.8; }
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  -webkit-appearance: none;
+}
+
+/* ═══════════════════════════════════
+   WORKOUT SCREEN
+════════════════════════════════════ */
+.workout-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* — Top section (above the fold) — */
+.top-section {
+  padding: 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.exercise-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.exercise-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  flex: 1;
+  line-height: 1.2;
+}
+
+/* — Stats — */
+.set-info-row {
+  display: flex;
+  gap: 32px;
+}
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* — Input — */
+.input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 2.2rem;
+  font-weight: 800;
+  padding: 18px 20px;
+  text-align: center;
+  letter-spacing: 0.15em;
+  outline: none;
+  transition: border-color 0.15s;
+  caret-color: var(--accent);
+  font-family: var(--font);
+  -webkit-appearance: none;
+}
+
+.set-input:focus {
+  border-color: var(--accent);
+}
+
+.set-input::placeholder {
+  color: var(--border);
+  letter-spacing: 0.15em;
+}
+
+.input-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.input-error {
+  font-size: 0.85rem;
+  color: var(--danger);
+  text-align: center;
+  padding: 2px 0;
+  font-weight: 600;
+}
+
+.hidden { display: none !important; }
+
+/* — Action buttons — */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.action-buttons .btn-secondary,
+.action-buttons .btn-danger {
+  flex: 1;
+}
+
+/* — Sets log — */
+.sets-log {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 20px 24px;
+}
+
+.sets-log-title {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.sets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.set-item {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.set-item-exercise {
+  font-size: 0.875rem;
+  color: var(--muted);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.set-item-details {
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sets-empty {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* ═══════════════════════════════════
+   COMPLETED
+════════════════════════════════════ */
+.completed-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.completed-label {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
+.completed-summary {
+  font-size: 1rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.completed-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════
+   EXERCISE PICKER (bottom sheet)
+════════════════════════════════════ */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.modal.hidden { display: none; }
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modal-sheet {
+  position: relative;
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 12px 20px 40px;
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 0 auto 18px;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.exercise-list {
+  list-style: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  margin-bottom: 8px;
+}
+
+.exercise-list li {
+  padding: 14px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
+}
+
+.exercise-list li:last-child {
+  border-bottom: none;
+}
+
+.exercise-list li:active {
+  background: var(--surface2);
+}
+
+.exercise-list li.selected {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.modal-cancel {
+  width: 100%;
+  text-align: center;
+  padding: 12px;
+  flex-shrink: 0;
+  color: var(--muted);
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GymOps</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d0d0d">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════
+       IDLE STATE
+  ════════════════════════════════════ -->
+  <div id="screen-idle" class="screen">
+    <div class="idle-container">
+      <h1 class="app-title">GymOps</h1>
+      <p class="idle-subtitle">Ready to train</p>
+      <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       ACTIVE STATE
+  ════════════════════════════════════ -->
+  <div id="screen-active" class="screen">
+    <div class="workout-container">
+
+      <!-- Above the fold -->
+      <div class="top-section">
+
+        <div class="exercise-row">
+          <span class="exercise-name" id="exercise-name">Seated Shoulder Press</span>
+          <button class="btn-text" id="btn-change-exercise">Change</button>
+        </div>
+
+        <div class="set-info-row">
+          <div class="stat-block">
+            <span class="stat-label">Set</span>
+            <span class="stat-value" id="set-number">1</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-label">Last set</span>
+            <span class="stat-value" id="last-set">—</span>
+          </div>
+        </div>
+
+        <div class="input-section">
+          <input
+            type="text"
+            id="set-input"
+            class="set-input"
+            placeholder="50 8"
+            inputmode="text"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          >
+          <p class="input-hint">weight&nbsp;&nbsp;reps&nbsp;&nbsp;(e.g. 50 8)</p>
+          <p class="input-error hidden" id="input-error">Enter two numbers: weight then reps</p>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn-secondary" id="btn-undo">Undo</button>
+          <button class="btn-danger" id="btn-finish">Finish</button>
+        </div>
+
+      </div>
+
+      <!-- Recent sets log -->
+      <div class="sets-log">
+        <p class="sets-log-title">Recent Sets</p>
+        <div id="sets-list" class="sets-list">
+          <!-- Populated by JS -->
+        </div>
+        <p class="sets-empty hidden" id="sets-empty">No sets logged yet</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       COMPLETED STATE
+  ════════════════════════════════════ -->
+  <div id="screen-completed" class="screen">
+    <div class="completed-container">
+      <p class="completed-label">Workout Complete</p>
+      <p class="completed-summary" id="session-summary">5 sets logged</p>
+      <div class="completed-actions">
+        <button class="btn-secondary" id="btn-export">Export CSV</button>
+        <button class="btn-primary btn-large" id="btn-new-workout">Start New Workout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       EXERCISE PICKER (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="exercise-picker" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Select Exercise</p>
+      <ul class="exercise-list" id="exercise-list">
+        <!-- Populated by JS -->
+      </ul>
+      <button class="btn-text modal-cancel" id="btn-close-picker">Cancel</button>
+    </div>
+  </div>
+
+  <script src="lib/sql-wasm.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
+</body>
+</html>
