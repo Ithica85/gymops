@@ -17,7 +17,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## File Map
 
 - `index.html` — Single-page structure with all three screens and the exercise picker modal.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array), input parsing, screen routing, exercise picker, CSV export.
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export. Helper `getExerciseType(name)` looks up type by name.
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`.
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.
