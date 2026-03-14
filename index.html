@@ -43,24 +43,33 @@
             <span class="stat-value" id="set-number">1</span>
           </div>
           <div class="stat-block">
-            <span class="stat-label">Last set</span>
+            <span class="stat-label">Prev</span>
             <span class="stat-value" id="last-set">—</span>
           </div>
         </div>
 
         <div class="input-section">
-          <input
-            type="text"
-            id="set-input"
-            class="set-input"
-            placeholder="50 8"
-            inputmode="text"
-            autocomplete="off"
-            autocorrect="off"
-            spellcheck="false"
-          >
-          <p class="input-hint">weight&nbsp;&nbsp;reps&nbsp;&nbsp;(e.g. 50 8)</p>
-          <p class="input-error hidden" id="input-error">Enter two numbers: weight then reps</p>
+          <div class="input-row">
+            <input
+              type="text"
+              id="input-weight"
+              class="set-input"
+              placeholder="Weight"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+            >
+            <input
+              type="text"
+              id="input-reps"
+              class="set-input"
+              placeholder="Reps"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              autocomplete="off"
+            >
+          </div>
+          <p class="input-error hidden" id="input-error">Enter weight and reps</p>
         </div>
 
         <div class="action-buttons">

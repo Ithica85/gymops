@@ -3,45 +3,65 @@
 // ═══════════════════════════════════════════════════════
 
 const EXERCISES = [
-  'Seated Shoulder Press',
-  'Goblet Squats',
-  'Rear Delt Fly',
-  'Hamstring Curls',
-  'Elliptical',
-  'Assisted Dips',
-  'Assisted Pull Ups',
-  'Press Ups',
-  'Bent Over Rows',
-  'Push Up to Downward Dog',
-  'Staggered Kettlebell Halo',
-  "Farmer's Carries",
-  'Seated Leg Press',
-  'Chest Press',
-  'Deadlifts',
-  'Other',
+  { name: 'Seated Shoulder Press',       type: 'reps'  },
+  { name: 'Goblet Squats',               type: 'reps'  },
+  { name: 'Rear Delt Fly',               type: 'reps'  },
+  { name: 'Hamstring Curls',             type: 'reps'  },
+  { name: 'Elliptical',                  type: 'timed' },
+  { name: 'Stairmaster',                 type: 'timed' },
+  { name: 'Assisted Dips',               type: 'reps'  },
+  { name: 'Assisted Pull Ups',           type: 'reps'  },
+  { name: 'Press Ups',                   type: 'reps'  },
+  { name: 'Bent Over Rows',              type: 'reps'  },
+  { name: 'Push Up to Downward Dog',     type: 'reps'  },
+  { name: 'Staggered Kettlebell Halo',   type: 'reps'  },
+  { name: "Farmer's Carries",            type: 'reps'  },
+  { name: 'Seated Leg Press',            type: 'reps'  },
+  { name: 'Chest Press',                 type: 'reps'  },
+  { name: 'Deadlifts',                   type: 'reps'  },
+  { name: 'Other',                       type: 'reps'  },
 ];
+
+function getExerciseType(name) {
+  return EXERCISES.find(e => e.name === name)?.type ?? 'reps';
+}
 
 // ── State ─────────────────────────────────────────────
 const state = {
-  sessionId:  null,
-  exercise:   EXERCISES[0],
-  setNumber:  1,
-  lastWeight: null,
-  lastReps:   null,
+  sessionId:    null,
+  exercise:     EXERCISES[0].name,
+  exerciseType: EXERCISES[0].type,
+  setNumber:    1,
+  lastWeight:   null,
+  lastReps:     null,
+  lastDuration: null,
+  lastCalories: null,
 };
 
 // ── Input helpers ─────────────────────────────────────
-function parseInput(raw) {
-  const parts = raw.trim().split(/\s+/);
-  if (parts.length !== 2) return null;
-  const weight = parseFloat(parts[0]);
-  const reps   = parseInt(parts[1], 10);
-  if (isNaN(weight) || isNaN(reps) || weight <= 0 || reps <= 0) return null;
-  return { weight, reps };
+function formatLastSet() {
+  const prevNum = state.setNumber - 1;
+  if (state.exerciseType === 'timed') {
+    if (state.lastDuration == null) return '—';
+    const val = state.lastCalories != null
+      ? `${state.lastDuration} min · ${state.lastCalories} cal`
+      : `${state.lastDuration} min`;
+    return `Set ${prevNum}: ${val}`;
+  }
+  if (state.lastWeight == null) return '—';
+  return `Set ${prevNum}: ${state.lastWeight} × ${state.lastReps}`;
 }
 
-function formatLastSet(weight, reps) {
-  return weight == null ? '—' : `${weight} × ${reps}`;
+function updateInputFields() {
+  const weightEl = document.getElementById('input-weight');
+  const repsEl   = document.getElementById('input-reps');
+  if (state.exerciseType === 'timed') {
+    weightEl.placeholder = 'Duration (min)';
+    repsEl.placeholder   = 'Cal (opt)';
+  } else {
+    weightEl.placeholder = 'Weight';
+    repsEl.placeholder   = 'Reps';
+  }
 }
 
 // ── Screen routing ────────────────────────────────────
@@ -54,7 +74,8 @@ function showScreen(name) {
 function renderActive() {
   document.getElementById('exercise-name').textContent = state.exercise;
   document.getElementById('set-number').textContent    = state.setNumber;
-  document.getElementById('last-set').textContent      = formatLastSet(state.lastWeight, state.lastReps);
+  document.getElementById('last-set').textContent      = formatLastSet();
+  updateInputFields();
   renderRecentSets();
 }
 
@@ -70,12 +91,22 @@ function renderRecentSets() {
   }
 
   empty.classList.add('hidden');
-  list.innerHTML = sets.map(s => `
-    <div class="set-item">
-      <span class="set-item-exercise">${s.exercise}</span>
-      <span class="set-item-details">Set ${s.set_number} · ${s.weight} × ${s.reps}</span>
-    </div>
-  `).join('');
+  list.innerHTML = sets.map(s => {
+    let details;
+    if (s.duration_mins != null) {
+      details = s.calories != null
+        ? `Set ${s.set_number} · ${s.duration_mins} min · ${s.calories} cal`
+        : `Set ${s.set_number} · ${s.duration_mins} min`;
+    } else {
+      details = `Set ${s.set_number} · ${s.weight} × ${s.reps}`;
+    }
+    return `
+      <div class="set-item">
+        <span class="set-item-exercise">${s.exercise}</span>
+        <span class="set-item-details">${details}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 function showError(msg) {
@@ -89,17 +120,24 @@ function clearError() {
 }
 
 function focusInput() {
-  const input = document.getElementById('set-input');
-  input.focus();
+  document.getElementById('input-weight').focus();
+}
+
+function clearInputs() {
+  document.getElementById('input-weight').value = '';
+  document.getElementById('input-reps').value = '';
 }
 
 // ── Session lifecycle ─────────────────────────────────
 function startSession() {
-  state.sessionId  = dbCreateSession();
-  state.exercise   = EXERCISES[0];
-  state.setNumber  = 1;
-  state.lastWeight = null;
-  state.lastReps   = null;
+  state.sessionId    = dbCreateSession();
+  state.exercise     = EXERCISES[0].name;
+  state.exerciseType = EXERCISES[0].type;
+  state.setNumber    = 1;
+  state.lastWeight   = null;
+  state.lastReps     = null;
+  state.lastDuration = null;
+  state.lastCalories = null;
 
   showScreen('active');
   renderActive();
@@ -109,13 +147,23 @@ function startSession() {
 function resumeSession(session) {
   state.sessionId = session.session_id;
 
-  const lastSet    = dbGetRecentSets(session.session_id, 1)[0];
-  state.exercise   = lastSet ? lastSet.exercise : EXERCISES[0];
-  state.setNumber  = dbGetSetCountForExercise(session.session_id, state.exercise) + 1;
+  const lastSet      = dbGetRecentSets(session.session_id, 1)[0];
+  state.exercise     = lastSet ? lastSet.exercise : EXERCISES[0].name;
+  state.exerciseType = getExerciseType(state.exercise);
+  state.setNumber    = dbGetSetCountForExercise(session.session_id, state.exercise) + 1;
 
-  const lastForEx  = dbGetLastSetForExercise(session.session_id, state.exercise);
-  state.lastWeight = lastForEx ? lastForEx.weight : null;
-  state.lastReps   = lastForEx ? lastForEx.reps   : null;
+  const lastForEx = dbGetLastSetForExercise(session.session_id, state.exercise);
+  if (state.exerciseType === 'timed') {
+    state.lastDuration = lastForEx ? lastForEx.duration_mins : null;
+    state.lastCalories = lastForEx ? lastForEx.calories      : null;
+    state.lastWeight   = null;
+    state.lastReps     = null;
+  } else {
+    state.lastWeight   = lastForEx ? lastForEx.weight : null;
+    state.lastReps     = lastForEx ? lastForEx.reps   : null;
+    state.lastDuration = null;
+    state.lastCalories = null;
+  }
 
   showScreen('active');
   renderActive();
@@ -134,23 +182,58 @@ function finishWorkout() {
 
 // ── Core actions ──────────────────────────────────────
 function logSet() {
-  const input  = document.getElementById('set-input');
-  const parsed = parseInput(input.value);
+  const field1 = document.getElementById('input-weight').value.trim();
+  const field2 = document.getElementById('input-reps').value.trim();
 
-  if (!parsed) {
-    showError('Enter two numbers: weight then reps (e.g. 50 8)');
-    focusInput();
-    return;
+  if (state.exerciseType === 'timed') {
+    const duration = parseFloat(field1);
+    const calories = field2 ? parseInt(field2, 10) : null;
+
+    if (!field1 || isNaN(duration) || duration <= 0) {
+      showError('Enter duration');
+      focusInput();
+      return;
+    }
+    if (field2 && (isNaN(calories) || calories < 0)) {
+      showError('Enter a valid calorie count');
+      focusInput();
+      return;
+    }
+
+    clearError();
+    try {
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber, null, null, duration, calories);
+    } catch (err) {
+      showError('DB error: ' + err.message);
+      focusInput();
+      return;
+    }
+    state.lastDuration = duration;
+    state.lastCalories = calories;
+  } else {
+    const weight = parseFloat(field1);
+    const reps   = parseInt(field2, 10);
+
+    if (!field1 || !field2 || isNaN(weight) || isNaN(reps) || weight <= 0 || reps <= 0) {
+      showError('Enter weight and reps');
+      focusInput();
+      return;
+    }
+
+    clearError();
+    try {
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber, weight, reps);
+    } catch (err) {
+      showError('DB error: ' + err.message);
+      focusInput();
+      return;
+    }
+    state.lastWeight = weight;
+    state.lastReps   = reps;
   }
 
-  clearError();
-  dbInsertSet(state.sessionId, state.exercise, state.setNumber, parsed.weight, parsed.reps);
-
-  state.lastWeight = parsed.weight;
-  state.lastReps   = parsed.reps;
   state.setNumber += 1;
-
-  input.value = '';
+  clearInputs();
   renderActive();
   focusInput();
 }
@@ -164,10 +247,15 @@ function undoSet() {
   }
 
   if (deleted.exercise === state.exercise) {
-    state.setNumber  = Math.max(1, state.setNumber - 1);
-    const prev       = dbGetLastSetForExercise(state.sessionId, state.exercise);
-    state.lastWeight = prev ? prev.weight : null;
-    state.lastReps   = prev ? prev.reps   : null;
+    state.setNumber = Math.max(1, state.setNumber - 1);
+    const prev = dbGetLastSetForExercise(state.sessionId, state.exercise);
+    if (state.exerciseType === 'timed') {
+      state.lastDuration = prev ? prev.duration_mins : null;
+      state.lastCalories = prev ? prev.calories      : null;
+    } else {
+      state.lastWeight = prev ? prev.weight : null;
+      state.lastReps   = prev ? prev.reps   : null;
+    }
   }
 
   renderActive();
@@ -181,15 +269,25 @@ function openPicker() {
 
   EXERCISES.forEach(ex => {
     const li = document.createElement('li');
-    li.textContent = ex;
-    if (ex === state.exercise) li.classList.add('selected');
+    li.textContent = ex.name;
+    if (ex.name === state.exercise) li.classList.add('selected');
 
     li.addEventListener('click', () => {
-      state.exercise   = ex;
-      state.setNumber  = dbGetSetCountForExercise(state.sessionId, ex) + 1;
-      const last       = dbGetLastSetForExercise(state.sessionId, ex);
-      state.lastWeight = last ? last.weight : null;
-      state.lastReps   = last ? last.reps   : null;
+      state.exercise     = ex.name;
+      state.exerciseType = ex.type;
+      state.setNumber    = dbGetSetCountForExercise(state.sessionId, ex.name) + 1;
+      const last         = dbGetLastSetForExercise(state.sessionId, ex.name);
+      if (ex.type === 'timed') {
+        state.lastDuration = last ? last.duration_mins : null;
+        state.lastCalories = last ? last.calories      : null;
+        state.lastWeight   = null;
+        state.lastReps     = null;
+      } else {
+        state.lastWeight   = last ? last.weight : null;
+        state.lastReps     = last ? last.reps   : null;
+        state.lastDuration = null;
+        state.lastCalories = null;
+      }
       closePicker();
       renderActive();
       focusInput();
@@ -238,10 +336,13 @@ async function boot() {
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-finish').addEventListener('click', finishWorkout);
 
-  // Input: Enter logs the set, any keystroke clears error
-  const input = document.getElementById('set-input');
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') logSet(); });
-  input.addEventListener('input',   ()  => clearError());
+  // Input: Enter in weight moves to reps; Enter in reps logs the set
+  const inputWeight = document.getElementById('input-weight');
+  const inputReps   = document.getElementById('input-reps');
+  inputWeight.addEventListener('keydown', e => { if (e.key === 'Enter') inputReps.focus(); });
+  inputReps.addEventListener('keydown',   e => { if (e.key === 'Enter') logSet(); });
+  inputWeight.addEventListener('input', () => clearError());
+  inputReps.addEventListener('input',   () => clearError());
 
   // Exercise picker
   document.getElementById('btn-close-picker').addEventListener('click', closePicker);

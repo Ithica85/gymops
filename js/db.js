@@ -14,6 +14,7 @@ async function initDB() {
   if (saved) {
     try {
       _db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
+      _migrate();
     } catch (_) {
       _db = new SQL.Database();
       _createSchema();
@@ -33,17 +34,52 @@ function _createSchema() {
       status      TEXT NOT NULL DEFAULT 'active'
     );
     CREATE TABLE IF NOT EXISTS sets (
-      set_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id  INTEGER NOT NULL,
-      timestamp   TEXT NOT NULL,
-      exercise    TEXT NOT NULL,
-      set_number  INTEGER NOT NULL,
-      weight      REAL NOT NULL,
-      reps        INTEGER NOT NULL,
+      set_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id    INTEGER NOT NULL,
+      timestamp     TEXT NOT NULL,
+      exercise      TEXT NOT NULL,
+      set_number    INTEGER NOT NULL,
+      weight        REAL,
+      reps          INTEGER,
+      duration_mins REAL,
+      calories      INTEGER,
       FOREIGN KEY (session_id) REFERENCES sessions(session_id)
     );
   `);
   _persist();
+}
+
+// Migrate existing DB to add duration_mins / calories and make weight/reps nullable
+function _migrate() {
+  const cols = _all('PRAGMA table_info(sets)');
+  const names = cols.map(c => c.name);
+
+  if (!names.includes('duration_mins')) {
+    // Recreate table with nullable weight/reps and new columns, preserving all data
+    _db.run(`
+      CREATE TABLE sets_migrated (
+        set_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id    INTEGER NOT NULL,
+        timestamp     TEXT NOT NULL,
+        exercise      TEXT NOT NULL,
+        set_number    INTEGER NOT NULL,
+        weight        REAL,
+        reps          INTEGER,
+        duration_mins REAL,
+        calories      INTEGER,
+        FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+      )
+    `);
+    _db.run(`
+      INSERT INTO sets_migrated
+        (set_id, session_id, timestamp, exercise, set_number, weight, reps, duration_mins, calories)
+      SELECT set_id, session_id, timestamp, exercise, set_number, weight, reps, NULL, NULL
+      FROM sets
+    `);
+    _db.run('DROP TABLE sets');
+    _db.run('ALTER TABLE sets_migrated RENAME TO sets');
+    _persist();
+  }
 }
 
 function _persist() {
@@ -86,11 +122,29 @@ function dbGetActiveSession() {
 }
 
 // ── Sets ──────────────────────────────────────────────
-function dbInsertSet(sessionId, exercise, setNumber, weight, reps) {
-  _db.run(
-    'INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps) VALUES (?, ?, ?, ?, ?, ?)',
-    [sessionId, new Date().toISOString(), exercise, setNumber, weight, reps]
-  );
+function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories) {
+  const now = new Date().toISOString();
+  if (durationMins != null) {
+    if (calories != null) {
+      _db.run(
+        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, calories)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, setNumber, durationMins, calories]
+      );
+    } else {
+      _db.run(
+        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins)
+         VALUES (?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, setNumber, durationMins]
+      );
+    }
+  } else {
+    _db.run(
+      `INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [sessionId, now, exercise, setNumber, weight, reps]
+    );
+  }
   _persist();
 }
 
@@ -134,13 +188,14 @@ function dbGetLastSetForExercise(sessionId, exercise) {
 function dbExportCSV() {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status,
-           st.set_id, st.timestamp, st.exercise, st.set_number, st.weight, st.reps
+           st.set_id, st.timestamp, st.exercise, st.set_number,
+           st.weight, st.reps, st.duration_mins, st.calories
     FROM sets st
     JOIN sessions s ON s.session_id = st.session_id
     ORDER BY st.set_id
   `);
   if (!rows.length) return null;
-  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps'];
+  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
   const lines = [headers.join(',')];
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
   return lines.join('\n');

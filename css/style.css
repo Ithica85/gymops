@@ -183,13 +183,23 @@ body {
 /* — Stats — */
 .set-info-row {
   display: flex;
-  gap: 32px;
+  gap: 0;
 }
 
 .stat-block {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 10px 20px 10px 0;
+}
+
+.set-info-row .stat-block + .stat-block {
+  padding: 10px 0 10px 20px;
+  border-left: 1px solid var(--border);
+}
+
+#last-set {
+  font-size: 1.15rem;
 }
 
 .stat-label {
@@ -212,6 +222,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row .set-input {
+  flex: 1;
+  width: 0;
 }
 
 .set-input {
