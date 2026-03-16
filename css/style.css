@@ -158,12 +158,18 @@ body {
 
 /* — Top section (above the fold) — */
 .top-section {
-  padding: 20px 20px 20px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.last-session {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.3;
 }
 
 .exercise-row {
@@ -276,6 +282,37 @@ body {
 }
 
 .hidden { display: none !important; }
+
+/* ═══════════════════════════════════
+   TOAST
+════════════════════════════════════ */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 400;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100% - 40px);
+  text-align: center;
+}
+
+.toast.show { opacity: 1; }
+
+.toast.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
 
 /* — Action buttons — */
 .action-buttons {
@@ -458,10 +495,31 @@ body {
   font-weight: 700;
 }
 
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .modal-cancel {
   width: 100%;
   text-align: center;
   padding: 12px;
   flex-shrink: 0;
   color: var(--muted);
+}
+
+.other-name-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  padding-bottom: 8px;
+}
+
+.other-name-section.hidden { display: none; }
+
+.other-name-input {
+  font-size: 1.4rem;
+  padding: 14px 16px;
 }

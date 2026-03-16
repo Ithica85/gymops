@@ -9,6 +9,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d0d0d">
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -47,6 +48,8 @@
             <span class="stat-value" id="last-set">—</span>
           </div>
         </div>
+
+        <p class="last-session" id="last-session">Last session: No history</p>
 
         <div class="input-section">
           <div class="input-row">
@@ -99,6 +102,7 @@
       <p class="completed-label">Workout Complete</p>
       <p class="completed-summary" id="session-summary">5 sets logged</p>
       <div class="completed-actions">
+        <button class="btn-secondary hidden" id="btn-resume">Resume Last Workout</button>
         <button class="btn-secondary" id="btn-export">Export CSV</button>
         <button class="btn-primary btn-large" id="btn-new-workout">Start New Workout</button>
       </div>
@@ -112,16 +116,62 @@
     <div class="modal-backdrop" id="modal-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Select Exercise</p>
+      <p class="modal-title" id="modal-title">Select Exercise</p>
       <ul class="exercise-list" id="exercise-list">
         <!-- Populated by JS -->
       </ul>
+      <div class="other-name-section hidden" id="other-name-section">
+        <input
+          type="text"
+          id="other-name-input"
+          class="set-input other-name-input"
+          placeholder="Exercise name"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        >
+        <p class="input-error hidden" id="other-name-error">Enter an exercise name</p>
+        <button class="btn-primary" id="btn-other-done">Done</button>
+      </div>
       <button class="btn-text modal-cancel" id="btn-close-picker">Cancel</button>
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════
+       CONFIRM FINISH (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="confirm-finish" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-finish-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">End workout?</p>
+      <div class="modal-actions">
+        <button class="btn-danger btn-large" id="btn-confirm-end">End Workout</button>
+        <button class="btn-secondary" id="btn-cancel-end">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       INACTIVITY PROMPT (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="inactivity-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Still working out?</p>
+      <div class="modal-actions">
+        <button class="btn-primary btn-large" id="btn-inactivity-continue">Yes, continue</button>
+        <button class="btn-danger" id="btn-inactivity-end">End workout</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
   <script src="lib/sql-wasm.js"></script>
   <script src="js/db.js"></script>
+  <script src="js/gdrive.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

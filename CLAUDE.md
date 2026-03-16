@@ -17,7 +17,8 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## File Map
 
 - `index.html` — Single-page structure with all three screens and the exercise picker modal.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export. Helper `getExerciseType(name)` looks up type by name.
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name.
+- `js/gdrive.js` — Google Drive integration. Replace `GOOGLE_CLIENT_ID` constant at the top with a real OAuth client ID to activate. See setup instructions in the file comments.
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`.
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.
@@ -132,7 +133,7 @@ Implement these patches in the order listed below. Each patch has specific accep
 
 ---
 
-## P1.1-06: Show last session performance for selected exercise
+## ✅ P1.1-06: Show last session performance for selected exercise — COMPLETED
 
 **Priority:** Medium
 **Files:** js/app.js, js/db.js
@@ -150,7 +151,7 @@ Implement these patches in the order listed below. Each patch has specific accep
 
 ---
 
-## P1.1-05: Add 'Other' exercise with free-text name
+## ✅ P1.1-05: Add 'Other' exercise with free-text name — COMPLETED
 
 **Priority:** Medium
 **Files:** js/app.js, index.html
@@ -167,7 +168,7 @@ Implement these patches in the order listed below. Each patch has specific accep
 
 ---
 
-## P1.1-03: Finish button confirmation + session resume
+## ✅ P1.1-03: Finish button confirmation + session resume — COMPLETED
 
 **Priority:** High
 **Files:** js/app.js
@@ -183,7 +184,7 @@ Implement these patches in the order listed below. Each patch has specific accep
 
 ---
 
-## P1.1-07: Inactivity timeout with auto-close prompt
+## ✅ P1.1-07: Inactivity timeout with auto-close prompt — COMPLETED
 
 **Priority:** Medium
 **Files:** js/app.js
@@ -200,7 +201,7 @@ Implement these patches in the order listed below. Each patch has specific accep
 
 ---
 
-## P1.1-08: Auto-save CSV to Google Drive with date-stamped filename
+## ✅ P1.1-08: Auto-save CSV to Google Drive with date-stamped filename — COMPLETED
 
 **Priority:** Medium
 **Files:** js/app.js (new: js/gdrive.js)

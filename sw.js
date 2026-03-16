@@ -3,7 +3,7 @@
 // Bump CACHE version when deploying new code
 // ═══════════════════════════════════════════════════════
 
-const CACHE = 'gymops-v4';
+const CACHE = 'gymops-v9';
 
 const ASSETS = [
   '/',
@@ -11,6 +11,7 @@ const ASSETS = [
   '/css/style.css',
   '/js/app.js',
   '/js/db.js',
+  '/js/gdrive.js',
   '/lib/sql-wasm.js',
   '/lib/sql-wasm.wasm',
 ];

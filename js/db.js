@@ -117,8 +117,20 @@ function dbFinishSession(sessionId) {
   _persist();
 }
 
+function dbGetSession(sessionId) {
+  return _one('SELECT * FROM sessions WHERE session_id = ?', [sessionId]);
+}
+
 function dbGetActiveSession() {
   return _one("SELECT * FROM sessions WHERE status = 'active' ORDER BY session_id DESC LIMIT 1");
+}
+
+function dbResumeSession(sessionId) {
+  _db.run(
+    "UPDATE sessions SET status = 'active', end_time = NULL WHERE session_id = ?",
+    [sessionId]
+  );
+  _persist();
 }
 
 // ── Sets ──────────────────────────────────────────────
@@ -184,7 +196,43 @@ function dbGetLastSetForExercise(sessionId, exercise) {
   );
 }
 
+function dbGetLastSessionSetsForExercise(exercise) {
+  const lastSession = _one(`
+    SELECT s.session_id
+    FROM sessions s
+    JOIN sets st ON st.session_id = s.session_id
+    WHERE s.status = 'completed' AND st.exercise = ?
+    ORDER BY s.session_id DESC
+    LIMIT 1
+  `, [exercise]);
+
+  if (!lastSession) return [];
+
+  return _all(
+    'SELECT * FROM sets WHERE session_id = ? AND exercise = ? ORDER BY set_number ASC',
+    [lastSession.session_id, exercise]
+  );
+}
+
 // ── CSV Export ────────────────────────────────────────
+function dbExportSessionCSV(sessionId) {
+  const rows = _all(`
+    SELECT s.session_id, s.start_time, s.end_time, s.status,
+           st.set_id, st.timestamp, st.exercise, st.set_number,
+           st.weight, st.reps, st.duration_mins, st.calories
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    WHERE st.session_id = ?
+    ORDER BY st.set_id
+  `, [sessionId]);
+  if (!rows.length) return null;
+  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
+  const lines = [headers.join(',')];
+  rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
+  return lines.join('\n');
+}
+
+
 function dbExportCSV() {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status,

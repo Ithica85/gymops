@@ -26,6 +26,40 @@ function getExerciseType(name) {
   return EXERCISES.find(e => e.name === name)?.type ?? 'reps';
 }
 
+// ── Inactivity timer ──────────────────────────────────
+const INACTIVITY_MS = 30 * 60 * 1000;
+const AUTO_CLOSE_MS =  5 * 60 * 1000;
+
+let _inactivityTimer = null;
+let _autoCloseTimer  = null;
+
+function resetInactivityTimer() {
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_autoCloseTimer);
+  _inactivityTimer = setTimeout(() => {
+    showInactivityModal();
+    _autoCloseTimer = setTimeout(() => {
+      hideInactivityModal();
+      finishWorkout();
+    }, AUTO_CLOSE_MS);
+  }, INACTIVITY_MS);
+}
+
+function clearInactivityTimers() {
+  clearTimeout(_inactivityTimer);
+  clearTimeout(_autoCloseTimer);
+  _inactivityTimer = null;
+  _autoCloseTimer  = null;
+}
+
+function showInactivityModal() {
+  document.getElementById('inactivity-modal').classList.remove('hidden');
+}
+
+function hideInactivityModal() {
+  document.getElementById('inactivity-modal').classList.add('hidden');
+}
+
 // ── State ─────────────────────────────────────────────
 const state = {
   sessionId:    null,
@@ -71,11 +105,33 @@ function showScreen(name) {
 }
 
 // ── UI rendering ──────────────────────────────────────
+function renderLastSession() {
+  const el   = document.getElementById('last-session');
+  const sets = dbGetLastSessionSetsForExercise(state.exercise);
+
+  if (!sets.length) {
+    el.textContent = 'Last session: No history';
+    return;
+  }
+
+  const parts = sets.map(s => {
+    if (s.duration_mins != null) {
+      return s.calories != null
+        ? `${s.duration_mins} min · ${s.calories} cal`
+        : `${s.duration_mins} min`;
+    }
+    return `${s.weight}×${s.reps}`;
+  });
+
+  el.textContent = 'Last session: ' + parts.join(', ');
+}
+
 function renderActive() {
   document.getElementById('exercise-name').textContent = state.exercise;
   document.getElementById('set-number').textContent    = state.setNumber;
   document.getElementById('last-set').textContent      = formatLastSet();
   updateInputFields();
+  renderLastSession();
   renderRecentSets();
 }
 
@@ -142,6 +198,7 @@ function startSession() {
   showScreen('active');
   renderActive();
   focusInput();
+  resetInactivityTimer();
 }
 
 function resumeSession(session) {
@@ -168,16 +225,46 @@ function resumeSession(session) {
   showScreen('active');
   renderActive();
   focusInput();
+  resetInactivityTimer();
+}
+
+function showFinishConfirm() {
+  document.getElementById('confirm-finish').classList.remove('hidden');
+}
+
+function hideFinishConfirm() {
+  document.getElementById('confirm-finish').classList.add('hidden');
 }
 
 function finishWorkout() {
-  const count = dbGetSetCount(state.sessionId);
+  hideFinishConfirm();
+  hideInactivityModal();
+  clearInactivityTimers();
+
+  const count   = dbGetSetCount(state.sessionId);
   dbFinishSession(state.sessionId);
+  state.finishedAt = new Date();
+
+  // Auto-save to Google Drive (non-blocking)
+  const csv     = dbExportSessionCSV(state.sessionId);
+  const session = dbGetSession(state.sessionId);
+  if (csv && session) gdriveUpload(csv, session.start_time);
 
   document.getElementById('session-summary').textContent =
     `${count} set${count !== 1 ? 's' : ''} logged`;
 
+  document.getElementById('btn-resume').classList.remove('hidden');
   showScreen('completed');
+}
+
+function resumeLastWorkout() {
+  const elapsed = (new Date() - state.finishedAt) / 1000 / 60;
+  if (elapsed >= 60) {
+    document.getElementById('btn-resume').classList.add('hidden');
+    return;
+  }
+  dbResumeSession(state.sessionId);
+  resumeSession({ session_id: state.sessionId });
 }
 
 // ── Core actions ──────────────────────────────────────
@@ -236,6 +323,7 @@ function logSet() {
   clearInputs();
   renderActive();
   focusInput();
+  resetInactivityTimer();
 }
 
 function undoSet() {
@@ -260,6 +348,7 @@ function undoSet() {
 
   renderActive();
   focusInput();
+  resetInactivityTimer();
 }
 
 // ── Exercise picker ───────────────────────────────────
@@ -273,6 +362,17 @@ function openPicker() {
     if (ex.name === state.exercise) li.classList.add('selected');
 
     li.addEventListener('click', () => {
+      if (ex.name === 'Other') {
+        document.getElementById('exercise-list').classList.add('hidden');
+        document.getElementById('btn-close-picker').classList.add('hidden');
+        document.getElementById('other-name-section').classList.remove('hidden');
+        document.getElementById('other-name-input').value = '';
+        document.getElementById('other-name-error').classList.add('hidden');
+        document.getElementById('modal-title').textContent = 'Exercise Name';
+        document.getElementById('other-name-input').focus();
+        return;
+      }
+
       state.exercise     = ex.name;
       state.exerciseType = ex.type;
       state.setNumber    = dbGetSetCountForExercise(state.sessionId, ex.name) + 1;
@@ -291,6 +391,7 @@ function openPicker() {
       closePicker();
       renderActive();
       focusInput();
+      resetInactivityTimer();
     });
 
     ul.appendChild(li);
@@ -301,6 +402,44 @@ function openPicker() {
 
 function closePicker() {
   document.getElementById('exercise-picker').classList.add('hidden');
+  document.getElementById('exercise-list').classList.remove('hidden');
+  document.getElementById('btn-close-picker').classList.remove('hidden');
+  document.getElementById('other-name-section').classList.add('hidden');
+  document.getElementById('modal-title').textContent = 'Select Exercise';
+}
+
+function confirmOtherName() {
+  const name    = document.getElementById('other-name-input').value.trim();
+  const errorEl = document.getElementById('other-name-error');
+
+  if (!name) {
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  errorEl.classList.add('hidden');
+  state.exercise     = name;
+  state.exerciseType = 'reps';
+  state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
+  const last         = dbGetLastSetForExercise(state.sessionId, name);
+  state.lastWeight   = last ? last.weight : null;
+  state.lastReps     = last ? last.reps   : null;
+  state.lastDuration = null;
+  state.lastCalories = null;
+
+  closePicker();
+  renderActive();
+  focusInput();
+  resetInactivityTimer();
+}
+
+// ── Toast ─────────────────────────────────────────────
+function showToast(message, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.classList.toggle('error', isError);
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), isError ? 5000 : 3000);
 }
 
 // ── CSV export ────────────────────────────────────────
@@ -334,7 +473,10 @@ async function boot() {
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
-  document.getElementById('btn-finish').addEventListener('click', finishWorkout);
+  document.getElementById('btn-finish').addEventListener('click', showFinishConfirm);
+  document.getElementById('btn-confirm-end').addEventListener('click', finishWorkout);
+  document.getElementById('btn-cancel-end').addEventListener('click', hideFinishConfirm);
+  document.getElementById('confirm-finish-backdrop').addEventListener('click', hideFinishConfirm);
 
   // Input: Enter in weight moves to reps; Enter in reps logs the set
   const inputWeight = document.getElementById('input-weight');
@@ -347,8 +489,25 @@ async function boot() {
   // Exercise picker
   document.getElementById('btn-close-picker').addEventListener('click', closePicker);
   document.getElementById('modal-backdrop').addEventListener('click', closePicker);
+  document.getElementById('btn-other-done').addEventListener('click', confirmOtherName);
+  document.getElementById('other-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmOtherName();
+  });
+  document.getElementById('other-name-input').addEventListener('input', () => {
+    document.getElementById('other-name-error').classList.add('hidden');
+  });
 
   // Completed
+  document.getElementById('btn-inactivity-continue').addEventListener('click', () => {
+    hideInactivityModal();
+    resetInactivityTimer();
+  });
+  document.getElementById('btn-inactivity-end').addEventListener('click', () => {
+    hideInactivityModal();
+    finishWorkout();
+  });
+
+  document.getElementById('btn-resume').addEventListener('click', resumeLastWorkout);
   document.getElementById('btn-new-workout').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-export').addEventListener('click', triggerExport);
 }
