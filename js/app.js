@@ -186,6 +186,12 @@ function clearInputs() {
 
 // ── Session lifecycle ─────────────────────────────────
 function startSession() {
+  // Abandon any lingering active session
+  const existing = dbGetActiveSession();
+  if (existing) dbFinishSession(existing.session_id);
+
+  document.getElementById('btn-resume-idle').classList.add('hidden');
+
   state.sessionId    = dbCreateSession();
   state.exercise     = EXERCISES[0].name;
   state.exerciseType = EXERCISES[0].type;
@@ -460,14 +466,18 @@ function triggerExport() {
 async function boot() {
   await initDB();
 
+  // Always show idle screen on boot
   const active = dbGetActiveSession();
   if (active) {
-    resumeSession(active);
-  } else {
-    showScreen('idle');
+    document.getElementById('btn-resume-idle').classList.remove('hidden');
   }
+  showScreen('idle');
 
   // Idle
+  document.getElementById('btn-resume-idle').addEventListener('click', () => {
+    const session = dbGetActiveSession();
+    if (session) resumeSession(session);
+  });
   document.getElementById('btn-start').addEventListener('click', startSession);
 
   // Active
