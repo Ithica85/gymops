@@ -18,7 +18,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 
 - `index.html` — Single-page structure with all three screens and the exercise picker modal.
 - `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name.
-- `js/gdrive.js` — Google Drive integration. Replace `GOOGLE_CLIENT_ID` constant at the top with a real OAuth client ID to activate. See setup instructions in the file comments.
+- `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to a `GymOps` folder in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates.
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`.
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.

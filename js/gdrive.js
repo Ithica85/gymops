@@ -11,7 +11,7 @@
 //    (e.g. https://gymops-two.vercel.app and http://localhost:8080)
 // 5. Replace the GOOGLE_CLIENT_ID value below with your OAuth client ID
 
-const GOOGLE_CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = '437808702944-102a18ni81qk86lrae2ph0q5n5sppcgh.apps.googleusercontent.com';
 
 const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive.file';
 const FOLDER_NAME   = 'GymOps';
@@ -92,19 +92,23 @@ async function _resolveFilename(token, folderId, dateStr) {
   const data  = await res.json();
   const files = data.files ?? [];
 
-  if (!files.length) return `${base}.csv`;
+  if (!files.length) return base;
 
   let max = 1;
   files.forEach(f => {
-    const m = f.name.match(new RegExp(`^${base}_(\\d+)\\.csv$`));
+    const m = f.name.match(new RegExp(`^${base}_(\\d+)$`));
     if (m) max = Math.max(max, parseInt(m[1], 10));
   });
-  return `${base}_${max + 1}.csv`;
+  return `${base}_${max + 1}`;
 }
 
 async function _uploadFile(token, folderId, filename, csv) {
   const boundary = 'gymops_boundary';
-  const metadata = JSON.stringify({ name: filename, parents: [folderId] });
+  const metadata = JSON.stringify({
+    name: filename,
+    parents: [folderId],
+    mimeType: 'application/vnd.google-apps.spreadsheet',
+  });
   const body = [
     `--${boundary}`,
     'Content-Type: application/json',
