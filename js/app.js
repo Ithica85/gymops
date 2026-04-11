@@ -507,6 +507,23 @@ async function boot() {
     document.getElementById('other-name-error').classList.add('hidden');
   });
 
+  // Settings
+  document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
+  document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
+  document.getElementById('btn-clear-data').addEventListener('click', () => {
+    document.getElementById('confirm-clear').classList.remove('hidden');
+  });
+  document.getElementById('btn-cancel-clear').addEventListener('click', () => {
+    document.getElementById('confirm-clear').classList.add('hidden');
+  });
+  document.getElementById('confirm-clear-backdrop').addEventListener('click', () => {
+    document.getElementById('confirm-clear').classList.add('hidden');
+  });
+  document.getElementById('btn-confirm-clear').addEventListener('click', () => {
+    dbClearAll();
+    location.reload();
+  });
+
   // Completed
   document.getElementById('btn-inactivity-continue').addEventListener('click', () => {
     hideInactivityModal();

@@ -22,6 +22,23 @@
       <p class="idle-subtitle">Ready to train</p>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
+      <button class="btn-text settings-link" id="btn-settings">Settings</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       SETTINGS
+  ════════════════════════════════════ -->
+  <div id="screen-settings" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button class="btn-text" id="btn-settings-back">← Back</button>
+        <span class="settings-title">Settings</span>
+      </div>
+      <div class="settings-section">
+        <button class="btn-danger btn-large" id="btn-clear-data">Clear All Data</button>
+        <p class="settings-hint">Permanently deletes all workout history.</p>
+      </div>
     </div>
   </div>
 
@@ -164,6 +181,22 @@
       <div class="modal-actions">
         <button class="btn-primary btn-large" id="btn-inactivity-continue">Yes, continue</button>
         <button class="btn-danger" id="btn-inactivity-end">End workout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       CONFIRM CLEAR DATA (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="confirm-clear" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-clear-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Delete all data?</p>
+      <p class="modal-body">This will permanently delete all workout history.</p>
+      <div class="modal-actions">
+        <button class="btn-danger btn-large" id="btn-confirm-clear">Delete</button>
+        <button class="btn-secondary" id="btn-cancel-clear">Cancel</button>
       </div>
     </div>
   </div>

@@ -523,3 +523,50 @@ body {
   font-size: 1.4rem;
   padding: 14px 16px;
 }
+
+/* ═══════════════════════════════════
+   SETTINGS
+════════════════════════════════════ */
+.settings-link {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.settings-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 40px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.settings-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.modal-body {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}

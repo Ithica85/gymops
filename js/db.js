@@ -214,6 +214,11 @@ function dbGetLastSessionSetsForExercise(exercise) {
   );
 }
 
+// ── Clear all data ────────────────────────────────────
+function dbClearAll() {
+  localStorage.removeItem(DB_KEY);
+}
+
 // ── CSV Export ────────────────────────────────────────
 function dbExportSessionCSV(sessionId) {
   const rows = _all(`
