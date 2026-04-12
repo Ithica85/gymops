@@ -105,8 +105,9 @@ function dbCreateSession() {
   _db.run('INSERT INTO sessions (start_time, status) VALUES (?, ?)', [
     new Date().toISOString(), 'active',
   ]);
+  const id = _one('SELECT last_insert_rowid() AS id').id;
   _persist();
-  return _one('SELECT last_insert_rowid() AS id').id;
+  return id;
 }
 
 function dbFinishSession(sessionId) {

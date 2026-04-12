@@ -450,7 +450,7 @@ function showToast(message, isError = false) {
 
 // ── CSV export ────────────────────────────────────────
 function triggerExport() {
-  const csv = dbExportCSV();
+  const csv = state.sessionId ? dbExportSessionCSV(state.sessionId) : dbExportCSV();
   if (!csv) { alert('No data to export.'); return; }
 
   const blob = new Blob([csv], { type: 'text/csv' });
