@@ -204,10 +204,6 @@ body {
   border-left: 1px solid var(--border);
 }
 
-#last-set {
-  font-size: 1.15rem;
-}
-
 .stat-label {
   font-size: 0.7rem;
   color: var(--muted);
@@ -263,8 +259,9 @@ body {
 }
 
 .set-input::placeholder {
-  color: var(--border);
-  letter-spacing: 0.15em;
+  color: var(--muted);
+  font-style: italic;
+  letter-spacing: 0.05em;
 }
 
 .input-hint {
@@ -569,4 +566,40 @@ body {
   font-size: 0.9rem;
   color: var(--muted);
   margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════
+   SESSION NOTES
+════════════════════════════════════ */
+.notes-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.notes-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: var(--font);
+  line-height: 1.5;
+  padding: 12px 14px;
+  resize: none;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+  caret-color: var(--accent);
+  -webkit-appearance: none;
+  display: block;
+}
+
+.notes-input:focus {
+  border-color: var(--accent);
+}
+
+.notes-input::placeholder {
+  color: var(--muted);
 }

@@ -31,7 +31,8 @@ function _createSchema() {
       session_id  INTEGER PRIMARY KEY AUTOINCREMENT,
       start_time  TEXT NOT NULL,
       end_time    TEXT,
-      status      TEXT NOT NULL DEFAULT 'active'
+      status      TEXT NOT NULL DEFAULT 'active',
+      notes       TEXT
     );
     CREATE TABLE IF NOT EXISTS sets (
       set_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,8 +50,15 @@ function _createSchema() {
   _persist();
 }
 
-// Migrate existing DB to add duration_mins / calories and make weight/reps nullable
+// Migrate existing DB to add duration_mins / calories and make weight/reps nullable,
+// and to add notes column to sessions
 function _migrate() {
+  const sessionCols = _all('PRAGMA table_info(sessions)').map(c => c.name);
+  if (!sessionCols.includes('notes')) {
+    _db.run('ALTER TABLE sessions ADD COLUMN notes TEXT');
+    _persist();
+  }
+
   const cols = _all('PRAGMA table_info(sets)');
   const names = cols.map(c => c.name);
 
@@ -134,6 +142,14 @@ function dbResumeSession(sessionId) {
   _persist();
 }
 
+function dbUpdateSessionNotes(sessionId, notes) {
+  _db.run(
+    'UPDATE sessions SET notes = ? WHERE session_id = ?',
+    [notes, sessionId]
+  );
+  _persist();
+}
+
 // ── Sets ──────────────────────────────────────────────
 function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories) {
   const now = new Date().toISOString();
@@ -176,6 +192,13 @@ function dbGetRecentSets(sessionId, limit = 5) {
   return _all(
     'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC LIMIT ?',
     [sessionId, limit]
+  );
+}
+
+function dbGetAllSets(sessionId) {
+  return _all(
+    'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC',
+    [sessionId]
   );
 }
 
@@ -223,7 +246,7 @@ function dbClearAll() {
 // ── CSV Export ────────────────────────────────────────
 function dbExportSessionCSV(sessionId) {
   const rows = _all(`
-    SELECT s.session_id, s.start_time, s.end_time, s.status,
+    SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
            st.weight, st.reps, st.duration_mins, st.calories
     FROM sets st
@@ -233,15 +256,15 @@ function dbExportSessionCSV(sessionId) {
   `, [sessionId]);
   if (!rows.length) return null;
   const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
+  if (rows[0].session_notes) headers.push('session_notes');
   const lines = [headers.join(',')];
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
   return lines.join('\n');
 }
 
-
 function dbExportCSV() {
   const rows = _all(`
-    SELECT s.session_id, s.start_time, s.end_time, s.status,
+    SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
            st.weight, st.reps, st.duration_mins, st.calories
     FROM sets st
@@ -250,6 +273,7 @@ function dbExportCSV() {
   `);
   if (!rows.length) return null;
   const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
+  if (rows.some(r => r.session_notes)) headers.push('session_notes');
   const lines = [headers.join(',')];
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
   return lines.join('\n');

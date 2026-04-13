@@ -61,10 +61,6 @@
             <span class="stat-label">Set</span>
             <span class="stat-value" id="set-number">1</span>
           </div>
-          <div class="stat-block">
-            <span class="stat-label">Prev</span>
-            <span class="stat-value" id="last-set">—</span>
-          </div>
         </div>
 
         <p class="last-session" id="last-session">Last session: No history</p>
@@ -102,11 +98,24 @@
 
       <!-- Recent sets log -->
       <div class="sets-log">
-        <p class="sets-log-title">Recent Sets</p>
+        <p class="sets-log-title">This Session</p>
         <div id="sets-list" class="sets-list">
           <!-- Populated by JS -->
         </div>
         <p class="sets-empty hidden" id="sets-empty">No sets logged yet</p>
+
+        <!-- Session notes -->
+        <div class="notes-section">
+          <p class="sets-log-title">Session Notes</p>
+          <textarea
+            id="session-notes"
+            class="notes-input"
+            placeholder="e.g. Foam rolling, how you felt, injuries..."
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          ></textarea>
+        </div>
       </div>
 
     </div>

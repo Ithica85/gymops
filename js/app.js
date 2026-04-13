@@ -26,6 +26,20 @@ function getExerciseType(name) {
   return EXERCISES.find(e => e.name === name)?.type ?? 'reps';
 }
 
+// ── Session notes auto-save ───────────────────────────
+let _notesDebounce = null;
+
+function saveNotesNow() {
+  if (!state.sessionId) return;
+  const notes = document.getElementById('session-notes').value.trim();
+  dbUpdateSessionNotes(state.sessionId, notes || null);
+}
+
+function scheduleNotesSave() {
+  clearTimeout(_notesDebounce);
+  _notesDebounce = setTimeout(saveNotesNow, 600);
+}
+
 // ── Inactivity timer ──────────────────────────────────
 const INACTIVITY_MS = 30 * 60 * 1000;
 const AUTO_CLOSE_MS =  5 * 60 * 1000;
@@ -66,35 +80,21 @@ const state = {
   exercise:     EXERCISES[0].name,
   exerciseType: EXERCISES[0].type,
   setNumber:    1,
-  lastWeight:   null,
-  lastReps:     null,
-  lastDuration: null,
-  lastCalories: null,
 };
 
 // ── Input helpers ─────────────────────────────────────
-function formatLastSet() {
-  const prevNum = state.setNumber - 1;
-  if (state.exerciseType === 'timed') {
-    if (state.lastDuration == null) return '—';
-    const val = state.lastCalories != null
-      ? `${state.lastDuration} min · ${state.lastCalories} cal`
-      : `${state.lastDuration} min`;
-    return `Set ${prevNum}: ${val}`;
-  }
-  if (state.lastWeight == null) return '—';
-  return `Set ${prevNum}: ${state.lastWeight} × ${state.lastReps}`;
-}
-
 function updateInputFields() {
-  const weightEl = document.getElementById('input-weight');
-  const repsEl   = document.getElementById('input-reps');
+  const weightEl  = document.getElementById('input-weight');
+  const repsEl    = document.getElementById('input-reps');
+  const lastSets  = dbGetLastSessionSetsForExercise(state.exercise);
+  const reference = lastSets.find(s => s.set_number === state.setNumber) ?? null;
+
   if (state.exerciseType === 'timed') {
-    weightEl.placeholder = 'Duration (min)';
-    repsEl.placeholder   = 'Cal (opt)';
+    weightEl.placeholder = reference ? String(reference.duration_mins) : 'Duration (min)';
+    repsEl.placeholder   = (reference?.calories != null) ? String(reference.calories) : 'Cal (opt)';
   } else {
-    weightEl.placeholder = 'Weight';
-    repsEl.placeholder   = 'Reps';
+    weightEl.placeholder = reference ? String(reference.weight) : 'Weight';
+    repsEl.placeholder   = reference ? String(reference.reps)   : 'Reps';
   }
 }
 
@@ -129,7 +129,6 @@ function renderLastSession() {
 function renderActive() {
   document.getElementById('exercise-name').textContent = state.exercise;
   document.getElementById('set-number').textContent    = state.setNumber;
-  document.getElementById('last-set').textContent      = formatLastSet();
   updateInputFields();
   renderLastSession();
   renderRecentSets();
@@ -138,7 +137,7 @@ function renderActive() {
 function renderRecentSets() {
   const list  = document.getElementById('sets-list');
   const empty = document.getElementById('sets-empty');
-  const sets  = dbGetRecentSets(state.sessionId, 5);
+  const sets  = dbGetAllSets(state.sessionId);
 
   if (!sets.length) {
     list.innerHTML = '';
@@ -196,11 +195,8 @@ function startSession() {
   state.exercise     = EXERCISES[0].name;
   state.exerciseType = EXERCISES[0].type;
   state.setNumber    = 1;
-  state.lastWeight   = null;
-  state.lastReps     = null;
-  state.lastDuration = null;
-  state.lastCalories = null;
 
+  document.getElementById('session-notes').value = '';
   showScreen('active');
   renderActive();
   focusInput();
@@ -210,23 +206,13 @@ function startSession() {
 function resumeSession(session) {
   state.sessionId = session.session_id;
 
+  const sessionData = dbGetSession(session.session_id);
+  document.getElementById('session-notes').value = sessionData?.notes ?? '';
+
   const lastSet      = dbGetRecentSets(session.session_id, 1)[0];
   state.exercise     = lastSet ? lastSet.exercise : EXERCISES[0].name;
   state.exerciseType = getExerciseType(state.exercise);
   state.setNumber    = dbGetSetCountForExercise(session.session_id, state.exercise) + 1;
-
-  const lastForEx = dbGetLastSetForExercise(session.session_id, state.exercise);
-  if (state.exerciseType === 'timed') {
-    state.lastDuration = lastForEx ? lastForEx.duration_mins : null;
-    state.lastCalories = lastForEx ? lastForEx.calories      : null;
-    state.lastWeight   = null;
-    state.lastReps     = null;
-  } else {
-    state.lastWeight   = lastForEx ? lastForEx.weight : null;
-    state.lastReps     = lastForEx ? lastForEx.reps   : null;
-    state.lastDuration = null;
-    state.lastCalories = null;
-  }
 
   showScreen('active');
   renderActive();
@@ -246,6 +232,8 @@ function finishWorkout() {
   hideFinishConfirm();
   hideInactivityModal();
   clearInactivityTimers();
+  clearTimeout(_notesDebounce);
+  saveNotesNow();
 
   const count   = dbGetSetCount(state.sessionId);
   dbFinishSession(state.sessionId);
@@ -301,8 +289,6 @@ function logSet() {
       focusInput();
       return;
     }
-    state.lastDuration = duration;
-    state.lastCalories = calories;
   } else {
     const weight = parseFloat(field1);
     const reps   = parseInt(field2, 10);
@@ -321,13 +307,12 @@ function logSet() {
       focusInput();
       return;
     }
-    state.lastWeight = weight;
-    state.lastReps   = reps;
   }
 
   state.setNumber += 1;
   clearInputs();
   renderActive();
+  document.querySelector('.sets-log').scrollTop = 0;
   focusInput();
   resetInactivityTimer();
 }
@@ -342,14 +327,6 @@ function undoSet() {
 
   if (deleted.exercise === state.exercise) {
     state.setNumber = Math.max(1, state.setNumber - 1);
-    const prev = dbGetLastSetForExercise(state.sessionId, state.exercise);
-    if (state.exerciseType === 'timed') {
-      state.lastDuration = prev ? prev.duration_mins : null;
-      state.lastCalories = prev ? prev.calories      : null;
-    } else {
-      state.lastWeight = prev ? prev.weight : null;
-      state.lastReps   = prev ? prev.reps   : null;
-    }
   }
 
   renderActive();
@@ -382,18 +359,6 @@ function openPicker() {
       state.exercise     = ex.name;
       state.exerciseType = ex.type;
       state.setNumber    = dbGetSetCountForExercise(state.sessionId, ex.name) + 1;
-      const last         = dbGetLastSetForExercise(state.sessionId, ex.name);
-      if (ex.type === 'timed') {
-        state.lastDuration = last ? last.duration_mins : null;
-        state.lastCalories = last ? last.calories      : null;
-        state.lastWeight   = null;
-        state.lastReps     = null;
-      } else {
-        state.lastWeight   = last ? last.weight : null;
-        state.lastReps     = last ? last.reps   : null;
-        state.lastDuration = null;
-        state.lastCalories = null;
-      }
       closePicker();
       renderActive();
       focusInput();
@@ -427,11 +392,6 @@ function confirmOtherName() {
   state.exercise     = name;
   state.exerciseType = 'reps';
   state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
-  const last         = dbGetLastSetForExercise(state.sessionId, name);
-  state.lastWeight   = last ? last.weight : null;
-  state.lastReps     = last ? last.reps   : null;
-  state.lastDuration = null;
-  state.lastCalories = null;
 
   closePicker();
   renderActive();
@@ -495,6 +455,11 @@ async function boot() {
   inputReps.addEventListener('keydown',   e => { if (e.key === 'Enter') logSet(); });
   inputWeight.addEventListener('input', () => clearError());
   inputReps.addEventListener('input',   () => clearError());
+
+  // Session notes
+  const notesEl = document.getElementById('session-notes');
+  notesEl.addEventListener('input', scheduleNotesSave);
+  notesEl.addEventListener('blur', () => { clearTimeout(_notesDebounce); saveNotesNow(); });
 
   // Exercise picker
   document.getElementById('btn-close-picker').addEventListener('click', closePicker);
