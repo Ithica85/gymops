@@ -96,9 +96,17 @@
 
         <div class="action-buttons">
           <button class="btn-secondary" id="btn-undo">Undo</button>
+          <button class="btn-secondary hidden" id="btn-rest">Rest</button>
           <button class="btn-danger" id="btn-finish">Finish</button>
         </div>
 
+      </div>
+
+      <!-- Rest timer bar — shown between sets, hidden by default -->
+      <div id="rest-bar" class="rest-bar hidden">
+        <span class="rest-label">Rest</span>
+        <span id="rest-countdown" class="rest-countdown">1:30</span>
+        <button class="btn-text rest-skip" id="btn-rest-skip">Skip</button>
       </div>
 
       <!-- Recent sets log -->

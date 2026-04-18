@@ -385,6 +385,41 @@ body {
   padding: 24px 0;
 }
 
+/* — Rest timer bar — */
+.rest-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rest-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  flex: 1;
+}
+
+.rest-countdown {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  flex: 1;
+  text-align: center;
+}
+
+.rest-skip {
+  flex: 1;
+  text-align: right;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .set-delete-btn {
   background: none;
   border: none;

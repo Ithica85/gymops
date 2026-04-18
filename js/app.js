@@ -60,12 +60,74 @@ function scheduleNotesSave() {
 const INACTIVITY_MS = 30 * 60 * 1000; // Show prompt after 30 min of no activity
 const AUTO_CLOSE_MS =  5 * 60 * 1000; // Auto-close session 5 min after prompt is ignored
 
-let _inactivityTimer = null;
-let _autoCloseTimer  = null;
+let _inactivityTimer    = null;
+let _autoCloseTimer     = null;
+let _lastActivityTime   = null; // Wall-clock timestamp of last activity — used to detect
+                                // inactivity when the browser throttles background timers
 
 // Elapsed session timer — ticks every second while a session is active.
 let _sessionTimer    = null;
 let _sessionStart    = null; // Date object for the session's start_time
+
+// ── Rest timer ────────────────────────────────────────
+
+const REST_SECS = 90;
+
+let _restTimer     = null;
+let _restRemaining = 0;
+
+function fmtRest(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// Plays a short double-beep via Web Audio API to signal rest complete.
+function beepAlert() {
+  try {
+    const ctx  = new AudioContext();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    [0, 0.25].forEach(offset => {
+      const osc = ctx.createOscillator();
+      osc.connect(gain);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.2);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.2);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+
+function stopRestTimer() {
+  if (_restTimer) { clearInterval(_restTimer); _restTimer = null; }
+  _restRemaining = 0;
+  document.getElementById('rest-bar').classList.add('hidden');
+}
+
+function startRestTimer() {
+  stopRestTimer(); // ensure only one timer runs
+  _restRemaining = REST_SECS;
+  const bar       = document.getElementById('rest-bar');
+  const countdown = document.getElementById('rest-countdown');
+  bar.classList.remove('hidden');
+  countdown.textContent = fmtRest(_restRemaining);
+
+  _restTimer = setInterval(() => {
+    _restRemaining -= 1;
+    if (_restRemaining <= 0) {
+      clearInterval(_restTimer);
+      _restTimer = null;
+      countdown.textContent = 'Done!';
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      beepAlert();
+      setTimeout(stopRestTimer, 2000);
+    } else {
+      countdown.textContent = fmtRest(_restRemaining);
+    }
+  }, 1000);
+}
 
 // Formats milliseconds as MM:SS (or H:MM:SS for sessions over one hour).
 function formatElapsed(ms) {
@@ -107,6 +169,7 @@ function stopSessionTimer() {
 function resetInactivityTimer() {
   clearTimeout(_inactivityTimer);
   clearTimeout(_autoCloseTimer);
+  _lastActivityTime = Date.now();
   _inactivityTimer = setTimeout(() => {
     showInactivityModal();
     _autoCloseTimer = setTimeout(() => {
@@ -203,6 +266,9 @@ function renderActive() {
   updateInputFields();
   renderLastSession();
   renderRecentSets();
+  // Show Rest button only after at least one set has been logged
+  const hasSet = dbGetSetCount(state.sessionId) > 0;
+  document.getElementById('btn-rest').classList.toggle('hidden', !hasSet);
 }
 
 // Renders the full session log (all sets, newest first).
@@ -366,6 +432,7 @@ function finishWorkout() {
   hideInactivityModal();
   clearInactivityTimers();
   stopSessionTimer();
+  stopRestTimer();
   clearTimeout(_notesDebounce);
   saveNotesNow(); // Flush any unsaved notes before closing the session
 
@@ -622,6 +689,8 @@ async function boot() {
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
+  document.getElementById('btn-rest').addEventListener('click', startRestTimer);
+  document.getElementById('btn-rest-skip').addEventListener('click', stopRestTimer);
 
   // Set deletion — delegated on the list so it covers dynamically rendered rows
   document.getElementById('sets-list').addEventListener('click', e => {
@@ -699,6 +768,24 @@ async function boot() {
   document.getElementById('btn-inactivity-end').addEventListener('click', () => {
     hideInactivityModal();
     finishWorkout();
+  });
+
+  // When the tab becomes visible again after being backgrounded, check real
+  // wall-clock elapsed time — browser may have throttled the setTimeout so it
+  // never fired. If inactivity threshold has passed, show the modal immediately.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!_lastActivityTime || !state.sessionId) return;
+    const elapsed = Date.now() - _lastActivityTime;
+    if (elapsed >= INACTIVITY_MS) {
+      clearTimeout(_inactivityTimer);
+      clearTimeout(_autoCloseTimer);
+      showInactivityModal();
+      _autoCloseTimer = setTimeout(() => {
+        hideInactivityModal();
+        finishWorkout();
+      }, AUTO_CLOSE_MS);
+    }
   });
 
   // Completed screen
