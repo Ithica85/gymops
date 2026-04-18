@@ -229,12 +229,28 @@ function renderRecentSets() {
       details = `Set ${s.set_number} · ${s.weight} × ${s.reps}`;
     }
     return `
-      <div class="set-item">
+      <div class="set-item" data-set-id="${s.set_id}">
         <span class="set-item-exercise">${s.exercise}</span>
         <span class="set-item-details">${details}</span>
+        <button class="set-delete-btn" data-set-id="${s.set_id}" aria-label="Delete set">🗑</button>
       </div>
     `;
   }).join('');
+}
+
+// Replaces a set-item's content with an inline confirmation prompt.
+// On confirm: deletes the set, re-sequences, refreshes state and UI.
+function confirmDeleteSet(setId) {
+  const row = document.querySelector(`.set-item[data-set-id="${setId}"]`);
+  if (!row) return;
+  row.classList.add('set-item--confirming');
+  row.innerHTML = `
+    <span class="set-delete-confirm-msg">Delete this set?</span>
+    <div class="set-delete-confirm-actions">
+      <button class="btn-text set-delete-cancel" data-set-id="${setId}">Cancel</button>
+      <button class="btn-danger set-delete-confirm" data-set-id="${setId}">Delete</button>
+    </div>
+  `;
 }
 
 function showError(msg) {
@@ -606,6 +622,28 @@ async function boot() {
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
+
+  // Set deletion — delegated on the list so it covers dynamically rendered rows
+  document.getElementById('sets-list').addEventListener('click', e => {
+    const trashBtn  = e.target.closest('.set-delete-btn');
+    const cancelBtn = e.target.closest('.set-delete-cancel');
+    const confirmBtn = e.target.closest('.set-delete-confirm');
+
+    if (trashBtn)   { confirmDeleteSet(Number(trashBtn.dataset.setId));  return; }
+    if (cancelBtn)  { renderRecentSets(); return; }
+    if (confirmBtn) {
+      const setId  = Number(confirmBtn.dataset.setId);
+      const row    = dbDeleteSetById(setId);
+      if (row) {
+        dbResequenceSets(state.sessionId, row.exercise);
+        // Keep state.setNumber in sync for the currently selected exercise
+        if (row.exercise === state.exercise) {
+          state.setNumber = dbGetSetCountForExercise(state.sessionId, state.exercise) + 1;
+        }
+      }
+      renderActive();
+    }
+  });
   document.getElementById('btn-finish').addEventListener('click', showFinishConfirm);
   document.getElementById('btn-confirm-end').addEventListener('click', finishWorkout);
   document.getElementById('btn-cancel-end').addEventListener('click', cancelFinishConfirm);

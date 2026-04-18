@@ -205,6 +205,30 @@ function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins,
   _persist();
 }
 
+// Deletes a specific set by ID and returns the deleted row.
+// Returns null if the set doesn't exist.
+function dbDeleteSetById(setId) {
+  const row = _one('SELECT * FROM sets WHERE set_id = ?', [setId]);
+  if (!row) return null;
+  _db.run('DELETE FROM sets WHERE set_id = ?', [setId]);
+  _persist();
+  return row;
+}
+
+// Re-sequences set_number for all sets of a given exercise in a session so they
+// are contiguous (1, 2, 3…) after a deletion. Uses insertion order (set_id) as
+// the stable sort key so numbering matches the original logging order.
+function dbResequenceSets(sessionId, exercise) {
+  const rows = _all(
+    'SELECT set_id FROM sets WHERE session_id = ? AND exercise = ? ORDER BY set_id ASC',
+    [sessionId, exercise]
+  );
+  rows.forEach((r, i) => {
+    _db.run('UPDATE sets SET set_number = ? WHERE set_id = ?', [i + 1, r.set_id]);
+  });
+  _persist();
+}
+
 // Deletes the most recently logged set for a session and returns the deleted row.
 // Returns null if the session has no sets (nothing to undo).
 function dbDeleteLastSet(sessionId) {

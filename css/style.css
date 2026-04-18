@@ -385,6 +385,44 @@ body {
   padding: 24px 0;
 }
 
+.set-delete-btn {
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.35;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.set-delete-btn:active { opacity: 0.7; }
+
+.set-item--confirming {
+  justify-content: space-between;
+  gap: 8px;
+}
+.set-delete-confirm-msg {
+  font-size: 0.875rem;
+  color: var(--text);
+  flex: 1;
+}
+.set-delete-confirm-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.set-delete-cancel {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0;
+}
+.set-delete-confirm {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
 /* ═══════════════════════════════════
    COMPLETED
 ════════════════════════════════════ */
