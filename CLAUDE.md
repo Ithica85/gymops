@@ -65,12 +65,12 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v19`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v20`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
 
-# Shipped Features (Phase 1.1 + 1.2)
+# Shipped Features (Phase 1.1 + 1.2 + post-1.2)
 
 All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as of commit `104f752`.
 
@@ -92,6 +92,9 @@ All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as 
 - **US-02** — Finish modal dismiss restores previously selected exercise; Resume Last Workout also restores the exercise active at Finish time (not just the last logged set)
 - **US-01** — Elapsed session timer (MM:SS / H:MM:SS) displayed in the stat row on the active screen; starts from session `start_time` so resume shows full elapsed time
 - **Tech task** — Inline code comments added across `js/app.js`, `js/db.js`, `js/gdrive.js` covering non-obvious logic, gotchas, and design decisions
+
+## Post-1.2 stories (all complete)
+- **US-001** — Zero weight accepted as valid for bodyweight/mobility exercises; validation rejects blank/null but allows 0 (`app.js:434`: `weight <= 0` → `weight < 0`)
 
 ---
 

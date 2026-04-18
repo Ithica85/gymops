@@ -431,7 +431,7 @@ function logSet() {
     const weight = parseFloat(field1);
     const reps   = parseInt(field2, 10);
 
-    if (!field1 || !field2 || isNaN(weight) || isNaN(reps) || weight <= 0 || reps <= 0) {
+    if (!field1 || !field2 || isNaN(weight) || isNaN(reps) || weight < 0 || reps <= 0) {
       showError('Enter weight and reps');
       focusInput();
       return;
