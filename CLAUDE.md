@@ -96,6 +96,12 @@ All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as 
 ## Post-1.2 stories (all complete)
 - **US-001** — Zero weight accepted as valid for bodyweight/mobility exercises; validation rejects blank/null but allows 0 (`app.js:434`: `weight <= 0` → `weight < 0`)
 
+## Phase 1.3 (all complete)
+- **US-003** — App version displayed at bottom of Settings screen; hardcoded `APP_VERSION` constant in `app.js`, set on boot
+- **US-004** — Delete a set from the active session log; trash button per row, inline confirmation, set re-sequences after deletion, `state.setNumber` kept in sync; `dbDeleteSetById` + `dbResequenceSets` in `db.js`
+- **US-005** — Rest timer between sets (90s countdown); appears after first set logged, beep + vibrate on complete, Skip to dismiss early; lives entirely in UI state
+- **Bug fix** — Inactivity timeout now fires correctly when tab is backgrounded; `visibilitychange` listener checks real wall-clock elapsed time against `_lastActivityTime` to bypass browser timer throttling
+
 ---
 
 # Next / Backlog
