@@ -688,6 +688,7 @@ async function boot() {
 
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
+  document.getElementById('btn-log-set').addEventListener('click', logSet);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-rest').addEventListener('click', startRestTimer);
   document.getElementById('btn-rest-skip').addEventListener('click', stopRestTimer);
