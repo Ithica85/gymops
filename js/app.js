@@ -4,6 +4,21 @@
 
 const APP_VERSION = 'v1.3';
 
+// ── Weight unit preference ────────────────────────────
+// Stored in localStorage as 'kg' or 'lbs'. Affects labels and placeholders only —
+// no conversion is applied to stored values.
+const UNIT_KEY = 'gymops_weight_unit';
+function getWeightUnit() { return localStorage.getItem(UNIT_KEY) ?? 'kg'; }
+function setWeightUnit(u) {
+  localStorage.setItem(UNIT_KEY, u);
+  // Reflect active state on the toggle buttons
+  document.querySelectorAll('.unit-btn').forEach(btn => {
+    btn.classList.toggle('unit-btn--active', btn.dataset.unit === u);
+  });
+  // Re-render input fields so label/placeholder updates immediately
+  if (state.sessionId) updateInputFields();
+}
+
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
 //   'timed' — logs duration_mins + optional calories
@@ -213,15 +228,22 @@ const state = {
 function updateInputFields() {
   const weightEl  = document.getElementById('input-weight');
   const repsEl    = document.getElementById('input-reps');
+  const label1    = document.getElementById('label-field1');
+  const label2    = document.getElementById('label-field2');
   const lastSets  = dbGetLastSessionSetsForExercise(state.exercise);
   const reference = lastSets.find(s => s.set_number === state.setNumber) ?? null;
 
   if (state.exerciseType === 'timed') {
-    weightEl.placeholder = reference ? String(reference.duration_mins) : 'Duration (min)';
-    repsEl.placeholder   = (reference?.calories != null) ? String(reference.calories) : 'Cal (opt)';
+    label1.textContent   = 'Duration (mins)';
+    label2.textContent   = 'Calories';
+    weightEl.placeholder = reference ? String(reference.duration_mins) : 'mins';
+    repsEl.placeholder   = (reference?.calories != null) ? String(reference.calories) : 'optional';
   } else {
-    weightEl.placeholder = reference ? String(reference.weight) : 'Weight';
-    repsEl.placeholder   = reference ? String(reference.reps)   : 'Reps';
+    const unit           = getWeightUnit();
+    label1.textContent   = `Weight (${unit})`;
+    label2.textContent   = 'Reps';
+    weightEl.placeholder = reference ? String(reference.weight) : unit;
+    repsEl.placeholder   = reference ? String(reference.reps)   : 'reps';
   }
 }
 
@@ -745,6 +767,11 @@ async function boot() {
 
   // Settings
   document.getElementById('settings-version').textContent = 'GymOps ' + APP_VERSION;
+  // Initialise unit toggle to reflect stored preference
+  setWeightUnit(getWeightUnit());
+  document.querySelectorAll('.unit-btn').forEach(btn => {
+    btn.addEventListener('click', () => setWeightUnit(btn.dataset.unit));
+  });
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-clear-data').addEventListener('click', () => {

@@ -36,6 +36,13 @@
         <span class="settings-title">Settings</span>
       </div>
       <div class="settings-section">
+        <span class="settings-label">Weight unit</span>
+        <div class="unit-toggle">
+          <button class="unit-btn" id="unit-kg" data-unit="kg">kg</button>
+          <button class="unit-btn" id="unit-lbs" data-unit="lbs">lbs</button>
+        </div>
+      </div>
+      <div class="settings-section">
         <button class="btn-danger btn-large" id="btn-clear-data">Clear All Data</button>
         <p class="settings-hint">Permanently deletes all workout history.</p>
       </div>
@@ -72,24 +79,30 @@
 
         <div class="input-section">
           <div class="input-row">
-            <input
-              type="text"
-              id="input-weight"
-              class="set-input"
-              placeholder="Weight"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              autocomplete="off"
-            >
-            <input
-              type="text"
-              id="input-reps"
-              class="set-input"
-              placeholder="Reps"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              autocomplete="off"
-            >
+            <div class="input-col">
+              <span class="input-label" id="label-field1">Weight</span>
+              <input
+                type="text"
+                id="input-weight"
+                class="set-input"
+                placeholder="Weight"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
+              >
+            </div>
+            <div class="input-col">
+              <span class="input-label" id="label-field2">Reps</span>
+              <input
+                type="text"
+                id="input-reps"
+                class="set-input"
+                placeholder="Reps"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                autocomplete="off"
+              >
+            </div>
           </div>
           <p class="input-error hidden" id="input-error">Enter weight and reps</p>
         </div>

@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v26`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v28`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -102,6 +102,8 @@ All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as 
 - **US-005** — Rest timer between sets (90s countdown); appears after first set logged, beep + vibrate on complete, Skip to dismiss early; lives entirely in UI state
 - **Bug fix** — Inactivity timeout now fires correctly when tab is backgrounded; `visibilitychange` listener checks real wall-clock elapsed time against `_lastActivityTime` to bypass browser timer throttling
 - **US-006** — Visible "Log Set" button (full-width, lime, above action row); Enter key behaviour preserved
+- **US-007** — Timed exercise input labels: "Duration (mins)" / "Calories" for timed, "Weight (unit)" / "Reps" for reps; placeholders updated to match
+- **US-008** — Weight unit preference (kg/lbs) in Settings; stored in localStorage (`gymops_weight_unit`); updates label and placeholder immediately; no conversion applied
 
 ---
 

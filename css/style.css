@@ -237,9 +237,25 @@ body {
   gap: 10px;
 }
 
-.input-row .set-input {
+.input-col {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   width: 0;
+}
+
+.input-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+.input-col .set-input {
+  width: 100%;
 }
 
 .set-input {
@@ -633,6 +649,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.settings-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.unit-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.unit-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.unit-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
 }
 
 .settings-hint {
