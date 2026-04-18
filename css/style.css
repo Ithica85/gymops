@@ -219,6 +219,12 @@ body {
   line-height: 1;
 }
 
+.stat-value--timer {
+  font-size: 1.2rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* — Input — */
 .input-section {
   display: flex;

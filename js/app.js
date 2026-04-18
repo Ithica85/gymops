@@ -2,6 +2,11 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
+// Master exercise list. Each entry has a name and type:
+//   'reps'  — logs weight + reps
+//   'timed' — logs duration_mins + optional calories
+// Custom exercise names (entered via "Other") are stored as-is and always
+// treated as 'reps' since there is no timed variant for free-text exercises.
 const EXERCISES = [
   { name: 'Seated Shoulder Press',       type: 'reps'  },
   { name: 'Goblet Squats',               type: 'reps'  },
@@ -22,31 +27,81 @@ const EXERCISES = [
   { name: 'Other',                       type: 'reps'  },
 ];
 
+// Looks up an exercise type by name. Falls back to 'reps' for custom names
+// entered via the "Other" flow that don't appear in the EXERCISES array.
 function getExerciseType(name) {
   return EXERCISES.find(e => e.name === name)?.type ?? 'reps';
 }
 
 // ── Session notes auto-save ───────────────────────────
+
+// Debounce handle for the notes textarea. Notes are saved 600ms after the
+// user stops typing, and immediately on blur (e.g. switching apps).
 let _notesDebounce = null;
 
+// Flushes the current notes value to the DB immediately (no debounce).
+// Passing null when the textarea is empty avoids storing an empty string in the DB.
 function saveNotesNow() {
   if (!state.sessionId) return;
   const notes = document.getElementById('session-notes').value.trim();
   dbUpdateSessionNotes(state.sessionId, notes || null);
 }
 
+// Schedules a save 600ms after the last keystroke. Resets on each input event.
 function scheduleNotesSave() {
   clearTimeout(_notesDebounce);
   _notesDebounce = setTimeout(saveNotesNow, 600);
 }
 
 // ── Inactivity timer ──────────────────────────────────
-const INACTIVITY_MS = 30 * 60 * 1000;
-const AUTO_CLOSE_MS =  5 * 60 * 1000;
+
+const INACTIVITY_MS = 30 * 60 * 1000; // Show prompt after 30 min of no activity
+const AUTO_CLOSE_MS =  5 * 60 * 1000; // Auto-close session 5 min after prompt is ignored
 
 let _inactivityTimer = null;
 let _autoCloseTimer  = null;
 
+// Elapsed session timer — ticks every second while a session is active.
+let _sessionTimer    = null;
+let _sessionStart    = null; // Date object for the session's start_time
+
+// Formats milliseconds as MM:SS (or H:MM:SS for sessions over one hour).
+function formatElapsed(ms) {
+  const totalSecs = Math.floor(ms / 1000);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Starts the elapsed timer from the session's recorded start_time (not from now),
+// so resumed sessions show the full elapsed time including any break.
+// Calls tick() immediately so the display is correct on first render without
+// waiting for the first interval to fire.
+function startSessionTimer(startTimeISO) {
+  _sessionStart = new Date(startTimeISO);
+  const el = document.getElementById('session-timer');
+  clearInterval(_sessionTimer); // Clear any previous timer before starting a new one
+  const tick = () => { el.textContent = formatElapsed(new Date() - _sessionStart); };
+  tick();
+  _sessionTimer = setInterval(tick, 1000);
+}
+
+// Stops the elapsed timer and resets the display to 00:00.
+function stopSessionTimer() {
+  clearInterval(_sessionTimer);
+  _sessionTimer = null;
+  _sessionStart = null;
+  document.getElementById('session-timer').textContent = '00:00';
+}
+
+// Resets the inactivity countdown. Called on any user action (set logged,
+// exercise changed, undo). Uses a nested timeout pattern:
+//   → After 30 min of inactivity: show "Still working out?" prompt
+//   → If no response for a further 5 min: auto-close the session
 function resetInactivityTimer() {
   clearTimeout(_inactivityTimer);
   clearTimeout(_autoCloseTimer);
@@ -75,6 +130,9 @@ function hideInactivityModal() {
 }
 
 // ── State ─────────────────────────────────────────────
+
+// Single mutable state object. No framework reactivity — all DOM updates are
+// explicit via render* functions called after state mutations.
 const state = {
   sessionId:    null,
   exercise:     EXERCISES[0].name,
@@ -83,6 +141,10 @@ const state = {
 };
 
 // ── Input helpers ─────────────────────────────────────
+
+// Updates the two input field placeholders to show last-session values as ghost text.
+// Matches by set_number so Set 1 shows Set 1's previous values, Set 2 shows Set 2's, etc.
+// Falls back to generic labels ('Weight', 'Reps') when no history exists for this set number.
 function updateInputFields() {
   const weightEl  = document.getElementById('input-weight');
   const repsEl    = document.getElementById('input-reps');
@@ -99,12 +161,17 @@ function updateInputFields() {
 }
 
 // ── Screen routing ────────────────────────────────────
+
+// Shows a named screen (idle / active / completed / settings) and hides all others.
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
 }
 
 // ── UI rendering ──────────────────────────────────────
+
+// Renders the "Last session" reference line below the exercise name.
+// Pulls all sets for the current exercise from the most recent completed session.
 function renderLastSession() {
   const el   = document.getElementById('last-session');
   const sets = dbGetLastSessionSetsForExercise(state.exercise);
@@ -126,6 +193,8 @@ function renderLastSession() {
   el.textContent = 'Last session: ' + parts.join(', ');
 }
 
+// Full re-render of the active screen: exercise name, set number,
+// input placeholders, last session reference, and the sets log.
 function renderActive() {
   document.getElementById('exercise-name').textContent = state.exercise;
   document.getElementById('set-number').textContent    = state.setNumber;
@@ -134,6 +203,8 @@ function renderActive() {
   renderRecentSets();
 }
 
+// Renders the full session log (all sets, newest first).
+// Formats reps sets as "Set N · weight × reps" and timed sets as "Set N · duration min · cal".
 function renderRecentSets() {
   const list  = document.getElementById('sets-list');
   const empty = document.getElementById('sets-empty');
@@ -174,6 +245,8 @@ function clearError() {
   document.getElementById('input-error').classList.add('hidden');
 }
 
+// Focuses the first input field (weight / duration). Called after any action
+// that should return the user to the input row.
 function focusInput() {
   document.getElementById('input-weight').focus();
 }
@@ -184,6 +257,10 @@ function clearInputs() {
 }
 
 // ── Session lifecycle ─────────────────────────────────
+
+// Starts a new workout session. If an active session already exists (e.g. from
+// a crash or browser close), it is silently finished before creating the new one.
+// Always defaults to the first exercise in the list.
 function startSession() {
   // Abandon any lingering active session
   const existing = dbGetActiveSession();
@@ -201,8 +278,16 @@ function startSession() {
   renderActive();
   focusInput();
   resetInactivityTimer();
+  // Read start_time back from DB rather than using new Date(), so the timer
+  // is anchored to the exact timestamp stored in the session record.
+  const newSession = dbGetSession(state.sessionId);
+  if (newSession) startSessionTimer(newSession.start_time);
 }
 
+// Resumes an existing session (from idle screen or completed screen).
+// Determines which exercise to land on by looking at the most recently logged set.
+// Note: resumeLastWorkout() overrides this with the exercise that was active
+// at the time Finish was tapped, which may differ from the last logged set.
 function resumeSession(session) {
   state.sessionId = session.session_id;
 
@@ -218,28 +303,63 @@ function resumeSession(session) {
   renderActive();
   focusInput();
   resetInactivityTimer();
+  if (sessionData) startSessionTimer(sessionData.start_time);
 }
 
+// Saved when the Finish confirmation modal opens, restored if the user cancels.
+// Ensures dismissing the modal returns to the exact exercise the user was on,
+// even if no sets had been logged for it yet (so it doesn't appear in dbGetRecentSets).
+let _savedExercise     = null;
+let _savedExerciseType = null;
+
 function showFinishConfirm() {
+  _savedExercise     = state.exercise;
+  _savedExerciseType = state.exerciseType;
   document.getElementById('confirm-finish').classList.remove('hidden');
 }
 
+// Used only by the confirmed-finish path (finishWorkout). Clears saved state
+// without restoring it. Kept separate from cancelFinishConfirm to avoid
+// triggering a re-render mid-finish.
 function hideFinishConfirm() {
   document.getElementById('confirm-finish').classList.add('hidden');
+  _savedExercise     = null;
+  _savedExerciseType = null;
 }
 
+// Used by the Cancel button and backdrop tap. Restores the saved exercise
+// before hiding the modal, then re-renders and returns focus to the input.
+function cancelFinishConfirm() {
+  state.exercise     = _savedExercise;
+  state.exerciseType = _savedExerciseType;
+  hideFinishConfirm();
+  renderActive();
+  focusInput();
+}
+
+// Saved at the moment Finish is confirmed, so resumeLastWorkout() can restore
+// the exact exercise the user was on — not just the last exercise with a logged set.
+let _resumeExercise     = null;
+let _resumeExerciseType = null;
+
+// Ends the session, triggers Drive upload, and shows the completed screen.
 function finishWorkout() {
   hideFinishConfirm();
   hideInactivityModal();
   clearInactivityTimers();
+  stopSessionTimer();
   clearTimeout(_notesDebounce);
-  saveNotesNow();
+  saveNotesNow(); // Flush any unsaved notes before closing the session
+
+  // Capture current exercise before state changes, so resume can restore it
+  _resumeExercise     = state.exercise;
+  _resumeExerciseType = state.exerciseType;
 
   const count   = dbGetSetCount(state.sessionId);
   dbFinishSession(state.sessionId);
   state.finishedAt = new Date();
 
-  // Auto-save to Google Drive (non-blocking)
+  // Auto-save to Google Drive (non-blocking — failure shows toast, doesn't block UI)
   const csv     = dbExportSessionCSV(state.sessionId);
   const session = dbGetSession(state.sessionId);
   if (csv && session) gdriveUpload(csv, session.start_time);
@@ -251,17 +371,35 @@ function finishWorkout() {
   showScreen('completed');
 }
 
+// Reopens the most recently finished session if it was completed within the last 60 minutes.
+// Calls resumeSession() to restore DB state and notes, then overrides the exercise
+// with the one that was active when Finish was tapped (which resumeSession's last-set
+// lookup may not match if the user had switched exercise without logging a set).
 function resumeLastWorkout() {
   const elapsed = (new Date() - state.finishedAt) / 1000 / 60;
   if (elapsed >= 60) {
+    // Resume window has expired — hide the button and bail
     document.getElementById('btn-resume').classList.add('hidden');
     return;
   }
   dbResumeSession(state.sessionId);
   resumeSession({ session_id: state.sessionId });
+  if (_resumeExercise !== null) {
+    state.exercise     = _resumeExercise;
+    state.exerciseType = _resumeExerciseType;
+    state.setNumber    = dbGetSetCountForExercise(state.sessionId, state.exercise) + 1;
+    _resumeExercise     = null;
+    _resumeExerciseType = null;
+    renderActive(); // Re-render to reflect restored exercise
+  }
 }
 
 // ── Core actions ──────────────────────────────────────
+
+// Reads the two input fields and logs a set for the current exercise.
+// Validation and DB insertion branch on exerciseType:
+//   'timed' — duration required, calories optional
+//   'reps'  — both weight and reps required, must be positive numbers
 function logSet() {
   const field1 = document.getElementById('input-weight').value.trim();
   const field2 = document.getElementById('input-reps').value.trim();
@@ -312,11 +450,14 @@ function logSet() {
   state.setNumber += 1;
   clearInputs();
   renderActive();
-  document.querySelector('.sets-log').scrollTop = 0;
+  document.querySelector('.sets-log').scrollTop = 0; // Scroll log back to top to show latest set
   focusInput();
   resetInactivityTimer();
 }
 
+// Deletes the most recently logged set for the session.
+// Only decrements setNumber if the deleted set was for the currently selected
+// exercise — deleting a different exercise's set shouldn't change the counter.
 function undoSet() {
   const deleted = dbDeleteLastSet(state.sessionId);
   if (!deleted) {
@@ -335,6 +476,9 @@ function undoSet() {
 }
 
 // ── Exercise picker ───────────────────────────────────
+
+// Opens the exercise picker bottom sheet. Marks the currently selected exercise.
+// The "Other" item shows an inline free-text input instead of immediately closing.
 function openPicker() {
   const ul = document.getElementById('exercise-list');
   ul.innerHTML = '';
@@ -346,6 +490,7 @@ function openPicker() {
 
     li.addEventListener('click', () => {
       if (ex.name === 'Other') {
+        // Switch picker to name-entry mode — hide list, show text input
         document.getElementById('exercise-list').classList.add('hidden');
         document.getElementById('btn-close-picker').classList.add('hidden');
         document.getElementById('other-name-section').classList.remove('hidden');
@@ -358,6 +503,7 @@ function openPicker() {
 
       state.exercise     = ex.name;
       state.exerciseType = ex.type;
+      // Set number for this exercise = sets already logged + 1
       state.setNumber    = dbGetSetCountForExercise(state.sessionId, ex.name) + 1;
       closePicker();
       renderActive();
@@ -371,6 +517,7 @@ function openPicker() {
   document.getElementById('exercise-picker').classList.remove('hidden');
 }
 
+// Resets the picker to its default state (list visible, name-entry hidden).
 function closePicker() {
   document.getElementById('exercise-picker').classList.add('hidden');
   document.getElementById('exercise-list').classList.remove('hidden');
@@ -379,6 +526,9 @@ function closePicker() {
   document.getElementById('modal-title').textContent = 'Select Exercise';
 }
 
+// Validates and applies the custom exercise name entered via "Other".
+// Custom names are always treated as 'reps' — there is no timed "Other" variant.
+// If the field is blank, shows an inline error without closing the picker.
 function confirmOtherName() {
   const name    = document.getElementById('other-name-input').value.trim();
   const errorEl = document.getElementById('other-name-error');
@@ -400,6 +550,9 @@ function confirmOtherName() {
 }
 
 // ── Toast ─────────────────────────────────────────────
+
+// Shows a brief notification at the bottom of the screen.
+// Errors display for 5 seconds; success messages display for 3 seconds.
 function showToast(message, isError = false) {
   const el = document.getElementById('toast');
   el.textContent = message;
@@ -409,6 +562,9 @@ function showToast(message, isError = false) {
 }
 
 // ── CSV export ────────────────────────────────────────
+
+// Triggers a CSV download. Exports the current session only if one is active;
+// otherwise exports the full workout history across all sessions.
 function triggerExport() {
   const csv = state.sessionId ? dbExportSessionCSV(state.sessionId) : dbExportCSV();
   if (!csv) { alert('No data to export.'); return; }
@@ -423,12 +579,17 @@ function triggerExport() {
 }
 
 // ── Boot ──────────────────────────────────────────────
+
+// Entry point. Initialises the DB, then wires up all event listeners.
+// Always shows the idle screen on load, even if an active session exists —
+// the user must explicitly tap "Resume" rather than being dropped into a session.
 async function boot() {
   await initDB();
 
   // Always show idle screen on boot
   const active = dbGetActiveSession();
   if (active) {
+    // Show the resume button if there's an unfinished session
     document.getElementById('btn-resume-idle').classList.remove('hidden');
   }
   showScreen('idle');
@@ -445,8 +606,8 @@ async function boot() {
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-finish').addEventListener('click', showFinishConfirm);
   document.getElementById('btn-confirm-end').addEventListener('click', finishWorkout);
-  document.getElementById('btn-cancel-end').addEventListener('click', hideFinishConfirm);
-  document.getElementById('confirm-finish-backdrop').addEventListener('click', hideFinishConfirm);
+  document.getElementById('btn-cancel-end').addEventListener('click', cancelFinishConfirm);
+  document.getElementById('confirm-finish-backdrop').addEventListener('click', cancelFinishConfirm);
 
   // Input: Enter in weight moves to reps; Enter in reps logs the set
   const inputWeight = document.getElementById('input-weight');
@@ -486,19 +647,20 @@ async function boot() {
   });
   document.getElementById('btn-confirm-clear').addEventListener('click', () => {
     dbClearAll();
-    location.reload();
+    location.reload(); // Reload to reinitialise the in-memory DB from scratch
   });
 
-  // Completed
+  // Inactivity modal responses
   document.getElementById('btn-inactivity-continue').addEventListener('click', () => {
     hideInactivityModal();
-    resetInactivityTimer();
+    resetInactivityTimer(); // User confirmed they're still active — restart the countdown
   });
   document.getElementById('btn-inactivity-end').addEventListener('click', () => {
     hideInactivityModal();
     finishWorkout();
   });
 
+  // Completed screen
   document.getElementById('btn-resume').addEventListener('click', resumeLastWorkout);
   document.getElementById('btn-new-workout').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-export').addEventListener('click', triggerExport);
