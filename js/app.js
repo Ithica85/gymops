@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v1.2';
+const APP_VERSION = 'v1.3';
 
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
