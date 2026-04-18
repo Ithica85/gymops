@@ -568,6 +568,14 @@ body {
   text-align: center;
 }
 
+.settings-version {
+  margin-top: auto;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  opacity: 0.6;
+}
+
 .modal-body {
   font-size: 0.9rem;
   color: var(--muted);

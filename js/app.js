@@ -2,6 +2,8 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
+const APP_VERSION = 'v1.2';
+
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
 //   'timed' — logs duration_mins + optional calories
@@ -634,6 +636,7 @@ async function boot() {
   });
 
   // Settings
+  document.getElementById('settings-version').textContent = 'GymOps ' + APP_VERSION;
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-clear-data').addEventListener('click', () => {
