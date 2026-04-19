@@ -567,9 +567,14 @@ function logSet() {
 }
 
 // Deletes the most recently logged set for the session.
-// Only decrements setNumber if the deleted set was for the currently selected
-// exercise — deleting a different exercise's set shouldn't change the counter.
+// If no sets exist for the current exercise, opens the exercise picker instead —
+// this lets the user recover from selecting the wrong exercise without losing session data.
 function undoSet() {
+  if (dbGetSetCountForExercise(state.sessionId, state.exercise) === 0) {
+    openPicker();
+    return;
+  }
+
   const deleted = dbDeleteLastSet(state.sessionId);
   if (!deleted) {
     showError('Nothing to undo');
