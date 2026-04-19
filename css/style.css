@@ -616,6 +616,29 @@ body {
   padding: 14px 16px;
 }
 
+.other-type-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.other-type-prompt.hidden { display: none; }
+
+.other-type-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.other-type-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.other-type-actions .btn-secondary {
+  flex: 1;
+}
+
 /* ═══════════════════════════════════
    SETTINGS
 ════════════════════════════════════ */

@@ -22,8 +22,12 @@ function setWeightUnit(u) {
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
 //   'timed' — logs duration_mins + optional calories
-// Custom exercise names (entered via "Other") are stored as-is and always
-// treated as 'reps' since there is no timed variant for free-text exercises.
+// Cardio keywords — free-text names containing any of these (case-insensitive)
+// are auto-detected as timed exercises in the "Other" flow.
+const CARDIO_KEYWORDS = ['treadmill', 'bike', 'rower', 'elliptical', 'stairmaster'];
+
+// Custom exercise names (entered via "Other") are stored as-is.
+// Type is either auto-detected via CARDIO_KEYWORDS or chosen via the Strength/Cardio prompt.
 const EXERCISES = [
   { name: 'Seated Shoulder Press',       type: 'reps'  },
   { name: 'Goblet Squats',               type: 'reps'  },
@@ -630,12 +634,27 @@ function closePicker() {
   document.getElementById('exercise-list').classList.remove('hidden');
   document.getElementById('btn-close-picker').classList.remove('hidden');
   document.getElementById('other-name-section').classList.add('hidden');
+  document.getElementById('other-type-prompt').classList.add('hidden');
+  document.getElementById('btn-other-done').classList.remove('hidden');
   document.getElementById('modal-title').textContent = 'Select Exercise';
+  _pendingOtherName = '';
 }
 
-// Validates and applies the custom exercise name entered via "Other".
-// Custom names are always treated as 'reps' — there is no timed "Other" variant.
-// If the field is blank, shows an inline error without closing the picker.
+let _pendingOtherName = ''; // holds the name between the Done step and the type-prompt step
+
+// Applies a confirmed custom exercise name with a resolved type, then closes the picker.
+function applyOtherExercise(name, type) {
+  state.exercise     = name;
+  state.exerciseType = type;
+  state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
+  closePicker();
+  renderActive();
+  focusInput();
+  resetInactivityTimer();
+}
+
+// Validates the free-text name entered via "Other".
+// Auto-detects cardio by keyword match; otherwise shows the Strength/Cardio prompt.
 function confirmOtherName() {
   const name    = document.getElementById('other-name-input').value.trim();
   const errorEl = document.getElementById('other-name-error');
@@ -646,14 +665,17 @@ function confirmOtherName() {
   }
 
   errorEl.classList.add('hidden');
-  state.exercise     = name;
-  state.exerciseType = 'reps';
-  state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
 
-  closePicker();
-  renderActive();
-  focusInput();
-  resetInactivityTimer();
+  const isCardio = CARDIO_KEYWORDS.some(kw => name.toLowerCase().includes(kw));
+  if (isCardio) {
+    applyOtherExercise(name, 'timed');
+    return;
+  }
+
+  // No keyword match — ask the user to choose
+  _pendingOtherName = name;
+  document.getElementById('btn-other-done').classList.add('hidden');
+  document.getElementById('other-type-prompt').classList.remove('hidden');
 }
 
 // ── Toast ─────────────────────────────────────────────
@@ -758,6 +780,15 @@ async function boot() {
   document.getElementById('btn-close-picker').addEventListener('click', closePicker);
   document.getElementById('modal-backdrop').addEventListener('click', closePicker);
   document.getElementById('btn-other-done').addEventListener('click', confirmOtherName);
+  document.getElementById('btn-other-cancel').addEventListener('click', closePicker);
+  document.getElementById('btn-other-strength').addEventListener('click', () => applyOtherExercise(_pendingOtherName, 'reps'));
+  document.getElementById('btn-other-cardio').addEventListener('click', () => applyOtherExercise(_pendingOtherName, 'timed'));
+  document.getElementById('btn-other-type-back').addEventListener('click', () => {
+    _pendingOtherName = '';
+    document.getElementById('other-type-prompt').classList.add('hidden');
+    document.getElementById('btn-other-done').classList.remove('hidden');
+    document.getElementById('other-name-input').focus();
+  });
   document.getElementById('other-name-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmOtherName();
   });
