@@ -178,14 +178,8 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 Disable Phase 2 features during development to prevent user-facing bugs:
 
 ```javascript
-// src/config.js
-export const PHASE = {
-  CURRENT: 2,
-  PHASE_1_RELEASED: '2026-05-10',
-  PHASE_2_START: '2026-05-10'
-};
-
-export const FEATURES = {
+// Added at top of js/app.js
+const FEATURES = {
   PHASE_1: {
     sessionLogging: true,
     undoButton: true,
@@ -201,6 +195,7 @@ export const FEATURES = {
     completionSignal: false     // F-06
   }
 };
+
 ```
 
 Use: `if (FEATURES.PHASE_2.progressionSignal) { /* render feature */ }`
