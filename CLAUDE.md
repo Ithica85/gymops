@@ -70,9 +70,20 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 ---
 
-# Shipped Features (Phase 1.1 + 1.2 + post-1.2)
+# Current Phase
 
-All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as of commit `104f752`.
+**Phase 2 — In Development** (started May 10, 2026)
+
+## Phase 1 Status
+✅ **COMPLETE & LOCKED** (May 10, 2026, tag: `v1.0-phase1-complete`)
+
+All Phase 1 features are stable in production. No new Phase 1 features will ship. Bug fixes only if critical.
+
+---
+
+# Shipped Features (Phase 1.1 + 1.2 + post-1.2 + Phase 1.3)
+
+All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-complete` for the exact Phase 1 release state.
 
 ## Phase 1.1 (all complete)
 - **P1.1-04** — Split weight/reps into two side-by-side numeric inputs
@@ -109,6 +120,118 @@ All Phase 1.1 patches complete. P1.2-01 and three additional stories shipped as 
 
 ---
 
+# Phase 2 Features (In Development)
+
+**Phase Goal:** Increase session start rate and completion rate.
+
+**Status:** Foundation track in progress.
+
+## Foundation Track (Ship First)
+
+- [ ] **F-01: Rest Timer Bug Fix** — Verify timer continues running when app is backgrounded. Fix if using setInterval; switch to timestamp-based elapsed time calculation.
+  - AC: Timer accurate after background/foreground, device lock/unlock (iOS + Android)
+  
+- [ ] **F-02: lbs/kg Data Layer Fix** — CRITICAL PATH. Add unit storage at database level.
+  - Schema: Add `unit` column (TEXT, NOT NULL, DEFAULT 'lbs') to `sets` table
+  - Schema: Add `default_unit` column (TEXT) to `sessions` table
+  - Migration: Stamp all existing rows with 'lbs'
+  - AC: Each set stores logged unit; mid-session unit switch preserves prior set units; CSV export includes unit; PREV displays converted units correctly
+  - **Blocks:** F-03, F-04, F-05, F-06
+
+## Habit Reinforcement Track (Ship After Foundation)
+
+- [ ] **F-03: In-Session Progression Signal** — Display delta vs last session after each set logged. Deterministic rule-based signal pipeline (not hardcoded strings). Support extensibility for Phase 3.
+  - Priority 1: Long-term context (3+ sessions improving, Best in 2 weeks)
+  - Priority 2: Session best (+5 lbs — new session high)
+  - Priority 3: Last session comparison (Matched previous best, Back on track)
+  - Priority 4: Negative signal (Slight drop from last session — softened language)
+  - No signal for first-ever exercise, time-based exercises, or <1 prior session
+  - AC: Signal within 500ms; accurate delta; visually subordinate; non-blocking
+  - **Depends on:** F-02
+
+- [ ] **F-04: Smart Session Reminder** — Push notification at predicted training time based on session timestamp patterns. Deep link to active session. Adaptive timing (shift 30min after 3 dismissals). Graduated missed-session detection.
+  - Minimum 4 sessions before feature activates
+  - Pattern: mean session time, std dev threshold (>4h → fall back to fixed time)
+  - Missed session: 1st silent, 2nd contextual notification, max 1 per 72h
+  - Settings: On/Off toggle + notification window preference
+  - AC: Fires ±30min of typical time; tap → session screen; dismiss → no side effects; respects window preference
+  - **Depends on:** F-02
+
+- [ ] **F-05: In-Session Exercise Navigation** — Surface next exercise contextually after set logged, based on last session order. "Up Next" label. User can override. No previous session = Phase 1 behaviour unchanged.
+  - Completed exercises de-emphasized but accessible
+  - Must not add steps to core logging flow (2 inputs + 1 confirm max)
+  - AC: Next exercise visible without scroll; user can select any exercise; no regression if no prior session
+  - **Open questions:** OQ-06 (collapse completed?), OQ-07 (new exercise positioning?)
+  - **Depends on:** F-02
+
+- [ ] **F-06: Session Completion Signal** — Minimal closure screen on session finish (3–4 data points only). Exercises completed, volume delta, strongest improvement, interpretation line. No gamification (no streaks/badges).
+  - Interpretation: deterministic rules from completion %, volume delta, frequency context (e.g., "Strong session", "Building momentum", "Good return after a few days off")
+  - AC: Signal appears immediately on finish; data accurate; single-tap dismiss; no reappearance; no gamification
+  - **Depends on:** F-02
+
+---
+
+# Phase 2 Architecture / Data Layer
+
+## Feature Flags (Development Only)
+
+Disable Phase 2 features during development to prevent user-facing bugs:
+
+```javascript
+// src/config.js
+export const PHASE = {
+  CURRENT: 2,
+  PHASE_1_RELEASED: '2026-05-10',
+  PHASE_2_START: '2026-05-10'
+};
+
+export const FEATURES = {
+  PHASE_1: {
+    sessionLogging: true,
+    undoButton: true,
+    csvExport: true,
+    googleDriveSync: true
+  },
+  PHASE_2: {
+    restTimerFix: false,        // F-01
+    unitDataLayer: false,       // F-02
+    progressionSignal: false,   // F-03
+    smartReminder: false,       // F-04
+    exerciseNavigation: false,  // F-05
+    completionSignal: false     // F-06
+  }
+};
+```
+
+Use: `if (FEATURES.PHASE_2.progressionSignal) { /* render feature */ }`
+
+## Critical Dependencies
+
+- **F-02 must ship before F-03, F-04, F-05, F-06** — All downstream features depend on accurate unit data.
+- **Rolling baseline query** (prerequisite for Phase 3 AI summary): Query last 4–6 sessions per exercise. Design and validate before Phase 3.
+
+## Known Issues / Tech Debt
+
+- **F-02 Migration:** High-stakes data migration (existing user data). Test thoroughly on production backup before shipping.
+- **F-04 Timing:** Notification timing sensitivity. Edge cases in time detection need robust testing.
+- **F-03 & F-06 Rules:** Signal generation rules are deterministic but can feel flat if not carefully tuned. User feedback loop essential.
+- **Query Performance:** As session history grows, queries for progression signal and completion signal may slow. Design with indexing.
+
+---
+
+# Phase 2 Exit Criteria
+
+- [ ] All six features (F-01–F-06) shipped and stable in production
+- [ ] No open High priority bugs
+- [ ] Session start rate and completion rate measurably tracked (baseline vs post-Phase 2)
+- [ ] Smart Session Reminder live for minimum 4 weeks with dismissal rate data
+- [ ] Progression signal live for minimum 4 weeks with no data accuracy issues
+- [ ] lbs/kg data layer verified with no unit corruption
+- [ ] All open questions (OQ-01–OQ-07) resolved and documented
+- [ ] Full Phase 1 regression test passed
+
+---
+
 # Next / Backlog
 
-Add new stories here when ready to plan next work.
+See Phase 2 features above. Roadmap: GymOps_Phase2_Roadmap.md | Sprint planning: GymOps_Phase2_SprintPlanning.md | Daily tracking: GymOps_Phase2_DailyChecklist.md
