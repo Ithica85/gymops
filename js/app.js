@@ -5,10 +5,19 @@
 const APP_VERSION = 'v1.3';
 
 // ── Weight unit preference ────────────────────────────
-// Stored in localStorage as 'kg' or 'lbs'. Affects labels and placeholders only —
-// no conversion is applied to stored values.
+// Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
+// so historical PREV display converts correctly when the user switches units.
 const UNIT_KEY = 'gymops_weight_unit';
 function getWeightUnit() { return localStorage.getItem(UNIT_KEY) ?? 'kg'; }
+
+// Converts a weight value between units, rounded to 1 decimal. Returns the value
+// unchanged when fromUnit === toUnit or weight is null.
+function convertWeight(weight, fromUnit, toUnit) {
+  if (weight == null || fromUnit === toUnit) return weight;
+  const converted = fromUnit === 'lbs' ? weight / 2.2046 : weight * 2.2046;
+  return Math.round(converted * 10) / 10;
+}
+
 function setWeightUnit(u) {
   localStorage.setItem(UNIT_KEY, u);
   // Reflect active state on the toggle buttons
@@ -92,8 +101,8 @@ let _sessionStart    = null; // Date object for the session's start_time
 
 const REST_SECS = 90;
 
-let _restTimer     = null;
-let _restRemaining = 0;
+let _restTimer   = null;
+let _restEndTime = null; // wall-clock timestamp when rest period ends
 
 function fmtRest(secs) {
   const m = Math.floor(secs / 60);
@@ -121,31 +130,31 @@ function beepAlert() {
 
 function stopRestTimer() {
   if (_restTimer) { clearInterval(_restTimer); _restTimer = null; }
-  _restRemaining = 0;
+  _restEndTime = null;
   document.getElementById('rest-bar').classList.add('hidden');
 }
 
-function startRestTimer() {
-  stopRestTimer(); // ensure only one timer runs
-  _restRemaining = REST_SECS;
-  const bar       = document.getElementById('rest-bar');
+function _tickRest() {
+  const remaining = Math.ceil((_restEndTime - Date.now()) / 1000);
   const countdown = document.getElementById('rest-countdown');
-  bar.classList.remove('hidden');
-  countdown.textContent = fmtRest(_restRemaining);
+  if (remaining <= 0) {
+    clearInterval(_restTimer);
+    _restTimer = null;
+    countdown.textContent = 'Done!';
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    beepAlert();
+    setTimeout(stopRestTimer, 2000);
+  } else {
+    countdown.textContent = fmtRest(remaining);
+  }
+}
 
-  _restTimer = setInterval(() => {
-    _restRemaining -= 1;
-    if (_restRemaining <= 0) {
-      clearInterval(_restTimer);
-      _restTimer = null;
-      countdown.textContent = 'Done!';
-      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-      beepAlert();
-      setTimeout(stopRestTimer, 2000);
-    } else {
-      countdown.textContent = fmtRest(_restRemaining);
-    }
-  }, 1000);
+function startRestTimer() {
+  stopRestTimer();
+  _restEndTime = Date.now() + REST_SECS * 1000;
+  document.getElementById('rest-bar').classList.remove('hidden');
+  _tickRest();
+  _restTimer = setInterval(_tickRest, 1000);
 }
 
 // Formats milliseconds as MM:SS (or H:MM:SS for sessions over one hour).
@@ -243,11 +252,17 @@ function updateInputFields() {
     weightEl.placeholder = reference ? String(reference.duration_mins) : 'mins';
     repsEl.placeholder   = (reference?.calories != null) ? String(reference.calories) : 'optional';
   } else {
-    const unit           = getWeightUnit();
-    label1.textContent   = `Weight (${unit})`;
-    label2.textContent   = 'Reps';
-    weightEl.placeholder = reference ? String(reference.weight) : unit;
-    repsEl.placeholder   = reference ? String(reference.reps)   : 'reps';
+    const unit = getWeightUnit();
+    label1.textContent = `Weight (${unit})`;
+    label2.textContent = 'Reps';
+    if (reference) {
+      const displayWeight  = convertWeight(reference.weight, reference.unit || 'lbs', unit);
+      weightEl.placeholder = String(displayWeight);
+      repsEl.placeholder   = String(reference.reps);
+    } else {
+      weightEl.placeholder = unit;
+      repsEl.placeholder   = 'reps';
+    }
   }
 }
 
@@ -272,13 +287,15 @@ function renderLastSession() {
     return;
   }
 
+  const currentUnit = getWeightUnit();
   const parts = sets.map(s => {
     if (s.duration_mins != null) {
       return s.calories != null
         ? `${s.duration_mins} min · ${s.calories} cal`
         : `${s.duration_mins} min`;
     }
-    return `${s.weight}×${s.reps}`;
+    const displayWeight = convertWeight(s.weight, s.unit || 'lbs', currentUnit);
+    return `${displayWeight} ${currentUnit}×${s.reps}`;
   });
 
   el.textContent = 'Last session: ' + parts.join(', ');
@@ -318,7 +335,7 @@ function renderRecentSets() {
         ? `Set ${s.set_number} · ${s.duration_mins} min · ${s.calories} cal`
         : `Set ${s.set_number} · ${s.duration_mins} min`;
     } else {
-      details = `Set ${s.set_number} · ${s.weight} × ${s.reps}`;
+      details = `Set ${s.set_number} · ${s.weight} ${s.unit || 'lbs'} × ${s.reps}`;
     }
     return `
       <div class="set-item" data-set-id="${s.set_id}">
@@ -378,7 +395,7 @@ function startSession() {
 
   document.getElementById('btn-resume-idle').classList.add('hidden');
 
-  state.sessionId    = dbCreateSession();
+  state.sessionId    = dbCreateSession(getWeightUnit());
   state.exercise     = EXERCISES[0].name;
   state.exerciseType = EXERCISES[0].type;
   state.setNumber    = 1;
@@ -532,7 +549,7 @@ function logSet() {
 
     clearError();
     try {
-      dbInsertSet(state.sessionId, state.exercise, state.setNumber, null, null, duration, calories);
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber, null, null, duration, calories, getWeightUnit());
     } catch (err) {
       showError('DB error: ' + err.message);
       focusInput();
@@ -550,7 +567,7 @@ function logSet() {
 
     clearError();
     try {
-      dbInsertSet(state.sessionId, state.exercise, state.setNumber, weight, reps);
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber, weight, reps, null, null, getWeightUnit());
     } catch (err) {
       showError('DB error: ' + err.message);
       focusInput();
@@ -839,6 +856,7 @@ async function boot() {
   // never fired. If inactivity threshold has passed, show the modal immediately.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
+    if (_restEndTime !== null) _tickRest(); // resync rest timer after background/lock
     if (!_lastActivityTime || !state.sessionId) return;
     const elapsed = Date.now() - _lastActivityTime;
     if (elapsed >= INACTIVITY_MS) {

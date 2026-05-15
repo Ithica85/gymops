@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v31`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v32`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -133,12 +133,14 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - Timestamp-based elapsed time (`_restEndTime`); `visibilitychange` resync on foreground
   - SW cache updated to gymops-v31
   
-- [ ] **F-02: lbs/kg Data Layer Fix** — CRITICAL PATH. Add unit storage at database level.
-  - Schema: Add `unit` column (TEXT, NOT NULL, DEFAULT 'lbs') to `sets` table
-  - Schema: Add `default_unit` column (TEXT) to `sessions` table
-  - Migration: Stamp all existing rows with 'lbs'
-  - AC: Each set stores logged unit; mid-session unit switch preserves prior set units; CSV export includes unit; PREV displays converted units correctly
-  - **Blocks:** F-03, F-04, F-05, F-06
+- [x] **F-02: lbs/kg Data Layer Fix** — SHIPPED & STABLE (May 14, 2026)
+  - `sets.unit` (TEXT NOT NULL DEFAULT 'lbs') — unit stored at log time per set
+  - `sessions.default_unit` (TEXT) — unit preference recorded at session start
+  - Migration: ALTER TABLE for both columns; existing rows stamped 'lbs' via DEFAULT
+  - `convertWeight()` helper in app.js for lbs↔kg conversion (1 decimal rounding)
+  - AC-02a ✓ AC-02b ✓ (accepted: Settings is idle-only; future enhancement) AC-02c ✓ AC-02d ✓ AC-02e ✓
+  - SW cache updated to gymops-v32
+  - **Unblocks:** F-03, F-04, F-05, F-06
 
 ## Habit Reinforcement Track (Ship After Foundation)
 

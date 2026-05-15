@@ -34,11 +34,12 @@ async function initDB() {
 function _createSchema() {
   _db.run(`
     CREATE TABLE IF NOT EXISTS sessions (
-      session_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-      start_time  TEXT NOT NULL,
-      end_time    TEXT,
-      status      TEXT NOT NULL DEFAULT 'active',
-      notes       TEXT
+      session_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      start_time   TEXT NOT NULL,
+      end_time     TEXT,
+      status       TEXT NOT NULL DEFAULT 'active',
+      notes        TEXT,
+      default_unit TEXT
     );
     CREATE TABLE IF NOT EXISTS sets (
       set_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +51,7 @@ function _createSchema() {
       reps          INTEGER,
       duration_mins REAL,
       calories      INTEGER,
+      unit          TEXT NOT NULL DEFAULT 'lbs',
       FOREIGN KEY (session_id) REFERENCES sessions(session_id)
     );
   `);
@@ -66,11 +68,14 @@ function _migrate() {
     _db.run('ALTER TABLE sessions ADD COLUMN notes TEXT');
     _persist();
   }
+  if (!sessionCols.includes('default_unit')) {
+    _db.run('ALTER TABLE sessions ADD COLUMN default_unit TEXT');
+    _persist();
+  }
 
-  const cols = _all('PRAGMA table_info(sets)');
-  const names = cols.map(c => c.name);
+  let setNames = _all('PRAGMA table_info(sets)').map(c => c.name);
 
-  if (!names.includes('duration_mins')) {
+  if (!setNames.includes('duration_mins')) {
     // Recreate sets table to add duration_mins/calories and make weight/reps nullable.
     // Full migration preserves all existing rows.
     _db.run(`
@@ -84,6 +89,7 @@ function _migrate() {
         reps          INTEGER,
         duration_mins REAL,
         calories      INTEGER,
+        unit          TEXT NOT NULL DEFAULT 'lbs',
         FOREIGN KEY (session_id) REFERENCES sessions(session_id)
       )
     `);
@@ -95,6 +101,14 @@ function _migrate() {
     `);
     _db.run('DROP TABLE sets');
     _db.run('ALTER TABLE sets_migrated RENAME TO sets');
+    _persist();
+    // Re-read after recreation so the unit check below runs against the new table
+    setNames = _all('PRAGMA table_info(sets)').map(c => c.name);
+  }
+
+  if (!setNames.includes('unit')) {
+    // Stamp all existing rows with 'lbs' — the DEFAULT handles this automatically.
+    _db.run("ALTER TABLE sets ADD COLUMN unit TEXT NOT NULL DEFAULT 'lbs'");
     _persist();
   }
 }
@@ -129,9 +143,9 @@ function _one(sql, params = []) {
 // Creates a new active session and returns its session_id.
 // last_insert_rowid() MUST be called before _persist() — _db.export() inside
 // _persist() resets it to 0, which would cause all sets to be stored under session_id=0.
-function dbCreateSession() {
-  _db.run('INSERT INTO sessions (start_time, status) VALUES (?, ?)', [
-    new Date().toISOString(), 'active',
+function dbCreateSession(defaultUnit) {
+  _db.run('INSERT INTO sessions (start_time, status, default_unit) VALUES (?, ?, ?)', [
+    new Date().toISOString(), 'active', defaultUnit,
   ]);
   const id = _one('SELECT last_insert_rowid() AS id').id;
   _persist();
@@ -179,27 +193,29 @@ function dbUpdateSessionNotes(sessionId, notes) {
 // A set must have EITHER (weight + reps) OR (duration_mins) — never both, never neither.
 // Unused columns are omitted from the INSERT entirely rather than passed as null,
 // because sql.js can silently fail when null is passed in a params array.
-function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories) {
+// `unit` is the weight unit active at log time ('lbs' or 'kg'). Stored on all sets;
+// for timed exercises the value is the user's preference but is not used for display.
+function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories, unit) {
   const now = new Date().toISOString();
   if (durationMins != null) {
     if (calories != null) {
       _db.run(
-        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, calories)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [sessionId, now, exercise, setNumber, durationMins, calories]
+        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, calories, unit)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, setNumber, durationMins, calories, unit]
       );
     } else {
       _db.run(
-        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins)
-         VALUES (?, ?, ?, ?, ?)`,
-        [sessionId, now, exercise, setNumber, durationMins]
+        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, unit)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, setNumber, durationMins, unit]
       );
     }
   } else {
     _db.run(
-      `INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [sessionId, now, exercise, setNumber, weight, reps]
+      `INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps, unit)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [sessionId, now, exercise, setNumber, weight, reps, unit]
     );
   }
   _persist();
@@ -320,14 +336,14 @@ function dbExportSessionCSV(sessionId) {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
-           st.weight, st.reps, st.duration_mins, st.calories
+           st.weight, st.unit, st.reps, st.duration_mins, st.calories
     FROM sets st
     JOIN sessions s ON s.session_id = st.session_id
     WHERE st.session_id = ?
     ORDER BY st.set_id
   `, [sessionId]);
   if (!rows.length) return null;
-  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
+  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','unit','reps','duration_mins','calories'];
   if (rows[0].session_notes) headers.push('session_notes');
   const lines = [headers.join(',')];
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
@@ -341,13 +357,13 @@ function dbExportCSV() {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
-           st.weight, st.reps, st.duration_mins, st.calories
+           st.weight, st.unit, st.reps, st.duration_mins, st.calories
     FROM sets st
     JOIN sessions s ON s.session_id = st.session_id
     ORDER BY st.set_id
   `);
   if (!rows.length) return null;
-  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','reps','duration_mins','calories'];
+  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','unit','reps','duration_mins','calories'];
   if (rows.some(r => r.session_notes)) headers.push('session_notes');
   const lines = [headers.join(',')];
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
