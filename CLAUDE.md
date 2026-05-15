@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v32`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v33`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -144,14 +144,16 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 
 ## Habit Reinforcement Track (Ship After Foundation)
 
-- [ ] **F-03: In-Session Progression Signal** — Display delta vs last session after each set logged. Deterministic rule-based signal pipeline (not hardcoded strings). Support extensibility for Phase 3.
-  - Priority 1: Long-term context (3+ sessions improving, Best in 2 weeks)
-  - Priority 2: Session best (+5 lbs — new session high)
-  - Priority 3: Last session comparison (Matched previous best, Back on track)
-  - Priority 4: Negative signal (Slight drop from last session — softened language)
-  - No signal for first-ever exercise, time-based exercises, or <1 prior session
-  - AC: Signal within 500ms; accurate delta; visually subordinate; non-blocking
-  - **Depends on:** F-02
+- [x] **F-03: In-Session Progression Signal** — SHIPPED & STABLE (May 14, 2026)
+  - Deterministic 4-priority rule engine in `computeProgressionSignal()` (app.js)
+  - P1: "3 sessions improving" / "Best in 2 weeks" | P2: "+X unit — new session high"
+  - P3: "Back after a few days" / "Back on track" / "Matched previous best" | P4: "Slight drop"
+  - No signal: timed exercises, first-ever session for exercise
+  - Weights normalised to kg internally; delta displayed in current unit preference
+  - Signal cleared on input focus; stale signal cleared on exercise change / undo
+  - New DB queries: `dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`
+  - SW cache updated to gymops-v33
+  - All ACs verified ✓
 
 - [ ] **F-04: Smart Session Reminder** — Push notification at predicted training time based on session timestamp patterns. Deep link to active session. Adaptive timing (shift 30min after 3 dismissals). Graduated missed-session detection.
   - Minimum 4 sessions before feature activates

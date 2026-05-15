@@ -344,6 +344,14 @@ body {
   flex: 1;
 }
 
+/* — Progression signal — */
+.progression-signal {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  padding-top: 10px;
+}
+
 /* — Sets log — */
 .sets-log {
   flex: 1;

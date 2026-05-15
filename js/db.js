@@ -318,6 +318,34 @@ function dbGetLastSessionSetsForExercise(exercise) {
   );
 }
 
+// ── Progression signal queries ───────────────────────
+
+// Returns the last `limit` completed sessions containing exercise X, newest first.
+// Each row: { session_id, start_time, best_weight_kg } where best_weight_kg is the
+// highest weight in that session for the exercise, normalised to kg for cross-unit comparison.
+function dbGetRecentSessionsBestForExercise(exercise, limit = 6) {
+  return _all(`
+    SELECT s.session_id, s.start_time,
+           MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_weight_kg
+    FROM sessions s
+    JOIN sets st ON st.session_id = s.session_id
+    WHERE s.status = 'completed' AND st.exercise = ? AND st.weight IS NOT NULL
+    GROUP BY s.session_id
+    ORDER BY s.session_id DESC
+    LIMIT ?
+  `, [exercise, limit]);
+}
+
+// Returns the best weight (kg-normalised) for an exercise in a given session, or null.
+// Works on both active and completed sessions — used to get the current session's best.
+function dbGetSessionBestForExercise(sessionId, exercise) {
+  return _one(`
+    SELECT MAX(CASE WHEN unit = 'lbs' THEN weight / 2.2046 ELSE weight END) AS best_weight_kg
+    FROM sets
+    WHERE session_id = ? AND exercise = ? AND weight IS NOT NULL
+  `, [sessionId, exercise])?.best_weight_kg ?? null;
+}
+
 // ── Clear all data ────────────────────────────────────
 
 // Wipes the entire database from localStorage. The page must be reloaded after this

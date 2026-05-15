@@ -28,6 +28,91 @@ function setWeightUnit(u) {
   if (state.sessionId) updateInputFields();
 }
 
+// ── Progression signal ────────────────────────────────
+
+const WEIGHT_EPSILON_KG = 0.05; // ~100 g tolerance — avoids float noise in "matched" checks
+const SIGNAL_GAP_DAYS   = 3;    // gap threshold for "Back after a few days"
+
+// Deterministic rule engine — returns a signal string or null.
+// Priority order: P1 (long-term) > P2 (session best) > P3 (last session) > P4 (negative).
+// Same inputs always produce the same output (no randomness, no side effects).
+function computeProgressionSignal(exercise, sessionId) {
+  if (getExerciseType(exercise) === 'timed') return null;
+
+  const currentBestKg = dbGetSessionBestForExercise(sessionId, exercise);
+  if (currentBestKg == null) return null;
+
+  const history = dbGetRecentSessionsBestForExercise(exercise, 6); // newest first
+  if (!history.length) return null; // first-ever session for this exercise
+
+  const prevBestKg  = history[0].best_weight_kg;
+  const currentUnit = getWeightUnit();
+
+  // P1 — 3 sessions improving: previous 2 completed sessions + current all strictly up
+  if (history.length >= 2) {
+    const [h0, h1] = history;
+    if (h1.best_weight_kg < h0.best_weight_kg - WEIGHT_EPSILON_KG &&
+        currentBestKg    > h0.best_weight_kg + WEIGHT_EPSILON_KG) {
+      return '3 sessions improving';
+    }
+  }
+
+  // P1 — Best in 2 weeks: current beats every completed session in the last 14 days
+  const twoWeeksAgo  = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const recentBests  = history.filter(h => h.start_time >= twoWeeksAgo);
+  if (recentBests.length > 0) {
+    const maxRecentKg = Math.max(...recentBests.map(h => h.best_weight_kg));
+    if (currentBestKg > maxRecentKg + WEIGHT_EPSILON_KG) {
+      return 'Best in 2 weeks';
+    }
+  }
+
+  // P2 — New session high: current beats most recent completed session
+  if (currentBestKg > prevBestKg + WEIGHT_EPSILON_KG) {
+    const deltaKg    = currentBestKg - prevBestKg;
+    const delta      = currentUnit === 'lbs'
+      ? Math.round(deltaKg * 2.2046)
+      : Math.round(deltaKg * 10) / 10;
+    return `+${delta} ${currentUnit} — new session high`;
+  }
+
+  // P3 — Time gap: returning after 3+ days away
+  const daysSince = (Date.now() - new Date(history[0].start_time).getTime()) / 86400000;
+  if (daysSince >= SIGNAL_GAP_DAYS) return 'Back after a few days';
+
+  // P3 — Back on track: most recent session was a dip, current session recovers
+  if (history.length >= 2) {
+    const prev2BestKg = history[1].best_weight_kg;
+    if (prevBestKg  < prev2BestKg - WEIGHT_EPSILON_KG &&
+        currentBestKg >= prevBestKg - WEIGHT_EPSILON_KG) {
+      return 'Back on track';
+    }
+  }
+
+  // P3 — Matched previous best
+  if (Math.abs(currentBestKg - prevBestKg) <= WEIGHT_EPSILON_KG) {
+    return 'Matched previous best';
+  }
+
+  // P4 — Negative (only fires when nothing positive applies)
+  if (currentBestKg < prevBestKg - WEIGHT_EPSILON_KG) {
+    return 'Slight drop from last session';
+  }
+
+  return null;
+}
+
+function renderProgressionSignal(signal) {
+  const el = document.getElementById('progression-signal');
+  if (!signal) {
+    el.classList.add('hidden');
+    el.textContent = '';
+  } else {
+    el.textContent = signal;
+    el.classList.remove('hidden');
+  }
+}
+
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
 //   'timed' — logs duration_mins + optional calories
@@ -309,6 +394,7 @@ function renderActive() {
   updateInputFields();
   renderLastSession();
   renderRecentSets();
+  renderProgressionSignal(null); // clear any stale signal on exercise change / undo
   // Show Rest button only after at least one set has been logged
   const hasSet = dbGetSetCount(state.sessionId) > 0;
   document.getElementById('btn-rest').classList.toggle('hidden', !hasSet);
@@ -575,9 +661,11 @@ function logSet() {
     }
   }
 
+  const signal = computeProgressionSignal(state.exercise, state.sessionId);
   state.setNumber += 1;
   clearInputs();
   renderActive();
+  renderProgressionSignal(signal);
   document.querySelector('.sets-log').scrollTop = 0; // Scroll log back to top to show latest set
   focusInput();
   resetInactivityTimer();
@@ -790,8 +878,8 @@ async function boot() {
   const inputReps   = document.getElementById('input-reps');
   inputWeight.addEventListener('keydown', e => { if (e.key === 'Enter') inputReps.focus(); });
   inputReps.addEventListener('keydown',   e => { if (e.key === 'Enter') logSet(); });
-  inputWeight.addEventListener('input', () => clearError());
-  inputReps.addEventListener('input',   () => clearError());
+  inputWeight.addEventListener('input', () => { clearError(); renderProgressionSignal(null); });
+  inputReps.addEventListener('input',   () => { clearError(); renderProgressionSignal(null); });
 
   // Session notes
   const notesEl = document.getElementById('session-notes');
