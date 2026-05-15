@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v30`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v31`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -128,8 +128,10 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 
 ## Foundation Track (Ship First)
 
-- [ ] **F-01: Rest Timer Bug Fix** — Verify timer continues running when app is backgrounded. Fix if using setInterval; switch to timestamp-based elapsed time calculation.
-  - AC: Timer accurate after background/foreground, device lock/unlock (iOS + Android)
+- [x] **F-01: Rest Timer Bug Fix** — SHIPPED & STABLE (May 14, 2026)
+  - All ACs verified (background/foreground, lock/unlock, iOS + Android)
+  - Timestamp-based elapsed time (`_restEndTime`); `visibilitychange` resync on foreground
+  - SW cache updated to gymops-v31
   
 - [ ] **F-02: lbs/kg Data Layer Fix** — CRITICAL PATH. Add unit storage at database level.
   - Schema: Add `unit` column (TEXT, NOT NULL, DEFAULT 'lbs') to `sets` table
