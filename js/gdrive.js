@@ -178,6 +178,7 @@ async function gdriveUpload(csv, sessionStartIso) {
     showToast('Saved to Google Drive');
   } catch (err) {
     console.error('Drive upload failed:', err);
-    showToast('Drive save failed — tap Export to save manually', true);
+    showToast('Drive save failed — saving CSV locally', true);
+    throw err; // propagate so finishWorkout() can trigger local fallback
   }
 }

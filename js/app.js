@@ -812,10 +812,10 @@ function finishWorkout() {
   dbFinishSession(state.sessionId);
   state.finishedAt = new Date();
 
-  // Auto-save to Google Drive (non-blocking — failure shows toast, doesn't block UI)
+  // Auto-save to Google Drive (non-blocking — failure falls back to local CSV download)
   const csv     = dbExportSessionCSV(state.sessionId);
   const session = dbGetSession(state.sessionId);
-  if (csv && session) gdriveUpload(csv, session.start_time);
+  if (csv && session) gdriveUpload(csv, session.start_time).catch(() => triggerExport());
 
   document.getElementById('session-summary').textContent =
     `${count} set${count !== 1 ? 's' : ''} logged`;
