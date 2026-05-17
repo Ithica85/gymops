@@ -386,6 +386,27 @@ function dbGetSessionRepsExercises(sessionId) {
   ).map(r => r.exercise);
 }
 
+// ── Session reminder queries ─────────────────────────
+
+// Returns ISO start_time strings for the last N completed sessions, newest first.
+// Used to compute the user's typical training time pattern.
+function dbGetRecentSessionStartTimes(limit = 10) {
+  return _all(
+    "SELECT start_time FROM sessions WHERE status = 'completed' ORDER BY session_id DESC LIMIT ?",
+    [limit]
+  ).map(r => r.start_time);
+}
+
+// Returns true if the user has at least one completed session that started today (local time).
+function dbHasSessionToday() {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  return !!_one(
+    "SELECT session_id FROM sessions WHERE status = 'completed' AND start_time >= ? LIMIT 1",
+    [startOfDay.toISOString()]
+  );
+}
+
 // ── Clear all data ────────────────────────────────────
 
 // Wipes the entire database from localStorage. The page must be reloaded after this

@@ -695,7 +695,8 @@ body {
   gap: 8px;
 }
 
-.unit-btn {
+.unit-btn,
+.reminder-btn {
   flex: 1;
   padding: 12px;
   border-radius: var(--radius);
@@ -731,6 +732,32 @@ body {
   font-size: 0.9rem;
   color: var(--muted);
   margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════
+   SESSION REMINDER BANNER
+════════════════════════════════════ */
+.reminder-banner {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reminder-text {
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.reminder-dismiss {
+  font-size: 0.85rem;
+  color: var(--muted);
+  flex-shrink: 0;
 }
 
 /* ═══════════════════════════════════

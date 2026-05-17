@@ -28,6 +28,96 @@ function setWeightUnit(u) {
   if (state.sessionId) updateInputFields();
 }
 
+// ── Session reminder (in-app, Option A) ───────────────
+// Note: True OS-level push notifications (fire when app is closed) require a
+// backend push server (FCM/APNS). This is out of scope for Phase 2 — tracked
+// as tech debt for a future phase. Option A delivers the same habit signal at
+// the high-intent moment when the user opens the app.
+
+const REMINDER_KEY          = 'gymops_reminder_enabled';
+const REMINDER_DISMISSED_AT = 'gymops_reminder_dismissed_at';
+const REMINDER_DISMISSALS   = 'gymops_reminder_dismissals';
+const REMINDER_OFFSET_MIN   = 'gymops_reminder_offset_min';
+
+const REMINDER_WINDOW_MIN   = 90;  // ± minutes around predicted time to show banner
+const REMINDER_OVERDUE_MIN  = 180; // minutes past predicted time before giving up
+const REMINDER_COOLDOWN_MS  = 24 * 60 * 60 * 1000; // 24h between banners
+const REMINDER_MIN_SESSIONS = 4;   // minimum sessions before pattern detection activates
+const REMINDER_MAX_STDDEV   = 240; // max std dev (mins) — beyond this, pattern is too irregular
+
+function getReminderEnabled() { return localStorage.getItem(REMINDER_KEY) === 'true'; }
+function setReminderEnabled(v) {
+  localStorage.setItem(REMINDER_KEY, v ? 'true' : 'false');
+  document.querySelectorAll('.reminder-btn').forEach(btn => {
+    btn.classList.toggle('unit-btn--active', btn.dataset.reminder === String(v));
+  });
+  if (!v) hideReminderBanner();
+  else    checkSessionReminder();
+}
+
+// Returns { meanMinutes, stdDevMinutes } from ISO start_time strings, or null if
+// the pattern is too irregular (std dev > REMINDER_MAX_STDDEV).
+function computeTrainingWindow(startTimes) {
+  const minutes = startTimes.map(t => {
+    const d = new Date(t);
+    return d.getHours() * 60 + d.getMinutes();
+  });
+  const mean    = minutes.reduce((a, b) => a + b, 0) / minutes.length;
+  const stdDev  = Math.sqrt(minutes.reduce((s, m) => s + (m - mean) ** 2, 0) / minutes.length);
+  if (stdDev > REMINDER_MAX_STDDEV) return null;
+  return { meanMinutes: mean, stdDevMinutes: stdDev };
+}
+
+function showReminderBanner(overdue) {
+  const el = document.getElementById('reminder-banner');
+  document.getElementById('reminder-text').textContent = overdue
+    ? "Haven't trained yet today"
+    : 'Time to train';
+  el.classList.remove('hidden');
+}
+
+function hideReminderBanner() {
+  document.getElementById('reminder-banner').classList.add('hidden');
+}
+
+function dismissReminderBanner() {
+  hideReminderBanner();
+  localStorage.setItem(REMINDER_DISMISSED_AT, Date.now().toString());
+  const dismissals = parseInt(localStorage.getItem(REMINDER_DISMISSALS) ?? '0') + 1;
+  localStorage.setItem(REMINDER_DISMISSALS, dismissals.toString());
+  // After every 3 dismissals, shift the predicted time forward by 30 minutes
+  if (dismissals % 3 === 0) {
+    const offset = parseInt(localStorage.getItem(REMINDER_OFFSET_MIN) ?? '0');
+    localStorage.setItem(REMINDER_OFFSET_MIN, (offset + 30).toString());
+  }
+}
+
+// Evaluates whether to show the reminder banner. Called on every idle screen visit.
+function checkSessionReminder() {
+  hideReminderBanner();
+  if (!getReminderEnabled()) return;
+
+  const startTimes = dbGetRecentSessionStartTimes(10);
+  if (startTimes.length < REMINDER_MIN_SESSIONS) return;
+  if (dbHasSessionToday()) return;
+
+  const lastDismissed = parseInt(localStorage.getItem(REMINDER_DISMISSED_AT) ?? '0');
+  if (Date.now() - lastDismissed < REMINDER_COOLDOWN_MS) return;
+
+  const window = computeTrainingWindow(startTimes);
+  if (!window) return;
+
+  const now            = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const offset         = parseInt(localStorage.getItem(REMINDER_OFFSET_MIN) ?? '0');
+  const targetMinutes  = window.meanMinutes + offset;
+  const diff           = currentMinutes - targetMinutes;
+
+  if (diff >= -REMINDER_WINDOW_MIN && diff <= REMINDER_OVERDUE_MIN) {
+    showReminderBanner(diff > REMINDER_WINDOW_MIN);
+  }
+}
+
 // ── Progression signal ────────────────────────────────
 
 const WEIGHT_EPSILON_KG = 0.05; // ~100 g tolerance — avoids float noise in "matched" checks
@@ -470,6 +560,7 @@ function updateInputFields() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
+  if (name === 'idle') checkSessionReminder();
 }
 
 // ── UI rendering ──────────────────────────────────────
@@ -1023,12 +1114,18 @@ async function boot() {
     document.getElementById('other-name-error').classList.add('hidden');
   });
 
+  // Reminder banner
+  document.getElementById('btn-reminder-dismiss').addEventListener('click', dismissReminderBanner);
+
   // Settings
   document.getElementById('settings-version').textContent = 'GymOps ' + APP_VERSION;
-  // Initialise unit toggle to reflect stored preference
   setWeightUnit(getWeightUnit());
   document.querySelectorAll('.unit-btn').forEach(btn => {
     btn.addEventListener('click', () => setWeightUnit(btn.dataset.unit));
+  });
+  setReminderEnabled(getReminderEnabled());
+  document.querySelectorAll('.reminder-btn').forEach(btn => {
+    btn.addEventListener('click', () => setReminderEnabled(btn.dataset.reminder === 'true'));
   });
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));

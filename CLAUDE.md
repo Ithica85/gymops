@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v34`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v35`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -155,13 +155,13 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - SW cache updated to gymops-v33
   - All ACs verified ✓
 
-- [ ] **F-04: Smart Session Reminder** — Push notification at predicted training time based on session timestamp patterns. Deep link to active session. Adaptive timing (shift 30min after 3 dismissals). Graduated missed-session detection.
-  - Minimum 4 sessions before feature activates
-  - Pattern: mean session time, std dev threshold (>4h → fall back to fixed time)
-  - Missed session: 1st silent, 2nd contextual notification, max 1 per 72h
-  - Settings: On/Off toggle + notification window preference
-  - AC: Fires ±30min of typical time; tap → session screen; dismiss → no side effects; respects window preference
-  - **Depends on:** F-02
+- [ ] **F-04: Smart Session Reminder** — In-app banner at predicted training time (Option A). Requires ≥4 sessions, pattern detection (mean + std dev of start times), adaptive timing (3 dismissals → +30min offset), On/Off Settings toggle.
+  - **Push notification constraint (tech debt):** True OS-level push (fire when app is closed) requires a backend push server (FCM/APNS). Out of scope for Phase 2. Option A delivers the same habit signal when the user opens the app.
+  - Implementation: `checkSessionReminder()` called on every idle screen visit; banner shown if within ±90min of predicted time or up to 3h past; 24h cooldown after dismissal
+  - New DB queries: `dbGetRecentSessionStartTimes`, `dbHasSessionToday`
+  - Settings: Session Reminder On/Off toggle (reuses `.unit-btn` pattern)
+  - SW cache updated to gymops-v35
+  - AC: Banner fires at predicted time ✓ (needs real-world session history to fully verify)
 
 - [ ] **F-05: In-Session Exercise Navigation** — Surface next exercise contextually after set logged, based on last session order. "Up Next" label. User can override. No previous session = Phase 1 behaviour unchanged.
   - Completed exercises de-emphasized but accessible
@@ -216,8 +216,7 @@ Use: `if (FEATURES.PHASE_2.progressionSignal) { /* render feature */ }`
 
 ## Known Issues / Tech Debt
 
-- **F-02 Migration:** High-stakes data migration (existing user data). Test thoroughly on production backup before shipping.
-- **F-04 Timing:** Notification timing sensitivity. Edge cases in time detection need robust testing.
+- **F-04 Push Notifications (Phase 3 candidate):** F-04 ships as an in-app banner (Option A). True OS-level push notifications that fire when the app is closed require a backend push server (FCM/APNS registration + server infrastructure). This is a meaningful Phase 3 upgrade if session start rate data justifies the investment.
 - **F-03 & F-06 Rules:** Signal generation rules are deterministic but can feel flat if not carefully tuned. User feedback loop essential.
 - **Query Performance:** As session history grows, queries for progression signal and completion signal may slow. Design with indexing.
 

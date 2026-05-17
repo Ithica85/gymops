@@ -20,6 +20,10 @@
     <div class="idle-container">
       <h1 class="app-title">GymOps</h1>
       <p class="idle-subtitle">Ready to train</p>
+      <div id="reminder-banner" class="reminder-banner hidden">
+        <span id="reminder-text" class="reminder-text">Time to train</span>
+        <button class="btn-text reminder-dismiss" id="btn-reminder-dismiss">✕</button>
+      </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
       <button class="btn-text settings-link" id="btn-settings">Settings</button>
@@ -41,6 +45,14 @@
           <button class="unit-btn" id="unit-kg" data-unit="kg">kg</button>
           <button class="unit-btn" id="unit-lbs" data-unit="lbs">lbs</button>
         </div>
+      </div>
+      <div class="settings-section">
+        <span class="settings-label">Session Reminder</span>
+        <div class="unit-toggle">
+          <button class="reminder-btn" id="reminder-off" data-reminder="false">Off</button>
+          <button class="reminder-btn" id="reminder-on" data-reminder="true">On</button>
+        </div>
+        <p class="settings-hint">Shows a nudge at your usual training time.</p>
       </div>
       <div class="settings-section">
         <button class="btn-danger btn-large" id="btn-clear-data">Clear All Data</button>
