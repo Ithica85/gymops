@@ -188,7 +188,7 @@ MIT. Use it, fork it, learn from it.
 
 ## Contact
 
-Questions? Found a bug? Open an issue or reach out on SubStack - @dan1608272
+Questions? Found a bug? Open an issue or reach out on SubStack - https://substack.com/@dan1608272
 
 ---
 
