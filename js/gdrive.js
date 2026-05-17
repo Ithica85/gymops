@@ -15,9 +15,11 @@ const GOOGLE_CLIENT_ID = '437808702944-102a18ni81qk86lrae2ph0q5n5sppcgh.apps.goo
 
 // drive.file scope: grants access only to files created by this app,
 // not the user's full Drive. Least-privilege approach.
-const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive.file';
-const FOLDER_NAME   = 'GymOps';
-const TOKEN_STORAGE = 'gymops_gdrive_token';
+const DRIVE_SCOPE         = 'https://www.googleapis.com/auth/drive.file';
+const FOLDER_NAME         = 'GymOps';
+const SESSION_DATA_FOLDER = 'Gym Session Data';
+const TOKEN_STORAGE       = 'gymops_gdrive_token';
+const MIGRATION_KEY       = 'gymops_gdrive_migrated'; // set after one-time folder migration
 
 // Reused across calls so Google Identity Services doesn't re-initialise the client.
 let _tokenClient = null;
@@ -79,10 +81,11 @@ async function _getToken() {
 
 // ── Drive API helpers ─────────────────────────────────
 
-// Finds the GymOps folder in the user's Drive, or creates it if it doesn't exist.
-// Idempotent — safe to call on every upload without creating duplicates.
-async function _findOrCreateFolder(token) {
-  const q = `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+// Finds a named folder in Drive, or creates it. parentId scopes the search to a
+// specific parent folder; null searches without a parent constraint (top-level).
+async function _findOrCreateFolder(token, name, parentId = null) {
+  const parentQ = parentId ? `'${parentId}' in parents and ` : '';
+  const q = `${parentQ}name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -90,17 +93,67 @@ async function _findOrCreateFolder(token) {
   const data = await res.json();
   if (data.files?.length) return data.files[0].id;
 
-  // Folder doesn't exist yet — create it
+  const meta = { name, mimeType: 'application/vnd.google-apps.folder' };
+  if (parentId) meta.parents = [parentId];
   const create = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+    body: JSON.stringify(meta),
   });
   const folder = await create.json();
   return folder.id;
 }
 
-// Determines the correct filename for today's upload, handling same-day collisions.
+// Resolves the full folder hierarchy for a session upload, creating folders as needed:
+// GymOps/ → Gym Session Data/ → YYYY-MM/
+// dateStr is in YYYY_MM_DD format (underscores); month folder uses YYYY-MM (hyphen).
+async function _getMonthFolder(token, dateStr) {
+  const gymOpsId      = await _findOrCreateFolder(token, FOLDER_NAME);
+  const sessionDataId = await _findOrCreateFolder(token, SESSION_DATA_FOLDER, gymOpsId);
+  const monthLabel    = `${dateStr.slice(0, 4)}-${dateStr.slice(5, 7)}`; // YYYY-MM
+  const monthId       = await _findOrCreateFolder(token, monthLabel, sessionDataId);
+  return { gymOpsId, sessionDataId, monthId };
+}
+
+// One-time migration: moves any gym_* files sitting directly in the GymOps root
+// into the correct YYYY-MM subfolder under Gym Session Data. Skipped on subsequent
+// uploads once the localStorage migration flag is set.
+async function _migrateToMonthFolders(token, gymOpsId, sessionDataId) {
+  if (localStorage.getItem(MIGRATION_KEY)) return;
+
+  const q = `'${gymOpsId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed=false`;
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await res.json();
+  const gymFiles = (data.files ?? []).filter(f => /^gym_\d{4}_\d{2}_\d{2}/.test(f.name));
+
+  for (const file of gymFiles) {
+    try {
+      const m = file.name.match(/^gym_(\d{4})_(\d{2})_\d{2}/);
+      if (!m) continue;
+      const monthLabel = `${m[1]}-${m[2]}`;
+      const monthId = await _findOrCreateFolder(token, monthLabel, sessionDataId);
+      // Move file by updating its parents (add new, remove old) — no copy, no data loss
+      await fetch(
+        `https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${monthId}&removeParents=${gymOpsId}&fields=id`,
+        {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }
+      );
+    } catch (err) {
+      console.error('Migration skipped for:', file.name, err);
+      // Non-blocking — continue migrating remaining files
+    }
+  }
+
+  localStorage.setItem(MIGRATION_KEY, 'true');
+}
+
+// Determines the correct filename within the target folder, handling same-day collisions.
 // Base name: gym_YYYY_MM_DD. If that already exists, finds the highest existing
 // numeric suffix (e.g. gym_2026_04_17_2) and increments it.
 async function _resolveFilename(token, folderId, dateStr) {
@@ -162,19 +215,20 @@ async function _uploadFile(token, folderId, filename, csv) {
 
 // ── Public API ────────────────────────────────────────
 
-// Uploads a session's CSV to the GymOps Drive folder. Called non-blocking from
-// finishWorkout() — failures show a toast but do not interrupt the completed screen.
-// sessionStartIso is used to derive the date-stamped filename.
+// Uploads a session's CSV to GymOps/Gym Session Data/YYYY-MM/ in Drive.
+// Runs a one-time migration of any legacy files still in the GymOps root.
+// Non-blocking — failures throw so finishWorkout() can trigger a local fallback.
 async function gdriveUpload(csv, sessionStartIso) {
   try {
-    const token    = await _getToken();
-    const folderId = await _findOrCreateFolder(token);
-
+    const token   = await _getToken();
     const d       = new Date(sessionStartIso);
     const dateStr = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, '0')}_${String(d.getDate()).padStart(2, '0')}`;
-    const filename = await _resolveFilename(token, folderId, dateStr);
 
-    await _uploadFile(token, folderId, filename, csv);
+    const { gymOpsId, sessionDataId, monthId } = await _getMonthFolder(token, dateStr);
+    await _migrateToMonthFolders(token, gymOpsId, sessionDataId);
+
+    const filename = await _resolveFilename(token, monthId, dateStr);
+    await _uploadFile(token, monthId, filename, csv);
     showToast('Saved to Google Drive');
   } catch (err) {
     console.error('Drive upload failed:', err);

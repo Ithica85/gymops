@@ -18,7 +18,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 
 - `index.html` — Single-page structure with all screens, exercise picker modal, session-signal modal, reminder banner, and up-next hint.
 - `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05).
-- `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to a `GymOps` folder in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates.
+- `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to `GymOps/Gym Session Data/YYYY-MM/` in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates. One-time migration moves legacy root-level files to the correct month folders (guarded by `gymops_gdrive_migrated` localStorage flag).
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)` — all branches include unit; new queries for F-03 (`dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`), F-04 (`dbGetRecentSessionStartTimes`, `dbHasSessionToday`), F-05 (`dbGetLastSessionExerciseOrder`), F-06 (`dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`).
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.
@@ -69,7 +69,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v38`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v39`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
