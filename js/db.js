@@ -323,17 +323,22 @@ function dbGetLastSessionSetsForExercise(exercise) {
 // Returns the last `limit` completed sessions containing exercise X, newest first.
 // Each row: { session_id, start_time, best_weight_kg } where best_weight_kg is the
 // highest weight in that session for the exercise, normalised to kg for cross-unit comparison.
-function dbGetRecentSessionsBestForExercise(exercise, limit = 6) {
+// beforeSessionId: when provided, restricts to sessions with session_id < beforeSessionId.
+// Used by F-06 completion signal to exclude the just-finished session (now 'completed').
+function dbGetRecentSessionsBestForExercise(exercise, limit = 6, beforeSessionId = null) {
+  const beforeClause = beforeSessionId != null ? 'AND s.session_id < ?' : '';
+  const params = beforeSessionId != null ? [exercise, beforeSessionId, limit] : [exercise, limit];
   return _all(`
     SELECT s.session_id, s.start_time,
            MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_weight_kg
     FROM sessions s
     JOIN sets st ON st.session_id = s.session_id
     WHERE s.status = 'completed' AND st.exercise = ? AND st.weight IS NOT NULL
+    ${beforeClause}
     GROUP BY s.session_id
     ORDER BY s.session_id DESC
     LIMIT ?
-  `, [exercise, limit]);
+  `, params);
 }
 
 // Returns the best weight (kg-normalised) for an exercise in a given session, or null.
@@ -344,6 +349,41 @@ function dbGetSessionBestForExercise(sessionId, exercise) {
     FROM sets
     WHERE session_id = ? AND exercise = ? AND weight IS NOT NULL
   `, [sessionId, exercise])?.best_weight_kg ?? null;
+}
+
+// ── Session completion signal queries ────────────────
+
+// Total volume (kg-normalised weight × reps) for all reps sets in a session.
+function dbGetSessionVolume(sessionId) {
+  return _one(`
+    SELECT SUM(CASE WHEN unit = 'lbs' THEN weight / 2.2046 ELSE weight END * reps) AS volume_kg
+    FROM sets WHERE session_id = ? AND weight IS NOT NULL AND reps IS NOT NULL
+  `, [sessionId])?.volume_kg ?? 0;
+}
+
+// Count of distinct exercises logged in a session.
+function dbGetSessionExerciseCount(sessionId) {
+  return _one(
+    'SELECT COUNT(DISTINCT exercise) AS n FROM sets WHERE session_id = ?',
+    [sessionId]
+  )?.n ?? 0;
+}
+
+// Returns the most recent completed session before the given session_id, or null.
+function dbGetPreviousCompletedSession(sessionId) {
+  return _one(
+    "SELECT * FROM sessions WHERE status = 'completed' AND session_id < ? ORDER BY session_id DESC LIMIT 1",
+    [sessionId]
+  );
+}
+
+// Returns distinct exercise names that have reps data (weight IS NOT NULL) in a session.
+// Used to iterate exercises when computing improvement deltas for the completion signal.
+function dbGetSessionRepsExercises(sessionId) {
+  return _all(
+    'SELECT DISTINCT exercise FROM sets WHERE session_id = ? AND weight IS NOT NULL',
+    [sessionId]
+  ).map(r => r.exercise);
 }
 
 // ── Clear all data ────────────────────────────────────

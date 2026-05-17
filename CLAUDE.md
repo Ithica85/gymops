@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v33`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v34`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -170,10 +170,13 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - **Open questions:** OQ-06 (collapse completed?), OQ-07 (new exercise positioning?)
   - **Depends on:** F-02
 
-- [ ] **F-06: Session Completion Signal** — Minimal closure screen on session finish (3–4 data points only). Exercises completed, volume delta, strongest improvement, interpretation line. No gamification (no streaks/badges).
-  - Interpretation: deterministic rules from completion %, volume delta, frequency context (e.g., "Strong session", "Building momentum", "Good return after a few days off")
-  - AC: Signal appears immediately on finish; data accurate; single-tap dismiss; no reappearance; no gamification
-  - **Depends on:** F-02
+- [x] **F-06: Session Completion Signal** — SHIPPED & STABLE (May 17, 2026)
+  - Bottom sheet modal appears immediately on session finish; single-tap dismiss (Done or backdrop)
+  - Exercise count line, volume delta line, best improvement line, interpretation line
+  - Deterministic interpretation: "Strong session", "Building momentum", "Solid progression today", "Good return after a few days off", "Consistent work this week", "Consistent with last session", "Keep building", "Great start — baseline set"
+  - New DB queries: `dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`; `dbGetRecentSessionsBestForExercise` extended with `beforeSessionId` guard
+  - SW cache updated to gymops-v34
+  - AC-06a–f verified ✓
 
 ---
 

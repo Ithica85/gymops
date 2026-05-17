@@ -113,6 +113,119 @@ function renderProgressionSignal(signal) {
   }
 }
 
+// ── Session completion signal ──────────────────────────
+
+// Deterministic interpretation line derived from session stats.
+function _sessionInterpretation({ daysSincePrev, volumeDeltaRatio, improvementCount, bestDeltaKg }) {
+  if (daysSincePrev === null) return 'Great start — baseline set';
+  if (daysSincePrev >= SIGNAL_GAP_DAYS) return 'Good return after a few days off';
+  if (bestDeltaKg > WEIGHT_EPSILON_KG) {
+    if (improvementCount >= 2) return 'Building momentum';
+    if (volumeDeltaRatio !== null && volumeDeltaRatio > 0.05) return 'Strong session';
+    return 'Solid progression today';
+  }
+  if (volumeDeltaRatio !== null && volumeDeltaRatio > 0.05) return 'Consistent work this week';
+  if (volumeDeltaRatio !== null && Math.abs(volumeDeltaRatio) <= 0.1) return 'Consistent with last session';
+  return 'Keep building';
+}
+
+// Aggregates session stats and returns the 3–4 closure signal lines.
+// Must be called after dbFinishSession() so the current session is 'completed'.
+// Uses beforeSessionId to exclude the current session from historical queries.
+function computeSessionSignal(sessionId) {
+  const currentExerciseCount = dbGetSessionExerciseCount(sessionId);
+  const currentVolumeKg      = dbGetSessionVolume(sessionId);
+  const prevSession          = dbGetPreviousCompletedSession(sessionId);
+
+  if (!prevSession) {
+    return {
+      exerciseLine:    `${currentExerciseCount} exercise${currentExerciseCount !== 1 ? 's' : ''} logged`,
+      volumeLine:      null,
+      improvementLine: null,
+      interpretation:  'Great start — baseline set',
+    };
+  }
+
+  const prevExerciseCount = dbGetSessionExerciseCount(prevSession.session_id);
+  const prevVolumeKg      = dbGetSessionVolume(prevSession.session_id);
+  const daysSincePrev     = (Date.now() - new Date(prevSession.start_time).getTime()) / 86400000;
+
+  // Exercise completion line
+  let exerciseLine;
+  if (currentExerciseCount >= prevExerciseCount) {
+    exerciseLine = `${currentExerciseCount} exercise${currentExerciseCount !== 1 ? 's' : ''} logged`;
+  } else {
+    const skipped = prevExerciseCount - currentExerciseCount;
+    exerciseLine = `${currentExerciseCount} of ${prevExerciseCount} exercises — ${skipped} skipped`;
+  }
+
+  // Volume delta line
+  let volumeLine      = null;
+  let volumeDeltaRatio = null;
+  if (prevVolumeKg > 0 && currentVolumeKg > 0) {
+    volumeDeltaRatio = (currentVolumeKg - prevVolumeKg) / prevVolumeKg;
+    if (volumeDeltaRatio > 0.05)       volumeLine = 'Total volume up from last session';
+    else if (volumeDeltaRatio < -0.05) volumeLine = 'Volume slightly down from last session';
+    else                               volumeLine = 'Volume matched last session';
+  }
+
+  // Best improvement across all reps exercises (vs most recent session each was performed)
+  const exercises      = dbGetSessionRepsExercises(sessionId);
+  let bestDeltaKg      = 0;
+  let bestExercise     = null;
+  let improvementCount = 0;
+  const currentUnit    = getWeightUnit();
+
+  exercises.forEach(exercise => {
+    const currentBestKg = dbGetSessionBestForExercise(sessionId, exercise);
+    const history       = dbGetRecentSessionsBestForExercise(exercise, 1, sessionId);
+    if (!history.length || currentBestKg == null) return;
+    const delta = currentBestKg - history[0].best_weight_kg;
+    if (delta > WEIGHT_EPSILON_KG) {
+      improvementCount++;
+      if (delta > bestDeltaKg) { bestDeltaKg = delta; bestExercise = exercise; }
+    }
+  });
+
+  let improvementLine = null;
+  if (bestExercise !== null) {
+    const displayDelta = currentUnit === 'lbs'
+      ? Math.round(bestDeltaKg * 2.2046)
+      : Math.round(bestDeltaKg * 10) / 10;
+    improvementLine = `Best set: ${bestExercise} +${displayDelta} ${currentUnit}`;
+  }
+
+  return {
+    exerciseLine,
+    volumeLine,
+    improvementLine,
+    interpretation: _sessionInterpretation({ daysSincePrev, volumeDeltaRatio, improvementCount, bestDeltaKg }),
+  };
+}
+
+function renderSessionSignal(signal) {
+  document.getElementById('signal-exercises').textContent      = signal.exerciseLine;
+  const volEl = document.getElementById('signal-volume');
+  if (signal.volumeLine) {
+    volEl.textContent = signal.volumeLine;
+    volEl.classList.remove('hidden');
+  } else {
+    volEl.classList.add('hidden');
+  }
+  const impEl = document.getElementById('signal-improvement');
+  if (signal.improvementLine) {
+    impEl.textContent = signal.improvementLine;
+    impEl.classList.remove('hidden');
+  } else {
+    impEl.classList.add('hidden');
+  }
+  document.getElementById('signal-interpretation').textContent = signal.interpretation;
+}
+
+function dismissSessionSignal() {
+  document.getElementById('session-signal').classList.add('hidden');
+}
+
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps
 //   'timed' — logs duration_mins + optional calories
@@ -583,6 +696,10 @@ function finishWorkout() {
 
   document.getElementById('btn-resume').classList.remove('hidden');
   showScreen('completed');
+
+  const signal = computeSessionSignal(state.sessionId);
+  renderSessionSignal(signal);
+  document.getElementById('session-signal').classList.remove('hidden');
 }
 
 // Reopens the most recently finished session if it was completed within the last 60 minutes.
@@ -928,6 +1045,10 @@ async function boot() {
     dbClearAll();
     location.reload(); // Reload to reinitialise the in-memory DB from scratch
   });
+
+  // Session completion signal
+  document.getElementById('btn-signal-done').addEventListener('click', dismissSessionSignal);
+  document.getElementById('session-signal-backdrop').addEventListener('click', dismissSessionSignal);
 
   // Inactivity modal responses
   document.getElementById('btn-inactivity-continue').addEventListener('click', () => {

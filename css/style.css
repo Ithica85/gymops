@@ -734,6 +734,33 @@ body {
 }
 
 /* ═══════════════════════════════════
+   SESSION COMPLETION SIGNAL
+════════════════════════════════════ */
+.session-signal-sheet {
+  padding: 20px 24px 36px;
+}
+
+.session-signal-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.session-signal-line {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.session-signal-interpretation {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+  opacity: 0.85;
+  margin-bottom: 24px;
+}
+
+/* ═══════════════════════════════════
    SESSION NOTES
 ════════════════════════════════════ */
 .notes-section {

@@ -219,6 +219,23 @@
   </div>
 
   <!-- ═══════════════════════════════════
+       SESSION COMPLETION SIGNAL (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="session-signal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="session-signal-backdrop"></div>
+    <div class="modal-sheet session-signal-sheet">
+      <div class="modal-handle"></div>
+      <div class="session-signal-lines">
+        <p class="session-signal-line" id="signal-exercises"></p>
+        <p class="session-signal-line" id="signal-volume"></p>
+        <p class="session-signal-line" id="signal-improvement"></p>
+      </div>
+      <p class="session-signal-interpretation" id="signal-interpretation"></p>
+      <button class="btn-primary btn-large" id="btn-signal-done">Done</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
        INACTIVITY PROMPT (bottom sheet)
   ════════════════════════════════════ -->
   <div id="inactivity-modal" class="modal hidden" role="dialog" aria-modal="true">
