@@ -599,6 +599,7 @@ function renderActive() {
   renderLastSession();
   renderRecentSets();
   renderProgressionSignal(null); // clear any stale signal on exercise change / undo
+  renderUpNext();
   // Show Rest button only after at least one set has been logged
   const hasSet = dbGetSetCount(state.sessionId) > 0;
   document.getElementById('btn-rest').classList.toggle('hidden', !hasSet);
@@ -671,6 +672,40 @@ function focusInput() {
 function clearInputs() {
   document.getElementById('input-weight').value = '';
   document.getElementById('input-reps').value = '';
+}
+
+// ── Exercise navigation (F-05) ────────────────────────
+
+// Switches to a named exercise without opening the picker.
+// type is optional — callers that know the type (e.g. applyOtherExercise) pass it
+// explicitly; otherwise getExerciseType is used (covers all EXERCISES array entries).
+function switchExercise(name, type = null) {
+  state.exercise     = name;
+  state.exerciseType = type ?? getExerciseType(name);
+  state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
+  renderActive();
+  focusInput();
+  resetInactivityTimer();
+}
+
+// Returns the exercise that follows the current one in last session's logged order,
+// or null if there is no prior session, the current exercise wasn't in it, or it was last.
+function computeUpNext(exercise) {
+  const order = dbGetLastSessionExerciseOrder();
+  const idx   = order.indexOf(exercise);
+  if (idx === -1 || idx === order.length - 1) return null;
+  return order[idx + 1];
+}
+
+function renderUpNext() {
+  const el   = document.getElementById('up-next-hint');
+  const next = computeUpNext(state.exercise);
+  if (!next) {
+    el.classList.add('hidden');
+  } else {
+    document.getElementById('up-next-name').textContent = next;
+    el.classList.remove('hidden');
+  }
 }
 
 // ── Session lifecycle ─────────────────────────────────
@@ -913,9 +948,11 @@ function openPicker() {
   ul.innerHTML = '';
 
   EXERCISES.forEach(ex => {
-    const li = document.createElement('li');
+    const li   = document.createElement('li');
+    const done = dbGetSetCountForExercise(state.sessionId, ex.name) > 0;
     li.textContent = ex.name;
     if (ex.name === state.exercise) li.classList.add('selected');
+    if (done) li.classList.add('exercise-done');
 
     li.addEventListener('click', () => {
       if (ex.name === 'Other') {
@@ -929,15 +966,8 @@ function openPicker() {
         document.getElementById('other-name-input').focus();
         return;
       }
-
-      state.exercise     = ex.name;
-      state.exerciseType = ex.type;
-      // Set number for this exercise = sets already logged + 1
-      state.setNumber    = dbGetSetCountForExercise(state.sessionId, ex.name) + 1;
       closePicker();
-      renderActive();
-      focusInput();
-      resetInactivityTimer();
+      switchExercise(ex.name);
     });
 
     ul.appendChild(li);
@@ -962,13 +992,8 @@ let _pendingOtherName = ''; // holds the name between the Done step and the type
 
 // Applies a confirmed custom exercise name with a resolved type, then closes the picker.
 function applyOtherExercise(name, type) {
-  state.exercise     = name;
-  state.exerciseType = type;
-  state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
   closePicker();
-  renderActive();
-  focusInput();
-  resetInactivityTimer();
+  switchExercise(name, type);
 }
 
 // Validates the free-text name entered via "Other".
@@ -1050,6 +1075,10 @@ async function boot() {
 
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
+  document.getElementById('up-next-hint').addEventListener('click', () => {
+    const name = document.getElementById('up-next-name').textContent;
+    if (name) switchExercise(name);
+  });
   document.getElementById('btn-log-set').addEventListener('click', logSet);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-rest').addEventListener('click', startRestTimer);

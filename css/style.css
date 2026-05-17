@@ -344,6 +344,35 @@ body {
   flex: 1;
 }
 
+/* — Up Next hint — */
+.up-next-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  cursor: pointer;
+}
+
+.up-next-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.up-next-name {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.up-next-arrow {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 /* — Progression signal — */
 .progression-signal {
   font-size: 0.8rem;
@@ -593,6 +622,17 @@ body {
 .exercise-list li.selected {
   color: var(--accent);
   font-weight: 700;
+}
+
+.exercise-list li.exercise-done {
+  color: var(--muted);
+}
+
+.exercise-list li.exercise-done::after {
+  content: ' ✓';
+  color: var(--accent);
+  opacity: 0.6;
+  font-size: 0.85em;
 }
 
 .modal-actions {

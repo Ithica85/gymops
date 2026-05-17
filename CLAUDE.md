@@ -65,7 +65,7 @@ A set row must have EITHER (weight + reps) OR (duration_mins), never both, never
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v35`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v36`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -163,12 +163,15 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - SW cache updated to gymops-v35
   - AC: Banner fires at predicted time ✓ (needs real-world session history to fully verify)
 
-- [ ] **F-05: In-Session Exercise Navigation** — Surface next exercise contextually after set logged, based on last session order. "Up Next" label. User can override. No previous session = Phase 1 behaviour unchanged.
-  - Completed exercises de-emphasized but accessible
-  - Must not add steps to core logging flow (2 inputs + 1 confirm max)
-  - AC: Next exercise visible without scroll; user can select any exercise; no regression if no prior session
-  - **Open questions:** OQ-06 (collapse completed?), OQ-07 (new exercise positioning?)
-  - **Depends on:** F-02
+- [x] **F-05: In-Session Exercise Navigation** — SHIPPED & STABLE (May 17, 2026)
+  - "Up Next: [Exercise] →" hint below action buttons; tappable to switch immediately
+  - Order derived from first-logged sequence of the most recent completed session
+  - No hint if no prior session, exercise not in prior session, or it was last in sequence
+  - Completed exercises de-emphasized in picker (muted + ✓ suffix)
+  - `switchExercise(name, type)` helper extracted — used by picker, Up Next tap, and applyOtherExercise; type param prevents getExerciseType fallback overriding explicit Strength/Cardio choice for custom exercises
+  - New DB query: `dbGetLastSessionExerciseOrder`
+  - SW cache updated to gymops-v36
+  - All ACs verified ✓
 
 - [x] **F-06: Session Completion Signal** — SHIPPED & STABLE (May 17, 2026)
   - Bottom sheet modal appears immediately on session finish; single-tap dismiss (Done or backdrop)

@@ -386,6 +386,23 @@ function dbGetSessionRepsExercises(sessionId) {
   ).map(r => r.exercise);
 }
 
+// ── Exercise navigation queries ──────────────────────
+
+// Returns exercise names in first-logged order from the most recent completed session.
+// Used to compute the "Up Next" suggestion during an active session.
+function dbGetLastSessionExerciseOrder() {
+  return _all(`
+    SELECT exercise, MIN(set_id) AS first_set_id
+    FROM sets
+    WHERE session_id = (
+      SELECT session_id FROM sessions WHERE status = 'completed'
+      ORDER BY session_id DESC LIMIT 1
+    )
+    GROUP BY exercise
+    ORDER BY first_set_id ASC
+  `).map(r => r.exercise);
+}
+
 // ── Session reminder queries ─────────────────────────
 
 // Returns ISO start_time strings for the last N completed sessions, newest first.
