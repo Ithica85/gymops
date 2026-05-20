@@ -69,7 +69,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v45`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v46`.
 4. Verify CSV export still works and includes any new columns.
 
 ---

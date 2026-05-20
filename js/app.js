@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v2.0';
+const APP_VERSION = 'v2.1';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
