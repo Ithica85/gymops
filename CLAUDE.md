@@ -69,7 +69,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v40`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v41`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -227,6 +227,11 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - Modal: "Discard session?" with body text, "Discard & Start New" (danger) and "Keep Resuming" (secondary) buttons; backdrop tap also cancels
   - `dbDeleteSession()` in db.js hard-deletes the session and all its sets
   - `startSession()` split into entry-point (guard + modal) and `_doStartSession()` (actual creation)
+
+- [x] **US-02: Reduce Visual Prominence of Clear All Data** — SHIPPED (May 19, 2026, SW cache: `gymops-v41`)
+  - "Clear All Data" demoted from `btn-danger btn-large` to `.settings-danger-link` (small, muted grey text, no background)
+  - Moved to the very bottom of Settings screen, below the version string
+  - Confirmation dialog and functionality unchanged
 
 ---
 

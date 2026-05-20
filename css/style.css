@@ -768,6 +768,17 @@ body {
   opacity: 0.6;
 }
 
+.settings-danger-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 8px 0 0;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
 .modal-body {
   font-size: 0.9rem;
   color: var(--muted);
