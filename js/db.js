@@ -483,3 +483,28 @@ function dbExportCSV() {
   rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
   return lines.join('\n');
 }
+
+// Exports sessions whose start_time falls within the given date range (YYYY-MM-DD strings).
+// Either bound may be omitted (null / empty string) to mean "no limit".
+function dbExportCSVByRange(from, to) {
+  const conditions = [];
+  const params = [];
+  if (from) { conditions.push("date(s.start_time) >= ?"); params.push(from); }
+  if (to)   { conditions.push("date(s.start_time) <= ?"); params.push(to); }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = _all(`
+    SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
+           st.set_id, st.timestamp, st.exercise, st.set_number,
+           st.weight, st.unit, st.reps, st.duration_mins, st.calories
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    ${where}
+    ORDER BY st.set_id
+  `, params);
+  if (!rows.length) return null;
+  const headers = ['session_id','start_time','end_time','status','set_id','timestamp','exercise','set_number','weight','unit','reps','duration_mins','calories'];
+  if (rows.some(r => r.session_notes)) headers.push('session_notes');
+  const lines = [headers.join(',')];
+  rows.forEach(r => lines.push(headers.map(h => JSON.stringify(r[h] ?? '')).join(',')));
+  return lines.join('\n');
+}

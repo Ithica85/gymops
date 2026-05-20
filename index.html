@@ -55,6 +55,11 @@
         </div>
         <p class="settings-hint">Shows a nudge at your usual training time.</p>
       </div>
+      <div class="settings-section">
+        <span class="settings-label">Export</span>
+        <button class="btn-secondary" id="btn-export-history">Export History (CSV)</button>
+        <p class="settings-hint">Download a date-filtered CSV of your workouts.</p>
+      </div>
       <p class="settings-version" id="settings-version"></p>
       <button class="settings-danger-link" id="btn-clear-data">Clear All Data</button>
     </div>
@@ -246,6 +251,31 @@
       <div class="modal-actions">
         <button class="btn-danger btn-large" id="btn-confirm-discard">Discard &amp; Start New</button>
         <button class="btn-secondary" id="btn-cancel-discard">Keep Resuming</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       EXPORT DATE RANGE
+  ════════════════════════════════════ -->
+  <div id="export-range" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="export-range-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Export History</p>
+      <div class="export-date-row">
+        <div class="export-date-col">
+          <label class="export-date-label" for="export-from">From</label>
+          <input type="date" id="export-from" class="export-date-input">
+        </div>
+        <div class="export-date-col">
+          <label class="export-date-label" for="export-to">To</label>
+          <input type="date" id="export-to" class="export-date-input">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary btn-large" id="btn-do-export">Export CSV</button>
+        <button class="btn-text modal-cancel" id="btn-cancel-export">Cancel</button>
       </div>
     </div>
   </div>

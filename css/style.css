@@ -768,6 +768,39 @@ body {
   opacity: 0.6;
 }
 
+.export-date-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.export-date-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.export-date-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.export-date-input {
+  color-scheme: dark;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .settings-danger-link {
   background: none;
   border: none;

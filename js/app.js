@@ -1039,19 +1039,32 @@ function showToast(message, isError = false) {
 
 // ── CSV export ────────────────────────────────────────
 
-// Triggers a CSV download. Exports the current session only if one is active;
-// otherwise exports the full workout history across all sessions.
-function triggerExport() {
-  const csv = state.sessionId ? dbExportSessionCSV(state.sessionId) : dbExportCSV();
-  if (!csv) { alert('No data to export.'); return; }
-
+function downloadCSV(csv, filename) {
   const blob = new Blob([csv], { type: 'text/csv' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `gymops-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// Exports the current session CSV (completed screen button).
+function triggerExport() {
+  const csv = state.sessionId ? dbExportSessionCSV(state.sessionId) : dbExportCSV();
+  if (!csv) { alert('No data to export.'); return; }
+  downloadCSV(csv, `gymops-${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+// Opens the date-range export modal with sensible defaults (last 30 days → today).
+function openExportRangeModal() {
+  const today = new Date();
+  const from  = new Date(today);
+  from.setDate(from.getDate() - 30);
+  const fmt = d => d.toISOString().slice(0, 10);
+  document.getElementById('export-from').value = fmt(from);
+  document.getElementById('export-to').value   = fmt(today);
+  document.getElementById('export-range').classList.remove('hidden');
 }
 
 // ── Boot ──────────────────────────────────────────────
@@ -1185,6 +1198,21 @@ async function boot() {
   document.getElementById('btn-confirm-clear').addEventListener('click', () => {
     dbClearAll();
     location.reload(); // Reload to reinitialise the in-memory DB from scratch
+  });
+
+  // Export history (date-range modal)
+  document.getElementById('btn-export-history').addEventListener('click', openExportRangeModal);
+  const hideExportModal = () => document.getElementById('export-range').classList.add('hidden');
+  document.getElementById('btn-cancel-export').addEventListener('click', hideExportModal);
+  document.getElementById('export-range-backdrop').addEventListener('click', hideExportModal);
+  document.getElementById('btn-do-export').addEventListener('click', () => {
+    const from = document.getElementById('export-from').value;
+    const to   = document.getElementById('export-to').value;
+    const csv  = dbExportCSVByRange(from, to);
+    if (!csv) { alert('No sessions found in that date range.'); return; }
+    const suffix = (from || to) ? `${from || 'start'}-to-${to || 'today'}` : new Date().toISOString().slice(0, 10);
+    downloadCSV(csv, `gymops-${suffix}.csv`);
+    hideExportModal();
   });
 
   // Session completion signal
