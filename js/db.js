@@ -396,6 +396,18 @@ function dbGetSessionRepsExercises(sessionId) {
 
 // ── Exercise navigation queries ──────────────────────
 
+// Returns exercises ordered by most recent use (MAX session start_time DESC).
+// Used to sort the exercise picker by recency.
+function dbGetExerciseRecency() {
+  return _all(`
+    SELECT st.exercise, MAX(s.start_time) AS last_used
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    GROUP BY st.exercise
+    ORDER BY last_used DESC
+  `);
+}
+
 // Returns exercise names in first-logged order from the most recent completed session.
 // Used to compute the "Up Next" suggestion during an active session.
 function dbGetLastSessionExerciseOrder() {

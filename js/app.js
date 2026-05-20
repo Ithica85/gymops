@@ -512,6 +512,40 @@ function hideInactivityModal() {
 
 // ── State ─────────────────────────────────────────────
 
+// Picker sort preference — 'recent' (default) or 'az'. Persisted across sessions.
+let _pickerSort   = localStorage.getItem('gymops_picker_sort') || 'recent';
+// Recency rank map built fresh each time the picker opens: { exerciseName -> rank }
+// where rank 0 = most recently used. Populated by _refreshRecencyRanks().
+let _recencyRanks = {};
+
+function _refreshRecencyRanks() {
+  _recencyRanks = {};
+  dbGetExerciseRecency().forEach((r, i) => { _recencyRanks[r.exercise] = i; });
+}
+
+// Returns EXERCISES sorted per current _pickerSort mode.
+// "Other" is always pinned last regardless of sort mode.
+// Never-used exercises fall below used ones, sorted A–Z among themselves.
+function _sortedExercises() {
+  const regular = EXERCISES.filter(e => e.name !== 'Other');
+  const other   = EXERCISES.find(e => e.name === 'Other');
+
+  if (_pickerSort === 'az') {
+    regular.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    regular.sort((a, b) => {
+      const ra = _recencyRanks[a.name];
+      const rb = _recencyRanks[b.name];
+      if (ra !== undefined && rb !== undefined) return ra - rb;
+      if (ra !== undefined) return -1;
+      if (rb !== undefined) return  1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return other ? [...regular, other] : regular;
+}
+
 // Single mutable state object. No framework reactivity — all DOM updates are
 // explicit via render* functions called after state mutations.
 const state = {
@@ -945,13 +979,13 @@ function undoSet() {
 
 // ── Exercise picker ───────────────────────────────────
 
-// Opens the exercise picker bottom sheet. Marks the currently selected exercise.
-// The "Other" item shows an inline free-text input instead of immediately closing.
-function openPicker() {
+// Rebuilds the exercise list in the picker using the current sort mode.
+// Called by openPicker() and by sort-toggle handlers.
+function _renderExerciseList() {
   const ul = document.getElementById('exercise-list');
   ul.innerHTML = '';
 
-  EXERCISES.forEach(ex => {
+  _sortedExercises().forEach(ex => {
     const li   = document.createElement('li');
     const done = dbGetSetCountForExercise(state.sessionId, ex.name) > 0;
     li.textContent = ex.name;
@@ -977,6 +1011,15 @@ function openPicker() {
     ul.appendChild(li);
   });
 
+  // Keep sort toggle buttons in sync with current mode
+  document.getElementById('picker-sort-recent').classList.toggle('picker-sort-btn--active', _pickerSort === 'recent');
+  document.getElementById('picker-sort-az').classList.toggle('picker-sort-btn--active',     _pickerSort === 'az');
+}
+
+// Opens the exercise picker bottom sheet. Refreshes recency data and renders the list.
+function openPicker() {
+  _refreshRecencyRanks();
+  _renderExerciseList();
   document.getElementById('exercise-picker').classList.remove('hidden');
 }
 
@@ -1150,6 +1193,18 @@ async function boot() {
   const notesEl = document.getElementById('session-notes');
   notesEl.addEventListener('input', scheduleNotesSave);
   notesEl.addEventListener('blur', () => { clearTimeout(_notesDebounce); saveNotesNow(); });
+
+  // Exercise picker — sort toggle
+  document.getElementById('picker-sort-recent').addEventListener('click', () => {
+    _pickerSort = 'recent';
+    localStorage.setItem('gymops_picker_sort', 'recent');
+    _renderExerciseList();
+  });
+  document.getElementById('picker-sort-az').addEventListener('click', () => {
+    _pickerSort = 'az';
+    localStorage.setItem('gymops_picker_sort', 'az');
+    _renderExerciseList();
+  });
 
   // Exercise picker
   document.getElementById('btn-close-picker').addEventListener('click', closePicker);

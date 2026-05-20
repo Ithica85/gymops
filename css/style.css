@@ -754,6 +754,30 @@ body {
   color: #000;
 }
 
+.picker-sort-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.picker-sort-btn {
+  flex: 1;
+  padding: 7px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.picker-sort-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
 .settings-hint {
   font-size: 0.8rem;
   color: var(--muted);
