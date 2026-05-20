@@ -221,6 +221,14 @@ function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins,
   _persist();
 }
 
+// Hard-deletes an incomplete session and all its sets. Used when the user
+// explicitly discards an unfinished session to start fresh.
+function dbDeleteSession(sessionId) {
+  _db.run('DELETE FROM sets WHERE session_id = ?', [sessionId]);
+  _db.run('DELETE FROM sessions WHERE session_id = ?', [sessionId]);
+  _persist();
+}
+
 // Deletes a specific set by ID and returns the deleted row.
 // Returns null if the set doesn't exist.
 function dbDeleteSetById(setId) {

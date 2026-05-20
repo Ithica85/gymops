@@ -238,6 +238,22 @@
   </div>
 
   <!-- ═══════════════════════════════════
+       DISCARD SESSION CONFIRMATION
+  ════════════════════════════════════ -->
+  <div id="confirm-discard" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-discard-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Discard session?</p>
+      <p class="modal-body">This will permanently delete your incomplete session.</p>
+      <div class="modal-actions">
+        <button class="btn-danger btn-large" id="btn-confirm-discard">Discard &amp; Start New</button>
+        <button class="btn-secondary" id="btn-cancel-discard">Keep Resuming</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
        SESSION COMPLETION SIGNAL (bottom sheet)
   ════════════════════════════════════ -->
   <div id="session-signal" class="modal hidden" role="dialog" aria-modal="true">

@@ -17,7 +17,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## File Map
 
 - `index.html` — Single-page structure with all screens, exercise picker modal, session-signal modal, reminder banner, and up-next hint.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05).
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 3 additions: `startSession()` (guard + discard modal); `_doStartSession()` (session creation, split from startSession for US-01).
 - `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to `GymOps/Gym Session Data/YYYY-MM/` in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates. One-time migration moves legacy root-level files to the correct month folders (guarded by `gymops_gdrive_migrated` localStorage flag).
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)` — all branches include unit; new queries for F-03 (`dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`), F-04 (`dbGetRecentSessionStartTimes`, `dbHasSessionToday`), F-05 (`dbGetLastSessionExerciseOrder`), F-06 (`dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`).
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
@@ -69,14 +69,14 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v39`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v40`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
 
 # Current Phase
 
-**Phase 3 — Planning** (Phase 2 features complete May 17, 2026)
+**Phase 3 — In Progress** (Phase 2 features complete May 17, 2026)
 
 ## Phase 2 Status
 ✅ **FEATURES COMPLETE** (May 17, 2026, SW cache: `gymops-v36`)
@@ -215,6 +215,18 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 - [ ] Progression signal: ≥4 weeks live with no data accuracy issues — ongoing
 - [x] lbs/kg data layer verified with no unit corruption (ACs passed; real-world usage ongoing)
 - [x] Full Phase 1 regression test passed (no regressions observed during Phase 2 development)
+
+---
+
+# Shipped Features — Phase 3
+
+## Phase 3.1 (in progress)
+
+- [x] **US-01: Start New Session from Resume Prompt** — SHIPPED (May 19, 2026, SW cache: `gymops-v40`)
+  - "Start Workout" on idle screen now shows a confirmation modal when an incomplete session exists
+  - Modal: "Discard session?" with body text, "Discard & Start New" (danger) and "Keep Resuming" (secondary) buttons; backdrop tap also cancels
+  - `dbDeleteSession()` in db.js hard-deletes the session and all its sets
+  - `startSession()` split into entry-point (guard + modal) and `_doStartSession()` (actual creation)
 
 ---
 

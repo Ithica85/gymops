@@ -710,14 +710,9 @@ function renderUpNext() {
 
 // ── Session lifecycle ─────────────────────────────────
 
-// Starts a new workout session. If an active session already exists (e.g. from
-// a crash or browser close), it is silently finished before creating the new one.
-// Always defaults to the first exercise in the list.
-function startSession() {
-  // Abandon any lingering active session
-  const existing = dbGetActiveSession();
-  if (existing) dbFinishSession(existing.session_id);
-
+// Starts a fresh session with no prior active session check — called only after
+// the user has already confirmed any discard prompt.
+function _doStartSession() {
   document.getElementById('btn-resume-idle').classList.add('hidden');
 
   state.sessionId    = dbCreateSession(getWeightUnit());
@@ -730,10 +725,19 @@ function startSession() {
   renderActive();
   focusInput();
   resetInactivityTimer();
-  // Read start_time back from DB rather than using new Date(), so the timer
-  // is anchored to the exact timestamp stored in the session record.
   const newSession = dbGetSession(state.sessionId);
   if (newSession) startSessionTimer(newSession.start_time);
+}
+
+// Entry point for "Start Workout". If an active session exists, shows a
+// discard-confirmation modal; otherwise starts immediately.
+function startSession() {
+  const existing = dbGetActiveSession();
+  if (existing) {
+    document.getElementById('confirm-discard').classList.remove('hidden');
+    return;
+  }
+  _doStartSession();
 }
 
 // Resumes an existing session (from idle screen or completed screen).
@@ -1072,6 +1076,17 @@ async function boot() {
     if (session) resumeSession(session);
   });
   document.getElementById('btn-start').addEventListener('click', startSession);
+
+  // Discard-session confirmation modal
+  const hideDiscardModal = () => document.getElementById('confirm-discard').classList.add('hidden');
+  document.getElementById('btn-confirm-discard').addEventListener('click', () => {
+    const existing = dbGetActiveSession();
+    if (existing) dbDeleteSession(existing.session_id);
+    hideDiscardModal();
+    _doStartSession();
+  });
+  document.getElementById('btn-cancel-discard').addEventListener('click', hideDiscardModal);
+  document.getElementById('confirm-discard-backdrop').addEventListener('click', hideDiscardModal);
 
   // Active
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
