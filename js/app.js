@@ -1270,6 +1270,14 @@ async function boot() {
     hideExportModal();
   });
 
+  // Release notes modal
+  const hideReleaseNotes = () => document.getElementById('release-notes').classList.add('hidden');
+  document.getElementById('btn-release-notes').addEventListener('click', () => {
+    document.getElementById('release-notes').classList.remove('hidden');
+  });
+  document.getElementById('btn-close-release-notes').addEventListener('click', hideReleaseNotes);
+  document.getElementById('release-notes-backdrop').addEventListener('click', hideReleaseNotes);
+
   // Session completion signal
   document.getElementById('btn-signal-done').addEventListener('click', dismissSessionSignal);
   document.getElementById('session-signal-backdrop').addEventListener('click', dismissSessionSignal);

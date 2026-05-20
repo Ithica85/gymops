@@ -825,6 +825,47 @@ body {
   box-sizing: border-box;
 }
 
+.release-notes-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.release-notes-entry {
+  margin-bottom: 20px;
+}
+
+.release-notes-version {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.release-notes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.release-notes-list li {
+  position: relative;
+  padding: 3px 0 3px 14px;
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.release-notes-list li::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--muted);
+}
+
 .settings-danger-link {
   background: none;
   border: none;

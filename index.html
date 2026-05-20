@@ -60,6 +60,10 @@
         <button class="btn-secondary" id="btn-export-history">Export History (CSV)</button>
         <p class="settings-hint">Download a date-filtered CSV of your workouts.</p>
       </div>
+      <div class="settings-section">
+        <span class="settings-label">About</span>
+        <button class="btn-secondary" id="btn-release-notes">What's New</button>
+      </div>
       <p class="settings-version" id="settings-version"></p>
       <button class="settings-danger-link" id="btn-clear-data">Clear All Data</button>
     </div>
@@ -281,6 +285,59 @@
         <button class="btn-primary btn-large" id="btn-do-export">Export CSV</button>
         <button class="btn-text modal-cancel" id="btn-cancel-export">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       RELEASE NOTES
+  ════════════════════════════════════ -->
+  <div id="release-notes" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="release-notes-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">What's New</p>
+      <div class="release-notes-scroll">
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 2.1 — Usability · May 2026</p>
+          <ul class="release-notes-list">
+            <li>Exercise picker sorted by most recently used; A–Z toggle available</li>
+            <li>Export workout history as date-filtered CSV from Settings</li>
+            <li>Clear All Data de-emphasised to avoid accidental taps</li>
+            <li>Confirm before discarding an incomplete session</li>
+          </ul>
+        </div>
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 2 — Habit &amp; Progression · May 2026</p>
+          <ul class="release-notes-list">
+            <li>In-session progression signal — highlights personal bests and improvements</li>
+            <li>Smart session reminder — nudge shown at your usual training time</li>
+            <li>Up Next hint — guides you through your previous session's exercise order</li>
+            <li>Session completion summary — volume and top improvement on finish</li>
+            <li>Weight unit (kg/lbs) stored per set for accurate cross-session comparisons</li>
+            <li>Rest timer accurate after phone lock or background</li>
+          </ul>
+        </div>
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 1 — Core Logging · April 2026</p>
+          <ul class="release-notes-list">
+            <li>Log sets with weight &amp; reps, or duration &amp; calories for cardio</li>
+            <li>Previous session performance shown as placeholder in inputs</li>
+            <li>Elapsed session timer; resume within 60 minutes of finishing</li>
+            <li>Delete individual sets; undo last set</li>
+            <li>Rest timer between sets (90 seconds)</li>
+            <li>Custom "Other" exercise with automatic cardio detection</li>
+            <li>Auto-save to Google Drive on session finish</li>
+            <li>Inactivity timeout after 30 minutes</li>
+            <li>Session notes on the completed screen</li>
+            <li>Settings: weight unit, clear all data</li>
+          </ul>
+        </div>
+
+      </div>
+      <button class="btn-secondary" id="btn-close-release-notes">Done</button>
     </div>
   </div>
 

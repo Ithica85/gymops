@@ -17,9 +17,9 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## File Map
 
 - `index.html` — Single-page structure with all screens, exercise picker modal, session-signal modal, reminder banner, and up-next hint.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 3 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04).
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 2.1 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04).
 - `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to `GymOps/Gym Session Data/YYYY-MM/` in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates. One-time migration moves legacy root-level files to the correct month folders (guarded by `gymops_gdrive_migrated` localStorage flag).
-- `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)` — all branches include unit; new queries for F-03 (`dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`), F-04 (`dbGetRecentSessionStartTimes`, `dbHasSessionToday`), F-05 (`dbGetLastSessionExerciseOrder`), F-06 (`dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`). Phase 3 additions: `dbDeleteSession(sessionId)` (US-01); `dbExportCSVByRange(from, to)` (US-03); `dbGetExerciseRecency()` (US-04).
+- `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)` — all branches include unit; new queries for F-03 (`dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`), F-04 (`dbGetRecentSessionStartTimes`, `dbHasSessionToday`), F-05 (`dbGetLastSessionExerciseOrder`), F-06 (`dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`). Phase 2.1 additions: `dbDeleteSession(sessionId)` (US-01); `dbExportCSVByRange(from, to)` (US-03); `dbGetExerciseRecency()` (US-04).
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.
 - `manifest.json` — PWA manifest.
@@ -69,14 +69,14 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v43`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v45`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
 
 # Current Phase
 
-**Phase 3 — In Progress** (Phase 2 features complete May 17, 2026)
+**Phase 2.1 — In Progress** (Phase 2 features complete May 17, 2026)
 
 ## Phase 2 Status
 ✅ **FEATURES COMPLETE** (May 17, 2026, SW cache: `gymops-v36`)
@@ -218,9 +218,9 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 
 ---
 
-# Shipped Features — Phase 3
+# Shipped Features — Phase 2.1
 
-## Phase 3.1 (in progress)
+## Phase 2.1 (in progress)
 
 - [x] **US-01: Start New Session from Resume Prompt** — SHIPPED (May 19, 2026, SW cache: `gymops-v40`)
   - "Start Workout" on idle screen now shows a confirmation modal when an incomplete session exists
@@ -246,6 +246,11 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - CSV format identical to existing export; filename encodes the selected range
   - `downloadCSV(csv, filename)` helper extracted in app.js; existing completed-screen Export CSV unchanged
   - `color-scheme: dark` on date inputs for native dark-mode picker on mobile
+
+- [x] **US-05: View Release Notes in Settings** — SHIPPED (May 19, 2026, SW cache: `gymops-v45`)
+  - "What's New" button in Settings (About section) opens a scrollable bottom-sheet modal
+  - Three entries: Phase 2.1, Phase 2, Phase 1 — most recent first; content hardcoded in HTML
+  - No JS rendering logic; backdrop tap and "Done" button both close the modal
 
 ---
 
