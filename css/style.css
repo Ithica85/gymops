@@ -703,6 +703,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 16px 24px 40px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .settings-header {
