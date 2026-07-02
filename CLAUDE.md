@@ -12,14 +12,16 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 - **PWA** with service worker (`sw.js`) and `manifest.json`.
 - **Dark theme** using CSS custom properties defined in `:root` in `css/style.css`.
 - **Mobile-first** — design target is 375px width. All content on the active workout screen must remain above the fold.
-- **Single page** with three screens: idle, active, completed, plus an exercise picker modal.
+- **Single page** with five screens: idle, active, completed, settings, plans, plan-editor, plus modals.
+- **Vercel serverless function** at `api/ai-summary.js` proxies Anthropic API calls (avoids CORS). No other backend.
 
 ## File Map
 
-- `index.html` — Single-page structure with all screens, exercise picker modal, session-signal modal, reminder banner, and up-next hint.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 2.1 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04).
+- `index.html` — Single-page structure with all screens (idle, active, completed, settings, plans, plan-editor), exercise picker modal, session-signal modal, AI summary modal, plan expiry banner, and up-next hint.
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 2.1 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04). Phase 3 additions: `ANTHROPIC_KEY` / `getAnthropicKey()` / `setAnthropicKey()`; `_buildSessionContext()` / `generateAISummary()` / `hideAISummaryModal()` (AI summary); `renderPlanAdherence()` / `checkPlanExpiry()` / `renderPlansScreen()` / `openNewPlan()` / `openEditPlan()` / `renderPlanEditorExercises()` / `addExerciseToPlan()` / `savePlan()` / `archiveCurrentPlan()` (plans); `_pickerContext` for dual-mode picker (session vs plan).
 - `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to `GymOps/Gym Session Data/YYYY-MM/` in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates. One-time migration moves legacy root-level files to the correct month folders (guarded by `gymops_gdrive_migrated` localStorage flag).
-- `js/db.js` — SQLite schema, CRUD operations, CSV export query. Two tables: `sessions` and `sets`. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)` — all branches include unit; new queries for F-03 (`dbGetRecentSessionsBestForExercise`, `dbGetSessionBestForExercise`), F-04 (`dbGetRecentSessionStartTimes`, `dbHasSessionToday`), F-05 (`dbGetLastSessionExerciseOrder`), F-06 (`dbGetSessionVolume`, `dbGetSessionExerciseCount`, `dbGetPreviousCompletedSession`, `dbGetSessionRepsExercises`). Phase 2.1 additions: `dbDeleteSession(sessionId)` (US-01); `dbExportCSVByRange(from, to)` (US-03); `dbGetExerciseRecency()` (US-04).
+- `js/db.js` — SQLite schema, CRUD operations, CSV export query. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)`; queries for F-03/F-04/F-05/F-06. Phase 2.1 additions: `dbDeleteSession(sessionId)`; `dbExportCSVByRange(from, to)`; `dbGetExerciseRecency()`. Phase 3 additions: `dbCreatePlan()` / `dbUpdatePlan()` / `dbUpdatePlanStatus()` / `dbGetActivePlan()` / `dbGetPlan()` / `dbGetAllPlans()` / `dbGetPlanExercises()` / `dbSavePlanExercises()` / `dbLinkSessionToPlan()` / `dbGetSessionPlan()`.
+- `api/ai-summary.js` — Vercel serverless function. Proxies POST requests to the Anthropic API (`claude-fable-5`, fallback `claude-opus-4-8`). Accepts `{ context, apiKey }` in the body; API key falls back to `ANTHROPIC_API_KEY` env var. Returns `{ text }` or `{ error }`.
 - `css/style.css` — Full styling. Dark theme tokens in `:root`. Mobile-first responsive.
 - `sw.js` — Service worker for PWA caching.
 - `manifest.json` — PWA manifest.
@@ -34,7 +36,8 @@ sessions (
   end_time      TEXT,
   status        TEXT NOT NULL DEFAULT 'active',
   notes         TEXT,              -- added via ALTER TABLE migration (Phase 1)
-  default_unit  TEXT               -- 'kg' or 'lbs' at session start (added Phase 2 F-02)
+  default_unit  TEXT,              -- 'kg' or 'lbs' at session start (added Phase 2 F-02)
+  plan_id       INTEGER            -- FK to plans (added Phase 3, nullable)
 )
 
 sets (
@@ -50,9 +53,29 @@ sets (
   unit          TEXT NOT NULL DEFAULT 'lbs',  -- unit at log time (added Phase 2 F-02)
   FOREIGN KEY (session_id) REFERENCES sessions(session_id)
 )
+
+plans (
+  plan_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  name           TEXT NOT NULL,
+  start_date     TEXT NOT NULL,    -- ISO date (YYYY-MM-DD)
+  duration_weeks INTEGER,          -- null = ongoing
+  objectives_json TEXT,            -- JSON array of objective strings, or null
+  status         TEXT NOT NULL DEFAULT 'active'  -- 'active' | 'archived'
+)
+
+plan_exercises (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  plan_id     INTEGER NOT NULL,
+  exercise    TEXT NOT NULL,
+  target_sets INTEGER,
+  target_reps INTEGER,
+  sort_order  INTEGER NOT NULL,
+  FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+)
 ```
 
 A set row must have EITHER (weight + reps) OR (duration_mins), never both, never neither.
+Only one plan should have `status = 'active'` at a time — `savePlan()` archives any existing active plan before creating a new one.
 
 All weight comparisons across sessions (progression signal, session signal) normalise to kg internally via SQL `CASE` expressions to handle mixed-unit history correctly.
 
@@ -69,21 +92,23 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v46`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v49`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
 
 # Current Phase
 
-**Phase 2.1 — In Progress** (Phase 2 features complete May 17, 2026)
+**Phase 3 — AI & Plans** (started July 1, 2026)
+
+## Phase 3 Status
+🚧 **IN PROGRESS** — first two features shipped July 1, 2026 (SW cache: `gymops-v49`, app: `v3.0`)
+
+## Phase 2.1 Status
+✅ **COMPLETE** (May 19, 2026, SW cache: `gymops-v45`, app: `v2.1`)
 
 ## Phase 2 Status
-✅ **FEATURES COMPLETE** (May 17, 2026, SW cache: `gymops-v36`)
-
-All six Phase 2 features shipped and verified in production. Exit criteria requiring live usage (4-week signal verification, session start rate tracking) are ongoing — see Phase 2 Exit Criteria below.
-
-**Note on F-04:** Smart Reminder fires correctly in code; pattern detection (≥4 sessions required) needs real-world session history to fully exercise. No further dev action required — this will resolve with normal usage.
+✅ **COMPLETE** (May 17, 2026, SW cache: `gymops-v36`, app: `v2.0`)
 
 ## Phase 1 Status
 ✅ **COMPLETE & LOCKED** (May 10, 2026, tag: `v1.0-phase1-complete`)
@@ -254,10 +279,36 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 
 ---
 
-# Next / Backlog (Phase 3 Candidates)
+# Shipped Features — Phase 3
 
-- **Push notifications** — True OS-level smart reminder (requires backend push server; FCM/APNS)
-- **AI session summary** — Natural language summary of recent progression per exercise; rolling baseline query (`dbGetRecentSessionsBestForExercise`, limit=6) already in place
-- **Mid-session unit switch** — Allow unit toggle during an active session with correct per-set unit preservation
-- **Signal tuning** — Adjust `WEIGHT_EPSILON_KG`, `SIGNAL_GAP_DAYS`, interpretation thresholds based on real-world feedback
-- **Exercise history view** — Browse past sessions and per-exercise history (read-only)
+**Phase Goal:** AI-powered insights and structured training plans.
+
+- [x] **AI Session Summary** — SHIPPED (July 1, 2026, SW cache: `gymops-v47`)
+  - "AI Summary" button on completed screen (visible only when API key is set)
+  - Vercel serverless function `api/ai-summary.js` proxies to `claude-fable-5` (server-side fallback to `claude-opus-4-8`)
+  - `_buildSessionContext()` builds prompt from `dbGetAllSets` + `dbGetRecentSessionsBestForExercise` per exercise
+  - When a plan is linked, context includes plan name, week number, objectives, completed vs skipped exercises
+  - Anthropic API key stored in `gymops_anthropic_key` localStorage; entered in Settings → AI
+  - Fable 5 returns thinking blocks before text — parse with `content.find(b => b.type === 'text')`
+
+- [x] **Workout Plans** — SHIPPED (July 1, 2026, SW cache: `gymops-v49`)
+  - Plans screen accessible from idle screen; plan editor screen for create/edit
+  - Plan = name + optional duration (weeks) + up to 3 text objectives + ordered exercises with target sets×reps
+  - Only one plan active at a time; creating a new plan archives the existing one
+  - New session auto-links to active plan (`dbLinkSessionToPlan`); first plan exercise used as starting exercise
+  - Exercise picker shows "Today's Plan" section at top with target hints (e.g. `4×8`); `_pickerContext = 'plan'` for plan editing mode
+  - `computeUpNext()` uses plan order when a plan is linked; falls back to history order otherwise
+  - Completed screen shows adherence: `Plan name: N/M exercises · skipped X, Y`
+  - Expiry banner on idle screen when plan duration has elapsed
+  - `dbGetSessionPlan(sessionId)` returns plan + exercises for a session
+
+---
+
+# Next / Backlog
+
+- **Exercise history view** — Browse per-exercise progression over time (data already in DB, just needs a display screen)
+- **Muscle group tagging** — Add `muscleGroup` to EXERCISES; enables weekly coverage view and richer AI context
+- **Weekly AI summary** — On-demand summary of the week's sessions (reuses existing serverless function)
+- **Plan iterations** — Auto-detect objective completion (e.g. "hit 100kg bench"); plan-to-plan progression suggestions
+- **Push notifications** — True OS-level smart reminder (requires backend; FCM/APNS)
+- **Mid-session unit switch** — Allow unit toggle during an active session
