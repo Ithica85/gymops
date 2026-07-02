@@ -61,6 +61,19 @@
         <p class="settings-hint">Download a date-filtered CSV of your workouts.</p>
       </div>
       <div class="settings-section">
+        <span class="settings-label">AI</span>
+        <input
+          type="password"
+          id="input-anthropic-key"
+          class="ai-key-input"
+          placeholder="Anthropic API key (sk-ant-...)"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        >
+        <p class="settings-hint">Enables AI session summaries on the completed screen. Key stored locally, never uploaded.</p>
+      </div>
+      <div class="settings-section">
         <span class="settings-label">About</span>
         <button class="btn-secondary" id="btn-release-notes">What's New</button>
       </div>
@@ -186,6 +199,7 @@
       <div class="completed-actions">
         <button class="btn-secondary hidden" id="btn-resume">Resume Last Workout</button>
         <button class="btn-secondary" id="btn-export">Export CSV</button>
+        <button class="btn-secondary hidden" id="btn-ai-summary">AI Summary</button>
         <button class="btn-primary btn-large" id="btn-new-workout">Start New Workout</button>
       </div>
     </div>
@@ -355,6 +369,19 @@
       </div>
       <p class="session-signal-interpretation" id="signal-interpretation"></p>
       <button class="btn-primary btn-large" id="btn-signal-done">Done</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       AI SUMMARY (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="ai-summary-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="ai-summary-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">AI Summary</p>
+      <p id="ai-summary-text" class="ai-summary-text"></p>
+      <button class="btn-primary btn-large" id="btn-ai-summary-done">Done</button>
     </div>
   </div>
 

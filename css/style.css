@@ -971,3 +971,46 @@ body {
 .notes-input::placeholder {
   color: var(--muted);
 }
+
+/* ════════════════════════════════════
+   AI SUMMARY
+════════════════════════════════════ */
+.ai-key-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: monospace;
+  outline: none;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+}
+
+.ai-key-input:focus {
+  border-color: var(--accent);
+}
+
+.ai-key-input::placeholder {
+  color: var(--muted);
+}
+
+.ai-summary-text {
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 8px 0 20px;
+  white-space: pre-wrap;
+  min-height: 60px;
+}
+
+.ai-summary-text.loading {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.ai-summary-text.error {
+  color: var(--danger);
+}

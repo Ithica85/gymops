@@ -34,6 +34,13 @@ function setWeightUnit(u) {
 // as tech debt for a future phase. Option A delivers the same habit signal at
 // the high-intent moment when the user opens the app.
 
+const ANTHROPIC_KEY = 'gymops_anthropic_key';
+function getAnthropicKey() { return localStorage.getItem(ANTHROPIC_KEY) ?? ''; }
+function setAnthropicKey(k) {
+  if (k) localStorage.setItem(ANTHROPIC_KEY, k);
+  else localStorage.removeItem(ANTHROPIC_KEY);
+}
+
 const REMINDER_KEY          = 'gymops_reminder_enabled';
 const REMINDER_DISMISSED_AT = 'gymops_reminder_dismissed_at';
 const REMINDER_DISMISSALS   = 'gymops_reminder_dismissals';
@@ -859,6 +866,7 @@ function finishWorkout() {
     `${count} set${count !== 1 ? 's' : ''} logged`;
 
   document.getElementById('btn-resume').classList.remove('hidden');
+  document.getElementById('btn-ai-summary').classList.toggle('hidden', !getAnthropicKey());
   showScreen('completed');
 
   const signal = computeSessionSignal(state.sessionId);
@@ -1110,6 +1118,98 @@ function openExportRangeModal() {
   document.getElementById('export-range').classList.remove('hidden');
 }
 
+// ── AI Session Summary ────────────────────────────────
+
+// Builds a compact text description of the completed session for the prompt.
+// Groups sets by exercise in first-occurrence order, then summarises each.
+function _buildSessionContext(sessionId) {
+  const sets = [...dbGetAllSets(sessionId)].reverse(); // ASC order
+  const unit = getWeightUnit();
+  const order = [];
+  const groups = {};
+  for (const s of sets) {
+    if (!groups[s.exercise]) { groups[s.exercise] = []; order.push(s.exercise); }
+    groups[s.exercise].push(s);
+  }
+  const lines = [];
+  for (const ex of order) {
+    const exSets = groups[ex];
+    if (exSets[0].duration_mins != null) {
+      const totalMins = exSets.reduce((sum, s) => sum + (s.duration_mins ?? 0), 0);
+      const cals = exSets.reduce((sum, s) => sum + (s.calories ?? 0), 0);
+      lines.push(`${ex}: ${Math.round(totalMins)} mins${cals ? `, ${cals} cal` : ''}`);
+    } else {
+      const weighted = exSets.filter(s => s.weight != null);
+      if (!weighted.length) continue;
+      const bestKg = Math.max(...weighted.map(s =>
+        s.unit === 'lbs' ? s.weight / 2.2046 : s.weight
+      ));
+      const displayBest = unit === 'lbs'
+        ? Math.round(bestKg * 2.2046)
+        : Math.round(bestKg * 10) / 10;
+      const bestReps = Math.max(...exSets.map(s => s.reps ?? 0));
+      const history = dbGetRecentSessionsBestForExercise(ex, 5, sessionId);
+      let histNote = '';
+      if (history.length > 0) {
+        const deltaKg = bestKg - history[0].best_weight_kg;
+        if (deltaKg >= 0.5) {
+          const d = unit === 'lbs' ? Math.round(deltaKg * 2.2046) : Math.round(deltaKg * 10) / 10;
+          histNote = ` (+${d}${unit} vs last session)`;
+        } else if (deltaKg <= -0.5) {
+          const d = unit === 'lbs' ? Math.round(Math.abs(deltaKg) * 2.2046) : Math.round(Math.abs(deltaKg) * 10) / 10;
+          histNote = ` (-${d}${unit} vs last session)`;
+        } else {
+          histNote = ' (matched previous best)';
+        }
+      }
+      lines.push(`${ex}: best ${displayBest}${unit} × ${bestReps} reps, ${exSets.length} sets${histNote}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+async function generateAISummary() {
+  const textEl = document.getElementById('ai-summary-text');
+  document.getElementById('ai-summary-modal').classList.remove('hidden');
+  textEl.className = 'ai-summary-text loading';
+  textEl.textContent = 'Generating…';
+
+  const key = getAnthropicKey();
+  if (!key) {
+    textEl.className = 'ai-summary-text error';
+    textEl.textContent = 'Add your Anthropic API key in Settings → AI to enable this feature.';
+    return;
+  }
+
+  const context = _buildSessionContext(state.sessionId);
+
+  try {
+    const resp = await fetch('/api/ai-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context, apiKey: key }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      textEl.className = 'ai-summary-text error';
+      textEl.textContent = data.error ?? `Error (${resp.status})`;
+      return;
+    }
+
+    textEl.className = 'ai-summary-text';
+    textEl.textContent = data.text ?? 'Summary unavailable — great workout either way!';
+  } catch (_) {
+    textEl.className = 'ai-summary-text error';
+    textEl.textContent = 'Network error. Check your connection and try again.';
+  }
+}
+
+function hideAISummaryModal() {
+  document.getElementById('ai-summary-modal').classList.add('hidden');
+}
+
 // ── Boot ──────────────────────────────────────────────
 
 // Entry point. Initialises the DB, then wires up all event listeners.
@@ -1270,6 +1370,11 @@ async function boot() {
     hideExportModal();
   });
 
+  // Anthropic API key input — load saved value; save on blur
+  const keyInput = document.getElementById('input-anthropic-key');
+  keyInput.value = getAnthropicKey();
+  keyInput.addEventListener('blur', () => setAnthropicKey(keyInput.value.trim()));
+
   // Release notes modal
   const hideReleaseNotes = () => document.getElementById('release-notes').classList.add('hidden');
   document.getElementById('btn-release-notes').addEventListener('click', () => {
@@ -1315,6 +1420,9 @@ async function boot() {
   document.getElementById('btn-resume').addEventListener('click', resumeLastWorkout);
   document.getElementById('btn-new-workout').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-export').addEventListener('click', triggerExport);
+  document.getElementById('btn-ai-summary').addEventListener('click', generateAISummary);
+  document.getElementById('btn-ai-summary-done').addEventListener('click', hideAISummaryModal);
+  document.getElementById('ai-summary-backdrop').addEventListener('click', hideAISummaryModal);
 }
 
 document.addEventListener('DOMContentLoaded', boot);
