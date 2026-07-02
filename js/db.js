@@ -54,6 +54,23 @@ function _createSchema() {
       unit          TEXT NOT NULL DEFAULT 'lbs',
       FOREIGN KEY (session_id) REFERENCES sessions(session_id)
     );
+    CREATE TABLE IF NOT EXISTS plans (
+      plan_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      name           TEXT NOT NULL,
+      start_date     TEXT NOT NULL,
+      duration_weeks INTEGER,
+      objectives_json TEXT,
+      status         TEXT NOT NULL DEFAULT 'active'
+    );
+    CREATE TABLE IF NOT EXISTS plan_exercises (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      plan_id     INTEGER NOT NULL,
+      exercise    TEXT NOT NULL,
+      target_sets INTEGER,
+      target_reps INTEGER,
+      sort_order  INTEGER NOT NULL,
+      FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+    );
   `);
   _persist();
 }
@@ -109,6 +126,40 @@ function _migrate() {
   if (!setNames.includes('unit')) {
     // Stamp all existing rows with 'lbs' — the DEFAULT handles this automatically.
     _db.run("ALTER TABLE sets ADD COLUMN unit TEXT NOT NULL DEFAULT 'lbs'");
+    _persist();
+  }
+
+  if (!sessionCols.includes('plan_id')) {
+    _db.run('ALTER TABLE sessions ADD COLUMN plan_id INTEGER');
+    _persist();
+  }
+
+  const tables = _all("SELECT name FROM sqlite_master WHERE type='table'").map(r => r.name);
+  if (!tables.includes('plans')) {
+    _db.run(`
+      CREATE TABLE plans (
+        plan_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        name           TEXT NOT NULL,
+        start_date     TEXT NOT NULL,
+        duration_weeks INTEGER,
+        objectives_json TEXT,
+        status         TEXT NOT NULL DEFAULT 'active'
+      )
+    `);
+    _persist();
+  }
+  if (!tables.includes('plan_exercises')) {
+    _db.run(`
+      CREATE TABLE plan_exercises (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id     INTEGER NOT NULL,
+        exercise    TEXT NOT NULL,
+        target_sets INTEGER,
+        target_reps INTEGER,
+        sort_order  INTEGER NOT NULL,
+        FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+      )
+    `);
     _persist();
   }
 }
@@ -442,6 +493,74 @@ function dbHasSessionToday() {
     "SELECT session_id FROM sessions WHERE status = 'completed' AND start_time >= ? LIMIT 1",
     [startOfDay.toISOString()]
   );
+}
+
+// ── Plans ─────────────────────────────────────────────
+
+function dbCreatePlan(name, startDate, durationWeeks, objectivesJson) {
+  _db.run(
+    'INSERT INTO plans (name, start_date, duration_weeks, objectives_json, status) VALUES (?, ?, ?, ?, ?)',
+    [name, startDate, durationWeeks ?? null, objectivesJson ?? null, 'active']
+  );
+  const row = _one('SELECT last_insert_rowid() AS id');
+  _persist();
+  return row.id;
+}
+
+function dbUpdatePlan(planId, name, durationWeeks, objectivesJson) {
+  _db.run(
+    'UPDATE plans SET name = ?, duration_weeks = ?, objectives_json = ? WHERE plan_id = ?',
+    [name, durationWeeks ?? null, objectivesJson ?? null, planId]
+  );
+  _persist();
+}
+
+function dbUpdatePlanStatus(planId, status) {
+  _db.run('UPDATE plans SET status = ? WHERE plan_id = ?', [status, planId]);
+  _persist();
+}
+
+function dbGetActivePlan() {
+  return _one("SELECT * FROM plans WHERE status = 'active' ORDER BY plan_id DESC LIMIT 1");
+}
+
+function dbGetPlan(planId) {
+  return _one('SELECT * FROM plans WHERE plan_id = ?', [planId]);
+}
+
+function dbGetAllPlans() {
+  return _all('SELECT * FROM plans ORDER BY plan_id DESC');
+}
+
+function dbGetPlanExercises(planId) {
+  return _all('SELECT * FROM plan_exercises WHERE plan_id = ? ORDER BY sort_order ASC', [planId]);
+}
+
+// Replaces all exercises for a plan atomically.
+// exercises: array of { exercise, targetSets, targetReps }
+function dbSavePlanExercises(planId, exercises) {
+  _db.run('DELETE FROM plan_exercises WHERE plan_id = ?', [planId]);
+  exercises.forEach((ex, i) => {
+    _db.run(
+      'INSERT INTO plan_exercises (plan_id, exercise, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?)',
+      [planId, ex.exercise, ex.targetSets ?? null, ex.targetReps ?? null, i]
+    );
+  });
+  _persist();
+}
+
+function dbLinkSessionToPlan(sessionId, planId) {
+  _db.run('UPDATE sessions SET plan_id = ? WHERE session_id = ?', [planId, sessionId]);
+  _persist();
+}
+
+// Returns the plan and its exercises for a given session, or null if no plan was linked.
+function dbGetSessionPlan(sessionId) {
+  const session = _one('SELECT plan_id FROM sessions WHERE session_id = ?', [sessionId]);
+  if (!session?.plan_id) return null;
+  const plan = dbGetPlan(session.plan_id);
+  if (!plan) return null;
+  return { ...plan, exercises: dbGetPlanExercises(session.plan_id) };
 }
 
 // ── Clear all data ────────────────────────────────────

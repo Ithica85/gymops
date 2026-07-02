@@ -520,10 +520,12 @@ function hideInactivityModal() {
 // ── State ─────────────────────────────────────────────
 
 // Picker sort preference — 'recent' (default) or 'az'. Persisted across sessions.
-let _pickerSort   = localStorage.getItem('gymops_picker_sort') || 'recent';
+let _pickerSort    = localStorage.getItem('gymops_picker_sort') || 'recent';
 // Recency rank map built fresh each time the picker opens: { exerciseName -> rank }
 // where rank 0 = most recently used. Populated by _refreshRecencyRanks().
-let _recencyRanks = {};
+let _recencyRanks  = {};
+// 'session' (default) or 'plan' — controls what happens when an exercise is selected.
+let _pickerContext = 'session';
 
 function _refreshRecencyRanks() {
   _recencyRanks = {};
@@ -601,7 +603,8 @@ function updateInputFields() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
-  if (name === 'idle') checkSessionReminder();
+  if (name === 'idle') { checkSessionReminder(); checkPlanExpiry(); }
+  if (name === 'plans') renderPlansScreen();
 }
 
 // ── UI rendering ──────────────────────────────────────
@@ -732,6 +735,20 @@ function switchExercise(name, type = null) {
 // Returns the exercise that follows the current one in last session's logged order,
 // or null if there is no prior session, the current exercise wasn't in it, or it was last.
 function computeUpNext(exercise) {
+  // Prefer plan order over history order when a plan is linked to this session
+  const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
+  if (plan?.exercises?.length) {
+    const planNames = plan.exercises.map(e => e.exercise);
+    const loggedSet = new Set(
+      dbGetAllSets(state.sessionId).map(s => s.exercise)
+    );
+    // Find first plan exercise not yet started (excluding current)
+    const next = planNames.find(n => n !== exercise && !loggedSet.has(n));
+    if (next) return next;
+    // All plan exercises done — no Up Next hint
+    return null;
+  }
+  // No plan — fall back to last-session order
   const order = dbGetLastSessionExerciseOrder();
   const idx   = order.indexOf(exercise);
   if (idx === -1 || idx === order.length - 1) return null;
@@ -760,6 +777,17 @@ function _doStartSession() {
   state.exercise     = EXERCISES[0].name;
   state.exerciseType = EXERCISES[0].type;
   state.setNumber    = 1;
+
+  // Link session to active plan if one exists; use plan's first exercise as starting point
+  const activePlan = dbGetActivePlan();
+  if (activePlan) {
+    dbLinkSessionToPlan(state.sessionId, activePlan.plan_id);
+    const planExs = dbGetPlanExercises(activePlan.plan_id);
+    if (planExs.length) {
+      state.exercise     = planExs[0].exercise;
+      state.exerciseType = getExerciseType(planExs[0].exercise);
+    }
+  }
 
   document.getElementById('session-notes').value = '';
   showScreen('active');
@@ -867,6 +895,7 @@ function finishWorkout() {
 
   document.getElementById('btn-resume').classList.remove('hidden');
   document.getElementById('btn-ai-summary').classList.toggle('hidden', !getAnthropicKey());
+  renderPlanAdherence(state.sessionId);
   showScreen('completed');
 
   const signal = computeSessionSignal(state.sessionId);
@@ -993,16 +1022,28 @@ function _renderExerciseList() {
   const ul = document.getElementById('exercise-list');
   ul.innerHTML = '';
 
-  _sortedExercises().forEach(ex => {
+  // In plan context (adding to plan editor) skip the plan-section grouping
+  const plan = (_pickerContext === 'session' && state.sessionId)
+    ? dbGetSessionPlan(state.sessionId) : null;
+  const planExerciseNames = plan?.exercises?.map(e => e.exercise) ?? [];
+  const planTargetMap = {};
+  plan?.exercises?.forEach(e => { planTargetMap[e.exercise] = e; });
+
+  function makeItem(ex, targetHint) {
     const li   = document.createElement('li');
-    const done = dbGetSetCountForExercise(state.sessionId, ex.name) > 0;
-    li.textContent = ex.name;
+    const done = _pickerContext === 'session'
+      ? dbGetSetCountForExercise(state.sessionId, ex.name) > 0
+      : false;
+    if (targetHint) {
+      li.innerHTML = `<span>${ex.name}</span><span class="picker-target-hint">${targetHint}</span>`;
+    } else {
+      li.textContent = ex.name;
+    }
     if (ex.name === state.exercise) li.classList.add('selected');
     if (done) li.classList.add('exercise-done');
 
     li.addEventListener('click', () => {
       if (ex.name === 'Other') {
-        // Switch picker to name-entry mode — hide list, show text input
         document.getElementById('exercise-list').classList.add('hidden');
         document.getElementById('btn-close-picker').classList.add('hidden');
         document.getElementById('other-name-section').classList.remove('hidden');
@@ -1012,12 +1053,41 @@ function _renderExerciseList() {
         document.getElementById('other-name-input').focus();
         return;
       }
+      if (_pickerContext === 'plan') {
+        closePicker();
+        addExerciseToPlan(ex.name, ex.type);
+        return;
+      }
       closePicker();
       switchExercise(ex.name);
     });
+    return li;
+  }
 
-    ul.appendChild(li);
-  });
+  // If session has a plan, render plan exercises first with targets, then a divider, then the rest
+  if (planExerciseNames.length > 0) {
+    const planHeader = document.createElement('li');
+    planHeader.className = 'picker-section-header';
+    planHeader.textContent = 'Today\'s Plan';
+    ul.appendChild(planHeader);
+
+    planExerciseNames.forEach(name => {
+      const ex  = EXERCISES.find(e => e.name === name) ?? { name, type: getExerciseType(name) };
+      const tgt = planTargetMap[name];
+      const hint = (tgt?.target_sets && tgt?.target_reps)
+        ? `${tgt.target_sets}×${tgt.target_reps}` : null;
+      ul.appendChild(makeItem(ex, hint));
+    });
+
+    const divider = document.createElement('li');
+    divider.className = 'picker-divider';
+    ul.appendChild(divider);
+  }
+
+  // All exercises (sorted), excluding ones already shown in plan section
+  _sortedExercises()
+    .filter(ex => !planExerciseNames.includes(ex.name))
+    .forEach(ex => ul.appendChild(makeItem(ex, null)));
 
   // Keep sort toggle buttons in sync with current mode
   document.getElementById('picker-sort-recent').classList.toggle('picker-sort-btn--active', _pickerSort === 'recent');
@@ -1033,6 +1103,7 @@ function openPicker() {
 
 // Resets the picker to its default state (list visible, name-entry hidden).
 function closePicker() {
+  _pickerContext = 'session';
   document.getElementById('exercise-picker').classList.add('hidden');
   document.getElementById('exercise-list').classList.remove('hidden');
   document.getElementById('btn-close-picker').classList.remove('hidden');
@@ -1047,8 +1118,13 @@ let _pendingOtherName = ''; // holds the name between the Done step and the type
 
 // Applies a confirmed custom exercise name with a resolved type, then closes the picker.
 function applyOtherExercise(name, type) {
+  const ctx = _pickerContext; // save before closePicker() resets it
   closePicker();
-  switchExercise(name, type);
+  if (ctx === 'plan') {
+    addExerciseToPlan(name, type);
+  } else {
+    switchExercise(name, type);
+  }
 }
 
 // Validates the free-text name entered via "Other".
@@ -1118,6 +1194,220 @@ function openExportRangeModal() {
   document.getElementById('export-range').classList.remove('hidden');
 }
 
+// ── Plans ─────────────────────────────────────────────
+
+// Plan adherence: compares plan exercises to what was actually logged.
+function renderPlanAdherence(sessionId) {
+  const el   = document.getElementById('plan-adherence');
+  const plan = dbGetSessionPlan(sessionId);
+  if (!plan?.exercises?.length) { el.classList.add('hidden'); return; }
+
+  const loggedNames = new Set(dbGetAllSets(sessionId).map(s => s.exercise));
+  const total       = plan.exercises.length;
+  const done        = plan.exercises.filter(e => loggedNames.has(e.exercise)).length;
+  const skipped     = plan.exercises.filter(e => !loggedNames.has(e.exercise)).map(e => e.exercise);
+
+  let text = `${plan.name}: ${done}/${total} exercises`;
+  if (skipped.length) text += ` · skipped ${skipped.join(', ')}`;
+  el.textContent = text;
+  el.classList.remove('hidden');
+}
+
+// Plan expiry check — shows a banner on the idle screen if the active plan has run over duration.
+function checkPlanExpiry() {
+  const banner = document.getElementById('plan-expiry-banner');
+  const plan   = dbGetActivePlan();
+  if (!plan || !plan.duration_weeks) { banner.classList.add('hidden'); return; }
+
+  const endMs      = new Date(plan.start_date).getTime() + plan.duration_weeks * 7 * 24 * 60 * 60 * 1000;
+  const daysOver   = Math.floor((Date.now() - endMs) / (24 * 60 * 60 * 1000));
+  if (daysOver < 0) { banner.classList.add('hidden'); return; }
+
+  const daysStr = daysOver === 0 ? 'today' : `${daysOver} day${daysOver !== 1 ? 's' : ''} ago`;
+  document.getElementById('plan-expiry-text').textContent =
+    `"${plan.name}" ended ${daysStr} — time to review.`;
+  banner.classList.remove('hidden');
+}
+
+// ── Plans screen ──────────────────────────────────────
+
+function renderPlansScreen() {
+  const active   = dbGetActivePlan();
+  const cardEl   = document.getElementById('active-plan-card');
+  const pastEl   = document.getElementById('past-plans-list');
+  const allPlans = dbGetAllPlans();
+  const past     = allPlans.filter(p => p.status !== 'active');
+
+  if (active) {
+    const exs        = dbGetPlanExercises(active.plan_id);
+    const startDate  = new Date(active.start_date);
+    const weekNum    = Math.floor((Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    const durationStr = active.duration_weeks
+      ? `Week ${weekNum} of ${active.duration_weeks}`
+      : `Started ${startDate.toLocaleDateString()}`;
+    const objectives = active.objectives_json ? JSON.parse(active.objectives_json) : [];
+
+    cardEl.innerHTML = `
+      <div class="plan-card-header">
+        <div>
+          <p class="plan-card-name">${active.name}</p>
+          <p class="plan-card-meta">${durationStr}</p>
+        </div>
+        <button class="btn-text plan-card-edit" data-plan-id="${active.plan_id}">Edit</button>
+      </div>
+      ${objectives.length ? `<ul class="plan-objectives-list">${objectives.map(o => `<li>${o}</li>`).join('')}</ul>` : ''}
+      <p class="plan-exercises-preview">${exs.map(e => {
+        const t = (e.target_sets && e.target_reps) ? ` ${e.target_sets}×${e.target_reps}` : '';
+        return `${e.exercise}${t}`;
+      }).join(' · ')}</p>
+    `;
+    cardEl.classList.remove('hidden');
+    cardEl.querySelector('.plan-card-edit').addEventListener('click', () => openEditPlan(active.plan_id));
+  } else {
+    cardEl.innerHTML = '<p class="plan-card-empty">No active plan. Create one to guide your sessions.</p>';
+    cardEl.classList.remove('hidden');
+  }
+
+  pastEl.innerHTML = '';
+  if (past.length) {
+    const header = document.createElement('p');
+    header.className = 'settings-label';
+    header.style.marginTop = '24px';
+    header.textContent = 'Past Plans';
+    pastEl.appendChild(header);
+    past.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'past-plan-row';
+      row.innerHTML = `
+        <span class="past-plan-name">${p.name}</span>
+        <button class="btn-text plan-card-edit" data-plan-id="${p.plan_id}">View</button>
+      `;
+      row.querySelector('.plan-card-edit').addEventListener('click', () => openEditPlan(p.plan_id));
+      pastEl.appendChild(row);
+    });
+  }
+}
+
+// ── Plan editor ───────────────────────────────────────
+
+let _editingPlanId    = null; // null = new plan
+let _editingExercises = [];   // { exercise, type, targetSets, targetReps }
+
+function openNewPlan() {
+  _editingPlanId    = null;
+  _editingExercises = [];
+  document.getElementById('plan-editor-title').textContent    = 'New Plan';
+  document.getElementById('plan-name-input').value            = '';
+  document.getElementById('plan-duration-input').value        = '';
+  document.getElementById('plan-obj-1').value                 = '';
+  document.getElementById('plan-obj-2').value                 = '';
+  document.getElementById('plan-obj-3').value                 = '';
+  document.getElementById('plan-save-error').classList.add('hidden');
+  document.getElementById('btn-archive-plan').classList.add('hidden');
+  renderPlanEditorExercises();
+  showScreen('plan-editor');
+}
+
+function openEditPlan(planId) {
+  const plan = dbGetPlan(planId);
+  if (!plan) return;
+  const exs = dbGetPlanExercises(planId);
+  const objectives = plan.objectives_json ? JSON.parse(plan.objectives_json) : [];
+
+  _editingPlanId    = planId;
+  _editingExercises = exs.map(e => ({
+    exercise: e.exercise, type: getExerciseType(e.exercise),
+    targetSets: e.target_sets, targetReps: e.target_reps,
+  }));
+
+  document.getElementById('plan-editor-title').textContent = plan.name;
+  document.getElementById('plan-name-input').value         = plan.name;
+  document.getElementById('plan-duration-input').value     = plan.duration_weeks ?? '';
+  document.getElementById('plan-obj-1').value              = objectives[0] ?? '';
+  document.getElementById('plan-obj-2').value              = objectives[1] ?? '';
+  document.getElementById('plan-obj-3').value              = objectives[2] ?? '';
+  document.getElementById('plan-save-error').classList.add('hidden');
+  document.getElementById('btn-archive-plan').classList.toggle('hidden', plan.status !== 'active');
+  renderPlanEditorExercises();
+  showScreen('plan-editor');
+}
+
+function renderPlanEditorExercises() {
+  const container = document.getElementById('plan-exercises-list');
+  container.innerHTML = '';
+  _editingExercises.forEach((ex, i) => {
+    const row = document.createElement('div');
+    row.className = 'plan-exercise-row';
+    row.innerHTML = `
+      <span class="plan-exercise-row-name">${ex.exercise}</span>
+      <div class="plan-exercise-row-targets">
+        <input type="number" class="plan-target-input" placeholder="Sets" value="${ex.targetSets ?? ''}" min="1" max="20" inputmode="numeric" data-idx="${i}" data-field="sets">
+        <span class="plan-target-sep">×</span>
+        <input type="number" class="plan-target-input" placeholder="Reps" value="${ex.targetReps ?? ''}" min="1" max="100" inputmode="numeric" data-idx="${i}" data-field="reps">
+      </div>
+      <button class="plan-exercise-remove" data-idx="${i}">✕</button>
+    `;
+    row.querySelectorAll('.plan-target-input').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const idx = parseInt(inp.dataset.idx);
+        if (inp.dataset.field === 'sets') _editingExercises[idx].targetSets = parseInt(inp.value) || null;
+        else                              _editingExercises[idx].targetReps = parseInt(inp.value) || null;
+      });
+    });
+    row.querySelector('.plan-exercise-remove').addEventListener('click', () => {
+      _editingExercises.splice(i, 1);
+      renderPlanEditorExercises();
+    });
+    container.appendChild(row);
+  });
+}
+
+function addExerciseToPlan(name, type) {
+  if (_editingExercises.some(e => e.exercise === name)) return; // no duplicates
+  _editingExercises.push({ exercise: name, type: type ?? getExerciseType(name), targetSets: null, targetReps: null });
+  renderPlanEditorExercises();
+  showScreen('plan-editor');
+}
+
+function savePlan() {
+  const name     = document.getElementById('plan-name-input').value.trim();
+  const errorEl  = document.getElementById('plan-save-error');
+
+  if (!name || !_editingExercises.length) {
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  errorEl.classList.add('hidden');
+
+  const durationWeeks = parseInt(document.getElementById('plan-duration-input').value) || null;
+  const objectives    = [
+    document.getElementById('plan-obj-1').value.trim(),
+    document.getElementById('plan-obj-2').value.trim(),
+    document.getElementById('plan-obj-3').value.trim(),
+  ].filter(Boolean);
+  const objectivesJson = objectives.length ? JSON.stringify(objectives) : null;
+
+  if (_editingPlanId) {
+    dbUpdatePlan(_editingPlanId, name, durationWeeks, objectivesJson);
+    dbSavePlanExercises(_editingPlanId, _editingExercises);
+  } else {
+    // Archive any currently active plan before creating the new one
+    const existing = dbGetActivePlan();
+    if (existing) dbUpdatePlanStatus(existing.plan_id, 'archived');
+    const planId = dbCreatePlan(name, new Date().toISOString().slice(0, 10), durationWeeks, objectivesJson);
+    dbSavePlanExercises(planId, _editingExercises);
+  }
+
+  showScreen('plans');
+}
+
+function archiveCurrentPlan() {
+  if (!_editingPlanId) return;
+  if (!confirm('Archive this plan? It will no longer guide your sessions.')) return;
+  dbUpdatePlanStatus(_editingPlanId, 'archived');
+  showScreen('plans');
+}
+
 // ── AI Session Summary ────────────────────────────────
 
 // Builds a compact text description of the completed session for the prompt.
@@ -1165,6 +1455,26 @@ function _buildSessionContext(sessionId) {
       lines.push(`${ex}: best ${displayBest}${unit} × ${bestReps} reps, ${exSets.length} sets${histNote}`);
     }
   }
+  // Append plan context if this session was linked to a plan
+  const plan = dbGetSessionPlan(sessionId);
+  if (plan) {
+    const startDate   = new Date(plan.start_date);
+    const weekNumber  = Math.floor((Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+    const durationStr = plan.duration_weeks ? ` (${weekNumber} of ${plan.duration_weeks} weeks)` : '';
+    lines.push('');
+    lines.push(`Plan: ${plan.name}${durationStr}`);
+    const objectives = plan.objectives_json ? JSON.parse(plan.objectives_json) : [];
+    if (objectives.length) lines.push(`Objectives: ${objectives.join('; ')}`);
+    const planNames  = plan.exercises.map(e => e.exercise);
+    const loggedNames = [...new Set(dbGetAllSets(sessionId).map(s => s.exercise))];
+    const done    = planNames.filter(n => loggedNames.includes(n));
+    const skipped = planNames.filter(n => !loggedNames.includes(n));
+    const extra   = loggedNames.filter(n => !planNames.includes(n));
+    if (done.length)    lines.push(`Completed plan exercises: ${done.join(', ')}`);
+    if (skipped.length) lines.push(`Skipped: ${skipped.join(', ')}`);
+    if (extra.length)   lines.push(`Added outside plan: ${extra.join(', ')}`);
+  }
+
   return lines.join('\n');
 }
 
@@ -1414,6 +1724,21 @@ async function boot() {
         finishWorkout();
       }, AUTO_CLOSE_MS);
     }
+  });
+
+  // Plans
+  document.getElementById('btn-plans-idle').addEventListener('click', () => showScreen('plans'));
+  document.getElementById('btn-plans-back').addEventListener('click', () => showScreen('idle'));
+  document.getElementById('btn-new-plan').addEventListener('click', openNewPlan);
+  document.getElementById('btn-plan-editor-back').addEventListener('click', () => showScreen('plans'));
+  document.getElementById('btn-save-plan').addEventListener('click', savePlan);
+  document.getElementById('btn-archive-plan').addEventListener('click', archiveCurrentPlan);
+  document.getElementById('btn-plan-expiry-review').addEventListener('click', () => showScreen('plans'));
+  document.getElementById('btn-add-plan-exercise').addEventListener('click', () => {
+    _pickerContext = 'plan';
+    _refreshRecencyRanks();
+    _renderExerciseList();
+    document.getElementById('exercise-picker').classList.remove('hidden');
   });
 
   // Completed screen

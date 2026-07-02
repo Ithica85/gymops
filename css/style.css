@@ -603,6 +603,8 @@ body {
 }
 
 .exercise-list li {
+  display: flex;
+  align-items: center;
   padding: 14px 12px;
   border-radius: 10px;
   cursor: pointer;
@@ -1013,4 +1015,241 @@ body {
 
 .ai-summary-text.error {
   color: var(--danger);
+}
+
+/* ════════════════════════════════════
+   PLANS
+════════════════════════════════════ */
+.plan-expiry-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  gap: 8px;
+  width: 100%;
+}
+
+.plan-expiry-text {
+  font-size: 0.85rem;
+  color: var(--muted);
+  flex: 1;
+}
+
+.plan-expiry-action {
+  font-size: 0.85rem;
+  color: var(--accent);
+  white-space: nowrap;
+  padding: 0;
+}
+
+.completed-plan-adherence {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Plans screen */
+.plan-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plan-card-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.plan-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.plan-card-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.plan-objectives-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-objectives-list li {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding-left: 12px;
+  position: relative;
+}
+
+.plan-objectives-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.plan-exercises-preview {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.past-plan-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.past-plan-name {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Plan editor */
+.plan-text-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: var(--font);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.plan-text-input:focus {
+  border-color: var(--accent);
+}
+
+.plan-text-input::placeholder {
+  color: var(--muted);
+}
+
+.plan-duration-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-duration-input {
+  width: 90px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1rem;
+  outline: none;
+  -webkit-appearance: none;
+  text-align: center;
+}
+
+.plan-duration-input:focus {
+  border-color: var(--accent);
+}
+
+.plan-duration-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.plan-exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-exercise-row-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text);
+  min-width: 0;
+}
+
+.plan-exercise-row-targets {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plan-target-input {
+  width: 48px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.plan-target-input:focus {
+  border-color: var(--accent);
+}
+
+.plan-target-sep {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.plan-exercise-remove {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* Picker plan section */
+.picker-section-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 16px 6px;
+  list-style: none;
+  pointer-events: none;
+}
+
+.picker-divider {
+  list-style: none;
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+  pointer-events: none;
+}
+
+.picker-target-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-left: auto;
 }

@@ -25,9 +25,14 @@
         <span id="reminder-text" class="reminder-text">Time to train</span>
         <button class="btn-text reminder-dismiss" id="btn-reminder-dismiss">✕</button>
       </div>
+      <div id="plan-expiry-banner" class="plan-expiry-banner hidden">
+        <span id="plan-expiry-text" class="plan-expiry-text"></span>
+        <button class="btn-text plan-expiry-action" id="btn-plan-expiry-review">Review →</button>
+      </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
       <button class="btn-text settings-link" id="btn-settings">Settings</button>
+      <button class="btn-text settings-link" id="btn-plans-idle">Plans</button>
     </div>
   </div>
 
@@ -79,6 +84,70 @@
       </div>
       <p class="settings-version" id="settings-version"></p>
       <button class="settings-danger-link" id="btn-clear-data">Clear All Data</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PLANS
+  ════════════════════════════════════ -->
+  <div id="screen-plans" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button class="btn-text" id="btn-plans-back">← Back</button>
+        <span class="settings-title">Plans</span>
+      </div>
+      <div id="active-plan-card" class="plan-card hidden">
+        <!-- populated by JS -->
+      </div>
+      <button class="btn-primary btn-large" id="btn-new-plan">New Plan</button>
+      <div id="past-plans-list">
+        <!-- populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PLAN EDITOR
+  ════════════════════════════════════ -->
+  <div id="screen-plan-editor" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button class="btn-text" id="btn-plan-editor-back">← Back</button>
+        <span class="settings-title" id="plan-editor-title">New Plan</span>
+      </div>
+
+      <div class="settings-section">
+        <span class="settings-label">Plan Name</span>
+        <input type="text" id="plan-name-input" class="plan-text-input" placeholder="e.g. Strength Block Q3">
+      </div>
+
+      <div class="settings-section">
+        <span class="settings-label">Duration (optional)</span>
+        <div class="plan-duration-row">
+          <input type="number" id="plan-duration-input" class="plan-duration-input" placeholder="e.g. 8" min="1" max="52" inputmode="numeric">
+          <span class="plan-duration-label">weeks</span>
+        </div>
+        <p class="settings-hint">Set a duration to get a review reminder when it expires.</p>
+      </div>
+
+      <div class="settings-section">
+        <span class="settings-label">Objectives (optional)</span>
+        <input type="text" id="plan-obj-1" class="plan-text-input" placeholder="e.g. Hit 100kg bench press">
+        <input type="text" id="plan-obj-2" class="plan-text-input" placeholder="e.g. Train 3× per week">
+        <input type="text" id="plan-obj-3" class="plan-text-input" placeholder="e.g. Complete 16 sessions">
+      </div>
+
+      <div class="settings-section">
+        <span class="settings-label">Exercises</span>
+        <div id="plan-exercises-list">
+          <!-- populated by JS -->
+        </div>
+        <button class="btn-secondary" id="btn-add-plan-exercise">+ Add Exercise</button>
+      </div>
+
+      <p class="input-error hidden" id="plan-save-error">Enter a plan name and at least one exercise.</p>
+      <button class="btn-primary btn-large" id="btn-save-plan">Save Plan</button>
+      <button class="settings-danger-link hidden" id="btn-archive-plan">Archive Plan</button>
     </div>
   </div>
 
@@ -196,6 +265,7 @@
     <div class="completed-container">
       <p class="completed-label">Workout Complete</p>
       <p class="completed-summary" id="session-summary">5 sets logged</p>
+      <p class="completed-plan-adherence hidden" id="plan-adherence"></p>
       <div class="completed-actions">
         <button class="btn-secondary hidden" id="btn-resume">Resume Last Workout</button>
         <button class="btn-secondary" id="btn-export">Export CSV</button>
