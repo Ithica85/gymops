@@ -31,8 +31,9 @@
       </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
-      <button class="btn-text settings-link" id="btn-settings">Settings</button>
+      <button class="btn-text settings-link" id="btn-history-idle">History</button>
       <button class="btn-text settings-link" id="btn-plans-idle">Plans</button>
+      <button class="btn-text settings-link" id="btn-settings">Settings</button>
     </div>
   </div>
 
@@ -148,6 +149,60 @@
       <p class="input-error hidden" id="plan-save-error">Enter a plan name and at least one exercise.</p>
       <button class="btn-primary btn-large" id="btn-save-plan">Save Plan</button>
       <button class="settings-danger-link hidden" id="btn-archive-plan">Archive Plan</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       EXERCISE HISTORY (list)
+  ════════════════════════════════════ -->
+  <div id="screen-history" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button class="btn-text" id="btn-history-back">← Back</button>
+        <span class="settings-title">History</span>
+      </div>
+      <div id="history-list">
+        <!-- populated by JS -->
+      </div>
+      <p class="history-empty hidden" id="history-empty">No completed sessions yet — finish a workout and your exercise history will appear here.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       EXERCISE HISTORY (detail + chart)
+  ════════════════════════════════════ -->
+  <div id="screen-exercise-history" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <button class="btn-text" id="btn-exercise-history-back">← Back</button>
+        <span class="settings-title" id="exercise-history-title">Exercise</span>
+      </div>
+      <div class="history-stats-row">
+        <div class="history-stat">
+          <span class="history-stat-label">Best</span>
+          <span class="history-stat-value" id="hist-stat-best">—</span>
+        </div>
+        <div class="history-stat">
+          <span class="history-stat-label">Last</span>
+          <span class="history-stat-value" id="hist-stat-last">—</span>
+        </div>
+        <div class="history-stat">
+          <span class="history-stat-label">Change</span>
+          <span class="history-stat-value" id="hist-stat-change">—</span>
+        </div>
+      </div>
+      <div class="history-chart-card">
+        <div id="history-tooltip" class="history-tooltip hidden">
+          <span class="history-tooltip-value" id="history-tooltip-value"></span>
+          <span class="history-tooltip-date" id="history-tooltip-date"></span>
+        </div>
+        <div id="history-chart"></div>
+        <p class="history-chart-note hidden" id="history-chart-note"></p>
+      </div>
+      <p class="sets-log-title history-sessions-title">Sessions</p>
+      <div id="history-sessions">
+        <!-- populated by JS -->
+      </div>
     </div>
   </div>
 
@@ -385,6 +440,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 3 — AI &amp; Plans · July 2026</p>
           <ul class="release-notes-list">
+            <li>Exercise history — tap History on the home screen to see a progression chart, stats, and session log for any exercise</li>
             <li>Workout plans — create named training blocks with exercises, target sets×reps, duration, and objectives</li>
             <li>Active plan guides your session: exercise picker shows plan exercises first with targets; Up Next follows plan order</li>
             <li>Plan adherence shown on the completed screen; expiry nudge when duration is up</li>

@@ -474,6 +474,45 @@ function dbGetLastSessionExerciseOrder() {
   `).map(r => r.exercise);
 }
 
+// ── Exercise history queries ─────────────────────────
+
+// Returns exercises that appear in at least one completed session, with
+// session count and last-used date, most recently used first.
+// Powers the exercise list on the History screen.
+function dbGetExercisesWithHistory() {
+  return _all(`
+    SELECT st.exercise,
+           COUNT(DISTINCT s.session_id) AS session_count,
+           MAX(s.start_time)            AS last_used
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    WHERE s.status = 'completed'
+    GROUP BY st.exercise
+    ORDER BY last_used DESC
+  `);
+}
+
+// Per-session history for one exercise across completed sessions, oldest first.
+// best_weight_kg is kg-normalised for cross-unit comparison. reps_at_best is a
+// bare column: SQLite resolves it from the same row that produced the MAX, so it
+// is the rep count of the heaviest set. Sessions with only timed sets have null
+// best_weight_kg and carry total_mins / total_cals instead.
+function dbGetExerciseSessionHistory(exercise) {
+  return _all(`
+    SELECT s.session_id, s.start_time,
+           MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_weight_kg,
+           st.reps               AS reps_at_best,
+           COUNT(*)              AS set_count,
+           SUM(st.duration_mins) AS total_mins,
+           SUM(st.calories)      AS total_cals
+    FROM sessions s
+    JOIN sets st ON st.session_id = s.session_id
+    WHERE s.status = 'completed' AND st.exercise = ?
+    GROUP BY s.session_id
+    ORDER BY s.session_id ASC
+  `, [exercise]);
+}
+
 // ── Session reminder queries ─────────────────────────
 
 // Returns ISO start_time strings for the last N completed sessions, newest first.

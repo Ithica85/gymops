@@ -1255,3 +1255,161 @@ body {
   color: var(--muted);
   margin-left: auto;
 }
+
+/* ════════════════════════════════════
+   EXERCISE HISTORY */
+
+/* — Exercise list — */
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.history-row:active { background: var(--surface2); }
+
+.history-row-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.95rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-row-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.history-row-arrow {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.history-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 40px;
+  padding: 0 16px;
+}
+
+/* — Stat tiles — */
+.history-stats-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.history-stat {
+  flex: 1;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.history-stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.history-stat-value.positive { color: var(--accent); }
+.history-stat-value.negative { color: var(--danger); }
+
+/* — Chart card — */
+.history-chart-card {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 10px 8px 6px;
+  margin-bottom: 16px;
+}
+
+.history-chart-card svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Vertical drags still scroll the page; horizontal drags scrub the chart */
+  touch-action: pan-y;
+}
+
+.history-chart-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 6px 12px 10px;
+}
+
+.history-tooltip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-50%);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  pointer-events: none;
+  z-index: 2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.history-tooltip-value {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.history-tooltip-date {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* — Session breakdown (the chart's table view) — */
+.history-sessions-title { margin-bottom: 8px; }
+
+.history-session-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--surface2);
+  font-size: 0.9rem;
+}
+
+.history-session-date {
+  color: var(--muted);
+  font-size: 0.75rem;
+  width: 64px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-session-main { flex: 1; }
+
+.history-session-sets {
+  color: var(--muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
