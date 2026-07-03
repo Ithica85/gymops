@@ -39,7 +39,8 @@ function _createSchema() {
       end_time     TEXT,
       status       TEXT NOT NULL DEFAULT 'active',
       notes        TEXT,
-      default_unit TEXT
+      default_unit TEXT,
+      plan_id      INTEGER
     );
     CREATE TABLE IF NOT EXISTS sets (
       set_id        INTEGER PRIMARY KEY AUTOINCREMENT,

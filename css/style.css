@@ -1413,3 +1413,41 @@ body {
   font-size: 0.75rem;
   flex-shrink: 0;
 }
+
+/* ════════════════════════════════════
+   QUICK LOG (one-tap set) */
+.quick-log-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.quick-log-btn:active { background: var(--border); }
+
+.quick-log-label {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-log-value {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quick-log-arrow {
+  color: var(--accent);
+  font-weight: 700;
+}

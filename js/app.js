@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v3.1';
+const APP_VERSION = 'v3.2';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -643,6 +643,7 @@ function renderActive() {
   updateInputFields();
   renderLastSession();
   renderRecentSets();
+  renderQuickLog();
   renderProgressionSignal(null); // clear any stale signal on exercise change / undo
   renderUpNext();
   // Show Rest button only after at least one set has been logged
@@ -980,14 +981,85 @@ function logSet() {
     }
   }
 
+  _afterSetLogged();
+}
+
+// Shared post-insert flow for logSet and quickLogSet: progression signal,
+// set number advance, re-render, log scroll. focus=false skips refocusing the
+// weight input — quick-log must not pop the mobile keyboard, since avoiding
+// typing is its entire purpose.
+function _afterSetLogged(focus = true) {
   const signal = computeProgressionSignal(state.exercise, state.sessionId);
   state.setNumber += 1;
   clearInputs();
   renderActive();
   renderProgressionSignal(signal);
   document.querySelector('.sets-log').scrollTop = 0; // Scroll log back to top to show latest set
-  focusInput();
+  if (focus) focusInput();
   resetInactivityTimer();
+}
+
+// ── Quick log (one-tap set) ───────────────────────────
+
+// Returns the reference set the quick-log button would insert, or null.
+// Preferred: the last completed session's set matching the current set number
+// ("Same as last time" — the same reference the ghost-text placeholders show).
+// Fallback: the most recent set logged for this exercise in the current session
+// ("Repeat last set" — covers doing more sets than last session, and first-ever
+// exercises from set 2 onward).
+function computeQuickLogRef() {
+  const lastSets = dbGetLastSessionSetsForExercise(state.exercise);
+  const match    = lastSets.find(s => s.set_number === state.setNumber);
+  if (match) return { set: match, label: 'Same as last time' };
+  const current = dbGetLastSetForExercise(state.sessionId, state.exercise);
+  if (current) return { set: current, label: 'Repeat last set' };
+  return null;
+}
+
+// Updates the quick-log button's visibility and label for the current
+// exercise/set number. Weight is shown converted to the current display unit.
+function renderQuickLog() {
+  const btn = document.getElementById('btn-quick-log');
+  const ref = computeQuickLogRef();
+  if (!ref) { btn.classList.add('hidden'); return; }
+
+  const s = ref.set;
+  let valueText;
+  if (s.duration_mins != null) {
+    valueText = s.calories != null
+      ? `${s.duration_mins} min · ${s.calories} cal`
+      : `${s.duration_mins} min`;
+  } else {
+    const unit = getWeightUnit();
+    valueText = `${convertWeight(s.weight, s.unit || 'lbs', unit)} ${unit} × ${s.reps}`;
+  }
+  document.getElementById('quick-log-label').textContent = ref.label;
+  document.getElementById('quick-log-value').textContent = valueText;
+  btn.classList.remove('hidden');
+}
+
+// Logs the reference set in one tap. Weight is stored converted to the current
+// unit (matching what the button displayed), so mixed-unit history stays exact.
+function quickLogSet() {
+  const ref = computeQuickLogRef();
+  if (!ref) return;
+
+  const s = ref.set;
+  clearError();
+  try {
+    if (s.duration_mins != null) {
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber,
+        null, null, s.duration_mins, s.calories ?? null, getWeightUnit());
+    } else {
+      const unit = getWeightUnit();
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber,
+        convertWeight(s.weight, s.unit || 'lbs', unit), s.reps, null, null, unit);
+    }
+  } catch (err) {
+    showError('DB error: ' + err.message);
+    return;
+  }
+  _afterSetLogged(false); // no refocus — keep the keyboard down
 }
 
 // Deletes the most recently logged set for the session.
@@ -1840,6 +1912,7 @@ async function boot() {
     if (name) switchExercise(name);
   });
   document.getElementById('btn-log-set').addEventListener('click', logSet);
+  document.getElementById('btn-quick-log').addEventListener('click', quickLogSet);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-rest').addEventListener('click', startRestTimer);
   document.getElementById('btn-rest-skip').addEventListener('click', stopRestTimer);
