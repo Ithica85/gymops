@@ -61,7 +61,8 @@ function _createSchema() {
       start_date     TEXT NOT NULL,
       duration_weeks INTEGER,
       objectives_json TEXT,
-      status         TEXT NOT NULL DEFAULT 'active'
+      status         TEXT NOT NULL DEFAULT 'active',
+      target_sessions_per_week INTEGER
     );
     CREATE TABLE IF NOT EXISTS plan_exercises (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +150,15 @@ function _migrate() {
     `);
     _persist();
   }
+  // Phase 3 nudges: weekly session target on plans. Checked AFTER the plans
+  // table exists (created above for pre-Phase-3 DBs; those get the column via
+  // CREATE, so this ALTER only fires for DBs created between v3.0 and v3.5).
+  const planCols = _all('PRAGMA table_info(plans)').map(c => c.name);
+  if (!planCols.includes('target_sessions_per_week')) {
+    _db.run('ALTER TABLE plans ADD COLUMN target_sessions_per_week INTEGER');
+    _persist();
+  }
+
   if (!tables.includes('plan_exercises')) {
     _db.run(`
       CREATE TABLE plan_exercises (
@@ -569,20 +579,20 @@ function dbHasSessionToday() {
 
 // ── Plans ─────────────────────────────────────────────
 
-function dbCreatePlan(name, startDate, durationWeeks, objectivesJson) {
+function dbCreatePlan(name, startDate, durationWeeks, objectivesJson, targetSessionsPerWeek) {
   _db.run(
-    'INSERT INTO plans (name, start_date, duration_weeks, objectives_json, status) VALUES (?, ?, ?, ?, ?)',
-    [name, startDate, durationWeeks ?? null, objectivesJson ?? null, 'active']
+    'INSERT INTO plans (name, start_date, duration_weeks, objectives_json, status, target_sessions_per_week) VALUES (?, ?, ?, ?, ?, ?)',
+    [name, startDate, durationWeeks ?? null, objectivesJson ?? null, 'active', targetSessionsPerWeek ?? null]
   );
   const row = _one('SELECT last_insert_rowid() AS id');
   _persist();
   return row.id;
 }
 
-function dbUpdatePlan(planId, name, durationWeeks, objectivesJson) {
+function dbUpdatePlan(planId, name, durationWeeks, objectivesJson, targetSessionsPerWeek) {
   _db.run(
-    'UPDATE plans SET name = ?, duration_weeks = ?, objectives_json = ? WHERE plan_id = ?',
-    [name, durationWeeks ?? null, objectivesJson ?? null, planId]
+    'UPDATE plans SET name = ?, duration_weeks = ?, objectives_json = ?, target_sessions_per_week = ? WHERE plan_id = ?',
+    [name, durationWeeks ?? null, objectivesJson ?? null, targetSessionsPerWeek ?? null, planId]
   );
   _persist();
 }

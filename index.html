@@ -39,6 +39,10 @@
         <span id="plan-expiry-text" class="plan-expiry-text"></span>
         <button class="btn-text plan-expiry-action" id="btn-plan-expiry-review">Review →</button>
       </div>
+      <div id="plan-nudge-banner" class="plan-nudge-banner hidden">
+        <span id="plan-nudge-text" class="plan-nudge-text"></span>
+        <button class="btn-text reminder-dismiss" id="btn-plan-nudge-dismiss">✕</button>
+      </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
       <div class="idle-links">
@@ -141,6 +145,15 @@
           <span class="plan-duration-label">weeks</span>
         </div>
         <p class="settings-hint">Set a duration to get a review reminder when it expires.</p>
+      </div>
+
+      <div class="settings-section">
+        <span class="settings-label">Sessions per week (optional)</span>
+        <div class="plan-duration-row">
+          <input type="number" id="plan-target-sessions-input" class="plan-duration-input" placeholder="e.g. 3" min="1" max="7" inputmode="numeric">
+          <span class="plan-duration-label">per week</span>
+        </div>
+        <p class="settings-hint">Set a weekly target to get a nudge when you're falling behind.</p>
       </div>
 
       <div class="settings-section">
@@ -458,6 +471,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 3 — AI &amp; Plans · July 2026</p>
           <ul class="release-notes-list">
+            <li>Plan nudges — set a weekly session target on your plan and get a nudge when the week is slipping; plans without a target nudge after a few idle days</li>
             <li>PR celebration — beating your all-time best on any exercise now gets the moment it deserves</li>
             <li>Home screen dashboard — week view of training days, week streak, and a hook from your last session (beat your best!)</li>
             <li>Quick log — one tap logs the same weight and reps as last session; repeats your last set when you go beyond it</li>

@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v3.4';
+const APP_VERSION = 'v3.5';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -103,6 +103,10 @@ function dismissReminderBanner() {
 function checkSessionReminder() {
   hideReminderBanner();
   if (!getReminderEnabled()) return;
+
+  // Plan banners outrank the generic reminder — never stack banners
+  if (!document.getElementById('plan-expiry-banner').classList.contains('hidden') ||
+      !document.getElementById('plan-nudge-banner').classList.contains('hidden')) return;
 
   const startTimes = dbGetRecentSessionStartTimes(10);
   if (startTimes.length < REMINDER_MIN_SESSIONS) return;
@@ -603,7 +607,9 @@ function updateInputFields() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
-  if (name === 'idle') { renderIdleDashboard(); checkSessionReminder(); checkPlanExpiry(); }
+  // Banner hierarchy on idle: expiry > plan nudge > generic reminder —
+  // checkPlanNudge defers to a visible expiry banner, checkSessionReminder to both
+  if (name === 'idle') { renderIdleDashboard(); checkPlanExpiry(); checkPlanNudge(); checkSessionReminder(); }
   if (name === 'plans') renderPlansScreen();
   if (name === 'history') renderHistoryScreen();
 }
@@ -1388,6 +1394,77 @@ function checkPlanExpiry() {
   banner.classList.remove('hidden');
 }
 
+// ── Plan nudges ───────────────────────────────────────
+
+const PLAN_NUDGE_DISMISSED_AT = 'gymops_plan_nudge_dismissed_at';
+const PLAN_NUDGE_COOLDOWN_MS  = 24 * 60 * 60 * 1000; // matches F-04 reminder cooldown
+
+function hidePlanNudge() {
+  document.getElementById('plan-nudge-banner').classList.add('hidden');
+}
+
+function dismissPlanNudge() {
+  hidePlanNudge();
+  localStorage.setItem(PLAN_NUDGE_DISMISSED_AT, Date.now().toString());
+}
+
+// Returns the nudge message for the active plan, or null. Deterministic rules,
+// priority order:
+//   1. Week pace (needs target_sessions_per_week): fires when the days left in
+//      the week get tight for the sessions still needed — remaining sessions
+//      ≥ days left including today.
+//   2. Gap (any active plan): SIGNAL_GAP_DAYS+ days since the last session.
+// Never fires if there's a completed session today.
+function computePlanNudge() {
+  const plan = dbGetActivePlan();
+  if (!plan) return null;
+  if (dbHasSessionToday()) return null;
+
+  // Expired plans are the expiry banner's job, not a nudge
+  if (plan.duration_weeks) {
+    const endMs = new Date(plan.start_date).getTime() + plan.duration_weeks * 7 * 86400000;
+    if (Date.now() >= endMs) return null;
+  }
+
+  // Rule 1 — week pace
+  if (plan.target_sessions_per_week) {
+    const thisWeek  = _weekStart(new Date());
+    const done      = dbGetCompletedSessionsSince(thisWeek.toISOString()).length;
+    const remaining = plan.target_sessions_per_week - done;
+    const daysLeft  = 7 - ((new Date().getDay() + 6) % 7); // incl. today (Mon=7 … Sun=1)
+    if (remaining > 0 && remaining >= daysLeft - 1) {
+      return `${done} of ${plan.target_sessions_per_week} sessions this week — ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left`;
+    }
+  }
+
+  // Rule 2 — idle gap while a plan is active
+  const last = dbGetLastCompletedSession();
+  if (last) {
+    const daysSince = Math.floor((Date.now() - new Date(last.start_time).getTime()) / 86400000);
+    if (daysSince >= SIGNAL_GAP_DAYS) {
+      return `No training in ${daysSince} days — ${plan.name} is waiting`;
+    }
+  }
+
+  return null;
+}
+
+// Evaluates and shows the plan nudge banner. Called on every idle screen visit,
+// after checkPlanExpiry() — the expiry banner outranks the nudge.
+function checkPlanNudge() {
+  hidePlanNudge();
+  const expiryVisible = !document.getElementById('plan-expiry-banner').classList.contains('hidden');
+  if (expiryVisible) return;
+
+  const lastDismissed = parseInt(localStorage.getItem(PLAN_NUDGE_DISMISSED_AT) ?? '0');
+  if (Date.now() - lastDismissed < PLAN_NUDGE_COOLDOWN_MS) return;
+
+  const message = computePlanNudge();
+  if (!message) return;
+  document.getElementById('plan-nudge-text').textContent = message; // plan names are user text
+  document.getElementById('plan-nudge-banner').classList.remove('hidden');
+}
+
 // ── Plans screen ──────────────────────────────────────
 
 function renderPlansScreen() {
@@ -1401,9 +1478,10 @@ function renderPlansScreen() {
     const exs        = dbGetPlanExercises(active.plan_id);
     const startDate  = new Date(active.start_date);
     const weekNum    = Math.floor((Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-    const durationStr = active.duration_weeks
+    let durationStr = active.duration_weeks
       ? `Week ${weekNum} of ${active.duration_weeks}`
       : `Started ${startDate.toLocaleDateString()}`;
+    if (active.target_sessions_per_week) durationStr += ` · ${active.target_sessions_per_week}×/week`;
     const objectives = active.objectives_json ? JSON.parse(active.objectives_json) : [];
 
     cardEl.innerHTML = `
@@ -1458,6 +1536,7 @@ function openNewPlan() {
   document.getElementById('plan-editor-title').textContent    = 'New Plan';
   document.getElementById('plan-name-input').value            = '';
   document.getElementById('plan-duration-input').value        = '';
+  document.getElementById('plan-target-sessions-input').value = '';
   document.getElementById('plan-obj-1').value                 = '';
   document.getElementById('plan-obj-2').value                 = '';
   document.getElementById('plan-obj-3').value                 = '';
@@ -1482,6 +1561,7 @@ function openEditPlan(planId) {
   document.getElementById('plan-editor-title').textContent = plan.name;
   document.getElementById('plan-name-input').value         = plan.name;
   document.getElementById('plan-duration-input').value     = plan.duration_weeks ?? '';
+  document.getElementById('plan-target-sessions-input').value = plan.target_sessions_per_week ?? '';
   document.getElementById('plan-obj-1').value              = objectives[0] ?? '';
   document.getElementById('plan-obj-2').value              = objectives[1] ?? '';
   document.getElementById('plan-obj-3').value              = objectives[2] ?? '';
@@ -1538,7 +1618,8 @@ function savePlan() {
   }
   errorEl.classList.add('hidden');
 
-  const durationWeeks = parseInt(document.getElementById('plan-duration-input').value) || null;
+  const durationWeeks  = parseInt(document.getElementById('plan-duration-input').value) || null;
+  const targetSessions = parseInt(document.getElementById('plan-target-sessions-input').value) || null;
   const objectives    = [
     document.getElementById('plan-obj-1').value.trim(),
     document.getElementById('plan-obj-2').value.trim(),
@@ -1547,13 +1628,13 @@ function savePlan() {
   const objectivesJson = objectives.length ? JSON.stringify(objectives) : null;
 
   if (_editingPlanId) {
-    dbUpdatePlan(_editingPlanId, name, durationWeeks, objectivesJson);
+    dbUpdatePlan(_editingPlanId, name, durationWeeks, objectivesJson, targetSessions);
     dbSavePlanExercises(_editingPlanId, _editingExercises);
   } else {
     // Archive any currently active plan before creating the new one
     const existing = dbGetActivePlan();
     if (existing) dbUpdatePlanStatus(existing.plan_id, 'archived');
-    const planId = dbCreatePlan(name, new Date().toISOString().slice(0, 10), durationWeeks, objectivesJson);
+    const planId = dbCreatePlan(name, new Date().toISOString().slice(0, 10), durationWeeks, objectivesJson, targetSessions);
     dbSavePlanExercises(planId, _editingExercises);
   }
 
@@ -2216,6 +2297,9 @@ async function boot() {
 
   // Reminder banner
   document.getElementById('btn-reminder-dismiss').addEventListener('click', dismissReminderBanner);
+
+  // Plan nudge banner
+  document.getElementById('btn-plan-nudge-dismiss').addEventListener('click', dismissPlanNudge);
 
   // Settings
   document.getElementById('settings-version').textContent = 'GymOps ' + APP_VERSION;

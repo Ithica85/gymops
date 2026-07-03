@@ -1619,3 +1619,24 @@ body {
   .pr-confetti-piece { display: none; }
   .pr-card { animation: none; }
 }
+
+/* ════════════════════════════════════
+   PLAN NUDGE BANNER */
+.plan-nudge-banner {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-nudge-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
