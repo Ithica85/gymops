@@ -475,6 +475,21 @@ function dbGetLastSessionExerciseOrder() {
   `).map(r => r.exercise);
 }
 
+// ── PR detection query ───────────────────────────────
+
+// All-time best kg-normalised weight for an exercise across COMPLETED sessions,
+// or null if the exercise has never been logged in one. The current session is
+// checked separately (dbGetSessionBestForExercise) so a PR beaten twice in one
+// session celebrates both times.
+function dbGetAllTimeBestForExercise(exercise) {
+  return _one(`
+    SELECT MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_kg
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    WHERE s.status = 'completed' AND st.exercise = ? AND st.weight IS NOT NULL
+  `, [exercise])?.best_kg ?? null;
+}
+
 // ── Idle dashboard queries ───────────────────────────
 
 // Returns the most recent completed session, or null. Used by the idle screen

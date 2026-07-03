@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v3.3';
+const APP_VERSION = 'v3.4';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -971,12 +971,25 @@ function logSet() {
       return;
     }
 
+    // PR check must run BEFORE the insert so the new set isn't its own baseline
+    const unit     = getWeightUnit();
+    const weightKg = unit === 'lbs' ? weight / 2.2046 : weight;
+    const isPR     = isAllTimePR(state.exercise, state.sessionId, weightKg);
+
     clearError();
     try {
-      dbInsertSet(state.sessionId, state.exercise, state.setNumber, weight, reps, null, null, getWeightUnit());
+      dbInsertSet(state.sessionId, state.exercise, state.setNumber, weight, reps, null, null, unit);
     } catch (err) {
       showError('DB error: ' + err.message);
       focusInput();
+      return;
+    }
+
+    if (isPR) {
+      _afterSetLogged();
+      // Override the rule-engine signal — an all-time PR outranks everything
+      renderProgressionSignal(`All-time PR — ${weight} ${unit}`);
+      celebratePR(weight, unit, state.exercise);
       return;
     }
   }
@@ -997,6 +1010,79 @@ function _afterSetLogged(focus = true) {
   document.querySelector('.sets-log').scrollTop = 0; // Scroll log back to top to show latest set
   if (focus) focusInput();
   resetInactivityTimer();
+}
+
+// ── PR celebration ────────────────────────────────────
+
+const PR_DISMISS_MS = 2600; // overlay auto-dismisses; tap dismisses sooner
+
+let _prDismissTimer = null;
+
+// Short rising three-note fanfare (C5–E5–G5) via Web Audio — same pattern as
+// the rest timer's beepAlert, so sound is already an established app behaviour.
+function _prFanfare() {
+  try {
+    const ctx  = new AudioContext();
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    [[523.25, 0], [659.25, 0.12], [783.99, 0.24]].forEach(([freq, offset]) => {
+      const osc = ctx.createOscillator();
+      osc.connect(gain);
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.25);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 0.25);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+
+// Returns true when a just-entered weight is an all-time PR: beats the best of
+// every completed session AND anything already logged this session (so a PR
+// improved twice in one session celebrates both times). Requires prior
+// completed-session history — a first-ever exercise has nothing to beat.
+// Call BEFORE inserting the set, so the new set isn't compared against itself.
+function isAllTimePR(exercise, sessionId, weightKg) {
+  const allTimeKg = dbGetAllTimeBestForExercise(exercise);
+  if (allTimeKg == null) return false;
+  if (weightKg <= allTimeKg + WEIGHT_EPSILON_KG) return false;
+  const sessionBestKg = dbGetSessionBestForExercise(sessionId, exercise);
+  return sessionBestKg == null || weightKg > sessionBestKg + WEIGHT_EPSILON_KG;
+}
+
+// Shows the PR overlay: card pop, confetti burst, haptic, fanfare.
+// Auto-dismisses; never blocks logging. Exercise names are user text — the
+// detail line is set via textContent.
+function celebratePR(displayWeight, unit, exercise) {
+  document.getElementById('pr-detail').textContent = `${displayWeight} ${unit} · ${exercise}`;
+
+  const confetti = document.getElementById('pr-confetti');
+  confetti.innerHTML = '';
+  const colors = ['#c8ff57', '#f0f0f0', '#8fb63e'];
+  for (let i = 0; i < 24; i++) {
+    const piece = document.createElement('span');
+    piece.className = 'pr-confetti-piece';
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 90 + Math.random() * 140;
+    piece.style.setProperty('--dx', `${Math.round(Math.cos(angle) * dist)}px`);
+    piece.style.setProperty('--dy', `${Math.round(Math.sin(angle) * dist) - 40}px`);
+    piece.style.setProperty('--rot', `${Math.round(Math.random() * 540 - 270)}deg`);
+    piece.style.animationDelay = `${Math.round(Math.random() * 120)}ms`;
+    piece.style.background = colors[i % colors.length];
+    confetti.appendChild(piece);
+  }
+
+  document.getElementById('pr-celebration').classList.remove('hidden');
+  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+  _prFanfare();
+  clearTimeout(_prDismissTimer);
+  _prDismissTimer = setTimeout(dismissPRCelebration, PR_DISMISS_MS);
+}
+
+function dismissPRCelebration() {
+  clearTimeout(_prDismissTimer);
+  _prDismissTimer = null;
+  document.getElementById('pr-celebration').classList.add('hidden');
 }
 
 // ── Quick log (one-tap set) ───────────────────────────
@@ -2052,6 +2138,7 @@ async function boot() {
   });
   document.getElementById('btn-log-set').addEventListener('click', logSet);
   document.getElementById('btn-quick-log').addEventListener('click', quickLogSet);
+  document.getElementById('pr-celebration').addEventListener('click', dismissPRCelebration);
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-rest').addEventListener('click', startRestTimer);
   document.getElementById('btn-rest-skip').addEventListener('click', stopRestTimer);

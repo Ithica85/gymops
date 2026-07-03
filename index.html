@@ -458,6 +458,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 3 — AI &amp; Plans · July 2026</p>
           <ul class="release-notes-list">
+            <li>PR celebration — beating your all-time best on any exercise now gets the moment it deserves</li>
             <li>Home screen dashboard — week view of training days, week streak, and a hook from your last session (beat your best!)</li>
             <li>Quick log — one tap logs the same weight and reps as last session; repeats your last set when you go beyond it</li>
             <li>Exercise history — tap History on the home screen to see a progression chart, stats, and session log for any exercise</li>
@@ -570,6 +571,18 @@
         <button class="btn-danger btn-large" id="btn-confirm-clear">Delete</button>
         <button class="btn-secondary" id="btn-cancel-clear">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       PR CELEBRATION (overlay)
+  ════════════════════════════════════ -->
+  <div id="pr-celebration" class="pr-celebration hidden" role="status">
+    <div class="pr-confetti" id="pr-confetti"></div>
+    <div class="pr-card">
+      <span class="pr-trophy">🏆</span>
+      <span class="pr-title">All-Time Best</span>
+      <span class="pr-detail" id="pr-detail"></span>
     </div>
   </div>
 

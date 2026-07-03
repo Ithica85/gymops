@@ -1540,3 +1540,82 @@ body {
   color: var(--accent);
   font-weight: 700;
 }
+
+/* ════════════════════════════════════
+   PR CELEBRATION */
+.pr-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 13, 13, 0.6);
+}
+
+.pr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 26px 36px;
+  animation: pr-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.pr-trophy {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.pr-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.pr-detail {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+}
+
+@keyframes pr-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  60%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Confetti burst — pieces fly out from centre on per-piece --dx/--dy/--rot */
+.pr-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pr-confetti-piece {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0;
+  animation: pr-confetti 0.9s ease-out both;
+}
+
+@keyframes pr-confetti {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-confetti-piece { display: none; }
+  .pr-card { animation: none; }
+}
