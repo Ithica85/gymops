@@ -80,7 +80,102 @@ body {
 .idle-subtitle {
   font-size: 1rem;
   color: var(--muted);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* Hook variant — carries last-session context, so it reads as content, not chrome */
+.idle-subtitle--hook {
+  color: var(--text);
+  max-width: 300px;
+  line-height: 1.45;
+}
+
+/* — Week strip — */
+.week-strip {
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.week-strip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.week-strip-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.week-strip-streak {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.week-strip-days {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.week-day-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+
+.week-day--trained .week-day-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.week-day--today .week-day-dot { border-color: var(--text); }
+
+.week-day-letter {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.week-day--today .week-day-letter {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.idle-plan-line {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* — Link row — */
+.idle-links {
+  display: flex;
+  gap: 28px;
+  margin-top: 12px;
+}
+
+/* Compound selector: must outrank .btn-text's accent color, which appears later */
+.btn-text.idle-link {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 /* ═══════════════════════════════════
@@ -692,12 +787,6 @@ body {
 /* ═══════════════════════════════════
    SETTINGS
 ════════════════════════════════════ */
-.settings-link {
-  color: var(--muted);
-  font-size: 0.85rem;
-  margin-top: 8px;
-}
-
 .settings-container {
   flex: 1;
   display: flex;

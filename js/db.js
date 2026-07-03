@@ -475,6 +475,23 @@ function dbGetLastSessionExerciseOrder() {
   `).map(r => r.exercise);
 }
 
+// ── Idle dashboard queries ───────────────────────────
+
+// Returns the most recent completed session, or null. Used by the idle screen
+// hook line ("Chest Press hit 65 kg on Tuesday — beat it?").
+function dbGetLastCompletedSession() {
+  return _one("SELECT * FROM sessions WHERE status = 'completed' ORDER BY session_id DESC LIMIT 1");
+}
+
+// Returns start_time strings of completed sessions on or after the given ISO
+// timestamp, ascending. Powers the week strip and streak on the idle screen.
+function dbGetCompletedSessionsSince(sinceISO) {
+  return _all(
+    "SELECT start_time FROM sessions WHERE status = 'completed' AND start_time >= ? ORDER BY start_time ASC",
+    [sinceISO]
+  ).map(r => r.start_time);
+}
+
 // ── Exercise history queries ─────────────────────────
 
 // Returns exercises that appear in at least one completed session, with

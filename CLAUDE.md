@@ -18,7 +18,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## File Map
 
 - `index.html` — Single-page structure with all screens (idle, active, completed, settings, plans, plan-editor, history, exercise-history), exercise picker modal, session-signal modal, AI summary modal, plan expiry banner, and up-next hint.
-- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 2.1 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04). Phase 3 additions: `ANTHROPIC_KEY` / `getAnthropicKey()` / `setAnthropicKey()`; `_buildSessionContext()` / `generateAISummary()` / `hideAISummaryModal()` (AI summary); `renderPlanAdherence()` / `checkPlanExpiry()` / `renderPlansScreen()` / `openNewPlan()` / `openEditPlan()` / `renderPlanEditorExercises()` / `addExerciseToPlan()` / `savePlan()` / `archiveCurrentPlan()` (plans); `_pickerContext` for dual-mode picker (session vs plan); `renderHistoryScreen()` / `openExerciseHistory()` / `renderHistoryChart()` (inline SVG line chart, no libraries) / `_histPointerMove()` (crosshair + tooltip) / `renderHistorySessions()` / `fmtHistDate()` (exercise history); `computeQuickLogRef()` / `renderQuickLog()` / `quickLogSet()` / `_afterSetLogged()` (quick-log button).
+- `js/app.js` — All UI logic, state management, exercise list (`EXERCISES` array of `{ name, type }` objects where `type` is `"reps"` or `"timed"`), screen routing, exercise picker, CSV export, toast notifications. Helper `getExerciseType(name)` looks up type by name. Phase 2 additions: `convertWeight()` for lbs↔kg conversion; `switchExercise()` extracted helper; `computeProgressionSignal()` / `renderProgressionSignal()` (F-03); `computeSessionSignal()` / `renderSessionSignal()` (F-06); `checkSessionReminder()` / `showReminderBanner()` / `dismissReminderBanner()` (F-04); `computeUpNext()` / `renderUpNext()` (F-05). Phase 2.1 additions: `startSession()` (guard + discard modal); `_doStartSession()` (US-01); `downloadCSV(csv, filename)` shared helper; `openExportRangeModal()` (US-03); `_pickerSort` / `_recencyRanks` / `_sortedExercises()` / `_renderExerciseList()` / `_refreshRecencyRanks()` (US-04). Phase 3 additions: `ANTHROPIC_KEY` / `getAnthropicKey()` / `setAnthropicKey()`; `_buildSessionContext()` / `generateAISummary()` / `hideAISummaryModal()` (AI summary); `renderPlanAdherence()` / `checkPlanExpiry()` / `renderPlansScreen()` / `openNewPlan()` / `openEditPlan()` / `renderPlanEditorExercises()` / `addExerciseToPlan()` / `savePlan()` / `archiveCurrentPlan()` (plans); `_pickerContext` for dual-mode picker (session vs plan); `renderHistoryScreen()` / `openExerciseHistory()` / `renderHistoryChart()` (inline SVG line chart, no libraries) / `_histPointerMove()` (crosshair + tooltip) / `renderHistorySessions()` / `fmtHistDate()` (exercise history); `computeQuickLogRef()` / `renderQuickLog()` / `quickLogSet()` / `_afterSetLogged()` (quick-log button); `renderIdleDashboard()` / `renderIdleHook()` / `renderWeekStrip()` / `renderIdlePlanLine()` / `_weekStart()` / `_relativeDay()` (idle dashboard).
 - `js/gdrive.js` — Google Drive integration. Uploads per-session data as a Google Sheet (auto-converted from CSV) to `GymOps/Gym Session Data/YYYY-MM/` in the user's Drive. `GOOGLE_CLIENT_ID` is configured. Files named `gym_YYYY_MM_DD` with numeric suffix for same-day duplicates. One-time migration moves legacy root-level files to the correct month folders (guarded by `gymops_gdrive_migrated` localStorage flag).
 - `js/db.js` — SQLite schema, CRUD operations, CSV export query. Phase 2 additions: `dbCreateSession(defaultUnit)`; `dbInsertSet(..., unit)`; queries for F-03/F-04/F-05/F-06. Phase 2.1 additions: `dbDeleteSession(sessionId)`; `dbExportCSVByRange(from, to)`; `dbGetExerciseRecency()`. Phase 3 additions: `dbCreatePlan()` / `dbUpdatePlan()` / `dbUpdatePlanStatus()` / `dbGetActivePlan()` / `dbGetPlan()` / `dbGetAllPlans()` / `dbGetPlanExercises()` / `dbSavePlanExercises()` / `dbLinkSessionToPlan()` / `dbGetSessionPlan()`; `dbGetExercisesWithHistory()` / `dbGetExerciseSessionHistory()` (exercise history).
 - `api/ai-summary.js` — Vercel serverless function. Proxies POST requests to the Anthropic API (`claude-fable-5`, fallback `claude-opus-4-8`). Accepts `{ context, apiKey }` in the body; API key falls back to `ANTHROPIC_API_KEY` env var. Returns `{ text }` or `{ error }`.
@@ -94,7 +94,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v51`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v52`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -104,7 +104,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 **Phase 3 — AI & Plans** (started July 1, 2026)
 
 ## Phase 3 Status
-🚧 **IN PROGRESS** — AI summary + plans shipped July 1, 2026; exercise history view + quick-log button shipped July 2, 2026 (SW cache: `gymops-v51`, app: `v3.2`)
+🚧 **IN PROGRESS** — AI summary + plans shipped July 1, 2026; exercise history view, quick-log button, and idle dashboard shipped July 2, 2026 (SW cache: `gymops-v52`, app: `v3.3`)
 
 ## Phase 2.1 Status
 ✅ **COMPLETE** (May 19, 2026, SW cache: `gymops-v45`, app: `v2.1`)
@@ -146,7 +146,7 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 - **US-001** — Zero weight accepted as valid for bodyweight/mobility exercises; validation rejects blank/null but allows 0 (`app.js:434`: `weight <= 0` → `weight < 0`)
 
 ## Phase 1.3 (all complete)
-- **US-003** — App version displayed at bottom of Settings screen; hardcoded `APP_VERSION` constant in `app.js`, set on boot. Current value: `v3.2`
+- **US-003** — App version displayed at bottom of Settings screen; hardcoded `APP_VERSION` constant in `app.js`, set on boot. Current value: `v3.3`
 - **US-004** — Delete a set from the active session log; trash button per row, inline confirmation, set re-sequences after deletion, `state.setNumber` kept in sync; `dbDeleteSetById` + `dbResequenceSets` in `db.js`
 - **US-005** — Rest timer between sets (90s countdown); appears after first set logged, beep + vibrate on complete, Skip to dismiss early; lives entirely in UI state
 - **Bug fix** — Inactivity timeout now fires correctly when tab is backgrounded; `visibilitychange` listener checks real wall-clock elapsed time against `_lastActivityTime` to bypass browser timer throttling
@@ -326,11 +326,18 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - Fix: `plan_id INTEGER` added to the `sessions` CREATE. Existing DBs unaffected (migration path already handled them)
   - Lesson: every new column must be added to BOTH `_createSchema()` and `_migrate()`
 
+- [x] **Idle Screen Dashboard** — SHIPPED (July 2, 2026, SW cache: `gymops-v52`, app: `v3.3`)
+  - Week strip card: Mon–Sun dots, trained days filled accent, today ringed; consecutive-week streak shown from 2 weeks up (untrained current week doesn't break the streak until fully missed)
+  - Hook line replaces "Ready to train" when history exists: "Chest Press hit 65 kg yesterday — beat it?" when the last session set a new best (largest kg-normalised improvement), else "Last workout {when} — N sets across M exercises"
+  - Active plan line: "{name} · Week N of M"
+  - History/Plans/Settings links consolidated into one horizontal row (`.idle-links`); `.settings-link` CSS removed
+  - Fresh installs still see plain "Ready to train" — dashboard elements hidden with no data
+  - `renderIdleDashboard()` (→ `renderIdleHook()` / `renderWeekStrip()` / `renderIdlePlanLine()`), helpers `_weekStart()` / `_relativeDay()`; DB: `dbGetLastCompletedSession()` / `dbGetCompletedSessionsSince()`
+
 ---
 
 # Next / Backlog
 
-- **Idle screen redesign** — streak, week view, motivational hook from last session (strategy priority 3)
 - **PR celebration moment** — make PR detection feel like a distinct moment (strategy priority 4)
 - **Smarter plan nudges** — pull user back when falling behind a plan (strategy priority 5)
 - **Muscle group tagging** — Add `muscleGroup` to EXERCISES; enables weekly coverage view and richer AI context

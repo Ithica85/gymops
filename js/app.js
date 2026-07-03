@@ -2,7 +2,7 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
-const APP_VERSION = 'v3.2';
+const APP_VERSION = 'v3.3';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -603,7 +603,7 @@ function updateInputFields() {
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
-  if (name === 'idle') { checkSessionReminder(); checkPlanExpiry(); }
+  if (name === 'idle') { renderIdleDashboard(); checkSessionReminder(); checkPlanExpiry(); }
   if (name === 'plans') renderPlansScreen();
   if (name === 'history') renderHistoryScreen();
 }
@@ -1479,6 +1479,145 @@ function archiveCurrentPlan() {
   if (!confirm('Archive this plan? It will no longer guide your sessions.')) return;
   dbUpdatePlanStatus(_editingPlanId, 'archived');
   showScreen('plans');
+}
+
+// ── Idle dashboard ────────────────────────────────────
+
+// Returns midnight on the Monday of the week containing d (local time).
+function _weekStart(d) {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7)); // Mon=0 … Sun=6
+  return date;
+}
+
+// Human-relative day for the hook line: "today", "yesterday", "on Tuesday"
+// (within the last week), or "12 days ago".
+function _relativeDay(iso) {
+  const d     = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const that  = new Date(d);
+  that.setHours(0, 0, 0, 0);
+  const days  = Math.round((today - that) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 7)  return 'on ' + d.toLocaleDateString(undefined, { weekday: 'long' });
+  return `${days} days ago`;
+}
+
+// Renders the 7-day week strip (Mon–Sun) and the consecutive-week streak.
+// Hidden entirely until the first completed session exists.
+function renderWeekStrip() {
+  const card = document.getElementById('week-strip');
+  if (!dbGetLastCompletedSession()) { card.classList.add('hidden'); return; }
+
+  const thisWeek = _weekStart(new Date());
+  const lookback = new Date(thisWeek.getTime() - 25 * 7 * 86400000); // ~6 months for streak
+  const sessions = dbGetCompletedSessionsSince(lookback.toISOString());
+
+  // Trained day indexes (Mon=0) for the current week
+  const trained = new Set();
+  // Week-start timestamps that contain at least one session (for the streak)
+  const weeks = new Set();
+  sessions.forEach(t => {
+    const d = new Date(t);
+    weeks.add(_weekStart(d).getTime());
+    if (d >= thisWeek) trained.add((d.getDay() + 6) % 7);
+  });
+
+  const days = document.getElementById('week-strip-days');
+  days.innerHTML = '';
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((letter, i) => {
+    const col = document.createElement('div');
+    col.className = 'week-day';
+    if (trained.has(i)) col.classList.add('week-day--trained');
+    if (i === todayIdx) col.classList.add('week-day--today');
+    const dot = document.createElement('span');
+    dot.className = 'week-day-dot';
+    const lbl = document.createElement('span');
+    lbl.className = 'week-day-letter';
+    lbl.textContent = letter;
+    col.append(dot, lbl);
+    days.appendChild(col);
+  });
+
+  // Streak = consecutive calendar weeks with ≥1 session, ending at the current
+  // week. An untrained current week doesn't break the streak yet — it just
+  // isn't counted — so the streak survives until a full week is missed.
+  let cursor = weeks.has(thisWeek.getTime())
+    ? thisWeek.getTime()
+    : thisWeek.getTime() - 7 * 86400000;
+  let streak = 0;
+  while (weeks.has(cursor)) {
+    streak++;
+    cursor -= 7 * 86400000;
+  }
+  const streakEl = document.getElementById('week-strip-streak');
+  streakEl.classList.toggle('hidden', streak < 2);
+  if (streak >= 2) streakEl.textContent = `${streak}-week streak`;
+
+  card.classList.remove('hidden');
+}
+
+// Sets the idle subtitle: a hook from the last session when history exists
+// ("Chest Press hit 65 kg on Tuesday — beat it?"), a session summary when
+// nothing improved, or the default "Ready to train" for a fresh install.
+function renderIdleHook() {
+  const el   = document.getElementById('idle-subtitle');
+  const last = dbGetLastCompletedSession();
+  if (!last) {
+    el.textContent = 'Ready to train';
+    el.classList.remove('idle-subtitle--hook');
+    return;
+  }
+
+  const when = _relativeDay(last.start_time);
+
+  // Best improvement in the last session vs each exercise's prior history —
+  // same comparison the completion signal makes (kg-normalised).
+  let bestDeltaKg  = 0;
+  let bestExercise = null;
+  let bestKg       = null;
+  dbGetSessionRepsExercises(last.session_id).forEach(exercise => {
+    const currentBestKg = dbGetSessionBestForExercise(last.session_id, exercise);
+    const history       = dbGetRecentSessionsBestForExercise(exercise, 1, last.session_id);
+    if (!history.length || currentBestKg == null) return;
+    const delta = currentBestKg - history[0].best_weight_kg;
+    if (delta > WEIGHT_EPSILON_KG && delta > bestDeltaKg) {
+      bestDeltaKg  = delta;
+      bestExercise = exercise;
+      bestKg       = currentBestKg;
+    }
+  });
+
+  if (bestExercise) {
+    const unit  = getWeightUnit();
+    const value = convertWeight(bestKg, 'kg', unit);
+    el.textContent = `${bestExercise} hit ${value} ${unit} ${when} — beat it?`;
+  } else {
+    const sets      = dbGetSetCount(last.session_id);
+    const exercises = dbGetSessionExerciseCount(last.session_id);
+    el.textContent  = `Last workout ${when} — ${sets} set${sets !== 1 ? 's' : ''} across ${exercises} exercise${exercises !== 1 ? 's' : ''}`;
+  }
+  el.classList.add('idle-subtitle--hook');
+}
+
+// Shows the active plan and current week number below the week strip.
+function renderIdlePlanLine() {
+  const el   = document.getElementById('idle-plan-line');
+  const plan = dbGetActivePlan();
+  if (!plan) { el.classList.add('hidden'); return; }
+  const weekNum = Math.floor((Date.now() - new Date(plan.start_date).getTime()) / (7 * 86400000)) + 1;
+  el.textContent = `${plan.name} · Week ${weekNum}${plan.duration_weeks ? ` of ${plan.duration_weeks}` : ''}`;
+  el.classList.remove('hidden');
+}
+
+function renderIdleDashboard() {
+  renderIdleHook();
+  renderWeekStrip();
+  renderIdlePlanLine();
 }
 
 // ── Exercise history ──────────────────────────────────
