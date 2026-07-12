@@ -10,7 +10,7 @@ let _db = null;
 
 // Boots the sql.js database. Tries to restore an existing DB from localStorage;
 // falls back to a fresh schema if the stored data is missing or corrupt.
-async function initDB() {
+export async function initDB() {
   const SQL = await initSqlJs({ locateFile: f => `lib/${f}` });
 
   const saved = localStorage.getItem(DB_KEY);
@@ -214,14 +214,14 @@ function _runInsert(sql, params) {
 // ── Sessions ──────────────────────────────────────────
 
 // Creates a new active session and returns its session_id.
-function dbCreateSession(defaultUnit) {
+export function dbCreateSession(defaultUnit) {
   return _runInsert('INSERT INTO sessions (start_time, status, default_unit) VALUES (?, ?, ?)', [
     new Date().toISOString(), 'active', defaultUnit,
   ]);
 }
 
 // Marks a session as completed with the current timestamp.
-function dbFinishSession(sessionId) {
+export function dbFinishSession(sessionId) {
   _db.run(
     'UPDATE sessions SET end_time = ?, status = ? WHERE session_id = ?',
     [new Date().toISOString(), 'completed', sessionId]
@@ -229,17 +229,17 @@ function dbFinishSession(sessionId) {
   _persist();
 }
 
-function dbGetSession(sessionId) {
+export function dbGetSession(sessionId) {
   return _one('SELECT * FROM sessions WHERE session_id = ?', [sessionId]);
 }
 
 // Returns the most recent active session, or null if none exists.
-function dbGetActiveSession() {
+export function dbGetActiveSession() {
   return _one("SELECT * FROM sessions WHERE status = 'active' ORDER BY session_id DESC LIMIT 1");
 }
 
 // Reopens a completed session so the user can continue adding sets.
-function dbResumeSession(sessionId) {
+export function dbResumeSession(sessionId) {
   _db.run(
     "UPDATE sessions SET status = 'active', end_time = NULL WHERE session_id = ?",
     [sessionId]
@@ -247,7 +247,7 @@ function dbResumeSession(sessionId) {
   _persist();
 }
 
-function dbUpdateSessionNotes(sessionId, notes) {
+export function dbUpdateSessionNotes(sessionId, notes) {
   _db.run(
     'UPDATE sessions SET notes = ? WHERE session_id = ?',
     [notes, sessionId]
@@ -263,7 +263,7 @@ function dbUpdateSessionNotes(sessionId, notes) {
 // because sql.js can silently fail when null is passed in a params array.
 // `unit` is the weight unit active at log time ('lbs' or 'kg'). Stored on all sets;
 // for timed exercises the value is the user's preference but is not used for display.
-function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories, unit) {
+export function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories, unit) {
   const now = new Date().toISOString();
   if (durationMins != null) {
     if (calories != null) {
@@ -290,7 +290,7 @@ function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins,
 
 // Hard-deletes an incomplete session and all its sets. Used when the user
 // explicitly discards an unfinished session to start fresh.
-function dbDeleteSession(sessionId) {
+export function dbDeleteSession(sessionId) {
   _db.run('DELETE FROM sets WHERE session_id = ?', [sessionId]);
   _db.run('DELETE FROM sessions WHERE session_id = ?', [sessionId]);
   _persist();
@@ -298,7 +298,7 @@ function dbDeleteSession(sessionId) {
 
 // Deletes a specific set by ID and returns the deleted row.
 // Returns null if the set doesn't exist.
-function dbDeleteSetById(setId) {
+export function dbDeleteSetById(setId) {
   const row = _one('SELECT * FROM sets WHERE set_id = ?', [setId]);
   if (!row) return null;
   _db.run('DELETE FROM sets WHERE set_id = ?', [setId]);
@@ -309,7 +309,7 @@ function dbDeleteSetById(setId) {
 // Re-sequences set_number for all sets of a given exercise in a session so they
 // are contiguous (1, 2, 3…) after a deletion. Uses insertion order (set_id) as
 // the stable sort key so numbering matches the original logging order.
-function dbResequenceSets(sessionId, exercise) {
+export function dbResequenceSets(sessionId, exercise) {
   const rows = _all(
     'SELECT set_id FROM sets WHERE session_id = ? AND exercise = ? ORDER BY set_id ASC',
     [sessionId, exercise]
@@ -322,7 +322,7 @@ function dbResequenceSets(sessionId, exercise) {
 
 // Deletes the most recently logged set for a session and returns the deleted row.
 // Returns null if the session has no sets (nothing to undo).
-function dbDeleteLastSet(sessionId) {
+export function dbDeleteLastSet(sessionId) {
   const last = _one(
     'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC LIMIT 1',
     [sessionId]
@@ -334,7 +334,7 @@ function dbDeleteLastSet(sessionId) {
 }
 
 // Returns up to `limit` most recent sets for a session, newest first.
-function dbGetRecentSets(sessionId, limit = 5) {
+export function dbGetRecentSets(sessionId, limit = 5) {
   return _all(
     'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC LIMIT ?',
     [sessionId, limit]
@@ -342,7 +342,7 @@ function dbGetRecentSets(sessionId, limit = 5) {
 }
 
 // Returns all sets for a session, newest first (used for the full session log).
-function dbGetAllSets(sessionId) {
+export function dbGetAllSets(sessionId) {
   return _all(
     'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC',
     [sessionId]
@@ -350,13 +350,13 @@ function dbGetAllSets(sessionId) {
 }
 
 // Returns the total number of sets logged for a session.
-function dbGetSetCount(sessionId) {
+export function dbGetSetCount(sessionId) {
   return _one('SELECT COUNT(*) AS n FROM sets WHERE session_id = ?', [sessionId])?.n ?? 0;
 }
 
 // Returns how many sets of a specific exercise have been logged in a session.
 // Used to determine the next set number when switching exercises.
-function dbGetSetCountForExercise(sessionId, exercise) {
+export function dbGetSetCountForExercise(sessionId, exercise) {
   return _one(
     'SELECT COUNT(*) AS n FROM sets WHERE session_id = ? AND exercise = ?',
     [sessionId, exercise]
@@ -364,7 +364,7 @@ function dbGetSetCountForExercise(sessionId, exercise) {
 }
 
 // Returns the most recently logged set for a specific exercise within a session.
-function dbGetLastSetForExercise(sessionId, exercise) {
+export function dbGetLastSetForExercise(sessionId, exercise) {
   return _one(
     'SELECT * FROM sets WHERE session_id = ? AND exercise = ? ORDER BY set_id DESC LIMIT 1',
     [sessionId, exercise]
@@ -375,7 +375,7 @@ function dbGetLastSetForExercise(sessionId, exercise) {
 // that contains at least one set of that exercise. Used for ghost-text placeholders
 // and the "Last session" reference display.
 // Two-step query: first find the qualifying session, then fetch its sets ordered by set_number.
-function dbGetLastSessionSetsForExercise(exercise) {
+export function dbGetLastSessionSetsForExercise(exercise) {
   const lastSession = _one(`
     SELECT s.session_id
     FROM sessions s
@@ -400,7 +400,7 @@ function dbGetLastSessionSetsForExercise(exercise) {
 // highest weight in that session for the exercise, normalised to kg for cross-unit comparison.
 // beforeSessionId: when provided, restricts to sessions with session_id < beforeSessionId.
 // Used by F-06 completion signal to exclude the just-finished session (now 'completed').
-function dbGetRecentSessionsBestForExercise(exercise, limit = 6, beforeSessionId = null) {
+export function dbGetRecentSessionsBestForExercise(exercise, limit = 6, beforeSessionId = null) {
   const beforeClause = beforeSessionId != null ? 'AND s.session_id < ?' : '';
   const params = beforeSessionId != null ? [exercise, beforeSessionId, limit] : [exercise, limit];
   return _all(`
@@ -418,7 +418,7 @@ function dbGetRecentSessionsBestForExercise(exercise, limit = 6, beforeSessionId
 
 // Returns the best weight (kg-normalised) for an exercise in a given session, or null.
 // Works on both active and completed sessions — used to get the current session's best.
-function dbGetSessionBestForExercise(sessionId, exercise) {
+export function dbGetSessionBestForExercise(sessionId, exercise) {
   return _one(`
     SELECT MAX(CASE WHEN unit = 'lbs' THEN weight / 2.2046 ELSE weight END) AS best_weight_kg
     FROM sets
@@ -429,7 +429,7 @@ function dbGetSessionBestForExercise(sessionId, exercise) {
 // ── Session completion signal queries ────────────────
 
 // Total volume (kg-normalised weight × reps) for all reps sets in a session.
-function dbGetSessionVolume(sessionId) {
+export function dbGetSessionVolume(sessionId) {
   return _one(`
     SELECT SUM(CASE WHEN unit = 'lbs' THEN weight / 2.2046 ELSE weight END * reps) AS volume_kg
     FROM sets WHERE session_id = ? AND weight IS NOT NULL AND reps IS NOT NULL
@@ -437,7 +437,7 @@ function dbGetSessionVolume(sessionId) {
 }
 
 // Count of distinct exercises logged in a session.
-function dbGetSessionExerciseCount(sessionId) {
+export function dbGetSessionExerciseCount(sessionId) {
   return _one(
     'SELECT COUNT(DISTINCT exercise) AS n FROM sets WHERE session_id = ?',
     [sessionId]
@@ -445,7 +445,7 @@ function dbGetSessionExerciseCount(sessionId) {
 }
 
 // Returns the most recent completed session before the given session_id, or null.
-function dbGetPreviousCompletedSession(sessionId) {
+export function dbGetPreviousCompletedSession(sessionId) {
   return _one(
     "SELECT * FROM sessions WHERE status = 'completed' AND session_id < ? ORDER BY session_id DESC LIMIT 1",
     [sessionId]
@@ -454,7 +454,7 @@ function dbGetPreviousCompletedSession(sessionId) {
 
 // Returns distinct exercise names that have reps data (weight IS NOT NULL) in a session.
 // Used to iterate exercises when computing improvement deltas for the completion signal.
-function dbGetSessionRepsExercises(sessionId) {
+export function dbGetSessionRepsExercises(sessionId) {
   return _all(
     'SELECT DISTINCT exercise FROM sets WHERE session_id = ? AND weight IS NOT NULL',
     [sessionId]
@@ -465,7 +465,7 @@ function dbGetSessionRepsExercises(sessionId) {
 
 // Returns exercises ordered by most recent use (MAX session start_time DESC).
 // Used to sort the exercise picker by recency.
-function dbGetExerciseRecency() {
+export function dbGetExerciseRecency() {
   return _all(`
     SELECT st.exercise, MAX(s.start_time) AS last_used
     FROM sets st
@@ -477,7 +477,7 @@ function dbGetExerciseRecency() {
 
 // Returns exercise names in first-logged order from the most recent completed session.
 // Used to compute the "Up Next" suggestion during an active session.
-function dbGetLastSessionExerciseOrder() {
+export function dbGetLastSessionExerciseOrder() {
   return _all(`
     SELECT exercise, MIN(set_id) AS first_set_id
     FROM sets
@@ -496,7 +496,7 @@ function dbGetLastSessionExerciseOrder() {
 // or null if the exercise has never been logged in one. The current session is
 // checked separately (dbGetSessionBestForExercise) so a PR beaten twice in one
 // session celebrates both times.
-function dbGetAllTimeBestForExercise(exercise) {
+export function dbGetAllTimeBestForExercise(exercise) {
   return _one(`
     SELECT MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_kg
     FROM sets st
@@ -509,13 +509,13 @@ function dbGetAllTimeBestForExercise(exercise) {
 
 // Returns the most recent completed session, or null. Used by the idle screen
 // hook line ("Chest Press hit 65 kg on Tuesday — beat it?").
-function dbGetLastCompletedSession() {
+export function dbGetLastCompletedSession() {
   return _one("SELECT * FROM sessions WHERE status = 'completed' ORDER BY session_id DESC LIMIT 1");
 }
 
 // Returns start_time strings of completed sessions on or after the given ISO
 // timestamp, ascending. Powers the week strip and streak on the idle screen.
-function dbGetCompletedSessionsSince(sinceISO) {
+export function dbGetCompletedSessionsSince(sinceISO) {
   return _all(
     "SELECT start_time FROM sessions WHERE status = 'completed' AND start_time >= ? ORDER BY start_time ASC",
     [sinceISO]
@@ -527,7 +527,7 @@ function dbGetCompletedSessionsSince(sinceISO) {
 // Returns exercises that appear in at least one completed session, with
 // session count and last-used date, most recently used first.
 // Powers the exercise list on the History screen.
-function dbGetExercisesWithHistory() {
+export function dbGetExercisesWithHistory() {
   return _all(`
     SELECT st.exercise,
            COUNT(DISTINCT s.session_id) AS session_count,
@@ -545,7 +545,7 @@ function dbGetExercisesWithHistory() {
 // bare column: SQLite resolves it from the same row that produced the MAX, so it
 // is the rep count of the heaviest set. Sessions with only timed sets have null
 // best_weight_kg and carry total_mins / total_cals instead.
-function dbGetExerciseSessionHistory(exercise) {
+export function dbGetExerciseSessionHistory(exercise) {
   return _all(`
     SELECT s.session_id, s.start_time,
            MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_weight_kg,
@@ -565,7 +565,7 @@ function dbGetExerciseSessionHistory(exercise) {
 
 // Returns ISO start_time strings for the last N completed sessions, newest first.
 // Used to compute the user's typical training time pattern.
-function dbGetRecentSessionStartTimes(limit = 10) {
+export function dbGetRecentSessionStartTimes(limit = 10) {
   return _all(
     "SELECT start_time FROM sessions WHERE status = 'completed' ORDER BY session_id DESC LIMIT ?",
     [limit]
@@ -573,7 +573,7 @@ function dbGetRecentSessionStartTimes(limit = 10) {
 }
 
 // Returns true if the user has at least one completed session that started today (local time).
-function dbHasSessionToday() {
+export function dbHasSessionToday() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   return !!_one(
@@ -584,14 +584,14 @@ function dbHasSessionToday() {
 
 // ── Plans ─────────────────────────────────────────────
 
-function dbCreatePlan(name, startDate, durationWeeks, objectivesJson, targetSessionsPerWeek) {
+export function dbCreatePlan(name, startDate, durationWeeks, objectivesJson, targetSessionsPerWeek) {
   return _runInsert(
     'INSERT INTO plans (name, start_date, duration_weeks, objectives_json, status, target_sessions_per_week) VALUES (?, ?, ?, ?, ?, ?)',
     [name, startDate, durationWeeks ?? null, objectivesJson ?? null, 'active', targetSessionsPerWeek ?? null]
   );
 }
 
-function dbUpdatePlan(planId, name, durationWeeks, objectivesJson, targetSessionsPerWeek) {
+export function dbUpdatePlan(planId, name, durationWeeks, objectivesJson, targetSessionsPerWeek) {
   _db.run(
     'UPDATE plans SET name = ?, duration_weeks = ?, objectives_json = ?, target_sessions_per_week = ? WHERE plan_id = ?',
     [name, durationWeeks ?? null, objectivesJson ?? null, targetSessionsPerWeek ?? null, planId]
@@ -599,30 +599,30 @@ function dbUpdatePlan(planId, name, durationWeeks, objectivesJson, targetSession
   _persist();
 }
 
-function dbUpdatePlanStatus(planId, status) {
+export function dbUpdatePlanStatus(planId, status) {
   _db.run('UPDATE plans SET status = ? WHERE plan_id = ?', [status, planId]);
   _persist();
 }
 
-function dbGetActivePlan() {
+export function dbGetActivePlan() {
   return _one("SELECT * FROM plans WHERE status = 'active' ORDER BY plan_id DESC LIMIT 1");
 }
 
-function dbGetPlan(planId) {
+export function dbGetPlan(planId) {
   return _one('SELECT * FROM plans WHERE plan_id = ?', [planId]);
 }
 
-function dbGetAllPlans() {
+export function dbGetAllPlans() {
   return _all('SELECT * FROM plans ORDER BY plan_id DESC');
 }
 
-function dbGetPlanExercises(planId) {
+export function dbGetPlanExercises(planId) {
   return _all('SELECT * FROM plan_exercises WHERE plan_id = ? ORDER BY sort_order ASC', [planId]);
 }
 
 // Replaces all exercises for a plan atomically.
 // exercises: array of { exercise, targetSets, targetReps }
-function dbSavePlanExercises(planId, exercises) {
+export function dbSavePlanExercises(planId, exercises) {
   _db.run('DELETE FROM plan_exercises WHERE plan_id = ?', [planId]);
   exercises.forEach((ex, i) => {
     _db.run(
@@ -633,13 +633,13 @@ function dbSavePlanExercises(planId, exercises) {
   _persist();
 }
 
-function dbLinkSessionToPlan(sessionId, planId) {
+export function dbLinkSessionToPlan(sessionId, planId) {
   _db.run('UPDATE sessions SET plan_id = ? WHERE session_id = ?', [planId, sessionId]);
   _persist();
 }
 
 // Returns the plan and its exercises for a given session, or null if no plan was linked.
-function dbGetSessionPlan(sessionId) {
+export function dbGetSessionPlan(sessionId) {
   const session = _one('SELECT plan_id FROM sessions WHERE session_id = ?', [sessionId]);
   if (!session?.plan_id) return null;
   const plan = dbGetPlan(session.plan_id);
@@ -651,7 +651,7 @@ function dbGetSessionPlan(sessionId) {
 
 // Wipes the entire database from localStorage. The page must be reloaded after this
 // to reinitialise the in-memory DB.
-function dbClearAll() {
+export function dbClearAll() {
   localStorage.removeItem(DB_KEY);
 }
 
@@ -661,7 +661,7 @@ function dbClearAll() {
 // auto-upload to Google Drive and the manual Export button on the completed screen.
 // The session_notes column is included only when the session has notes, to keep
 // the CSV clean for sessions that don't use the notes field.
-function dbExportSessionCSV(sessionId) {
+export function dbExportSessionCSV(sessionId) {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
@@ -682,7 +682,7 @@ function dbExportSessionCSV(sessionId) {
 // Exports the full workout history across all sessions as CSV.
 // Used as a fallback when no specific session is in scope.
 // session_notes column is included only when at least one session has notes.
-function dbExportCSV() {
+export function dbExportCSV() {
   const rows = _all(`
     SELECT s.session_id, s.start_time, s.end_time, s.status, s.notes AS session_notes,
            st.set_id, st.timestamp, st.exercise, st.set_number,
@@ -701,7 +701,7 @@ function dbExportCSV() {
 
 // Exports sessions whose start_time falls within the given date range (YYYY-MM-DD strings).
 // Either bound may be omitted (null / empty string) to mean "no limit".
-function dbExportCSVByRange(from, to) {
+export function dbExportCSVByRange(from, to) {
   const conditions = [];
   const params = [];
   if (from) { conditions.push("date(s.start_time) >= ?"); params.push(from); }

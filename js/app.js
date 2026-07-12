@@ -2,6 +2,26 @@
 // GymOps — App logic
 // ═══════════════════════════════════════════════════════
 
+import {
+  initDB,
+  dbCreateSession, dbFinishSession, dbGetSession, dbGetActiveSession,
+  dbResumeSession, dbUpdateSessionNotes, dbDeleteSession,
+  dbInsertSet, dbDeleteSetById, dbResequenceSets, dbDeleteLastSet,
+  dbGetRecentSets, dbGetAllSets, dbGetSetCount, dbGetSetCountForExercise,
+  dbGetLastSetForExercise, dbGetLastSessionSetsForExercise,
+  dbGetRecentSessionsBestForExercise, dbGetSessionBestForExercise,
+  dbGetSessionVolume, dbGetSessionExerciseCount, dbGetPreviousCompletedSession,
+  dbGetSessionRepsExercises, dbGetExerciseRecency, dbGetLastSessionExerciseOrder,
+  dbGetAllTimeBestForExercise, dbGetLastCompletedSession, dbGetCompletedSessionsSince,
+  dbGetExercisesWithHistory, dbGetExerciseSessionHistory,
+  dbGetRecentSessionStartTimes, dbHasSessionToday,
+  dbCreatePlan, dbUpdatePlan, dbUpdatePlanStatus, dbGetActivePlan, dbGetPlan,
+  dbGetAllPlans, dbGetPlanExercises, dbSavePlanExercises, dbLinkSessionToPlan,
+  dbGetSessionPlan,
+  dbClearAll, dbExportSessionCSV, dbExportCSV, dbExportCSVByRange,
+} from './db.js';
+import { gdriveUpload } from './gdrive.js';
+
 const APP_VERSION = 'v3.5';
 
 // ── Weight unit preference ────────────────────────────
@@ -12,7 +32,7 @@ function getWeightUnit() { return localStorage.getItem(UNIT_KEY) ?? 'kg'; }
 
 // Converts a weight value between units, rounded to 1 decimal. Returns the value
 // unchanged when fromUnit === toUnit or weight is null.
-function convertWeight(weight, fromUnit, toUnit) {
+export function convertWeight(weight, fromUnit, toUnit) {
   if (weight == null || fromUnit === toUnit) return weight;
   const converted = fromUnit === 'lbs' ? weight / 2.2046 : weight * 2.2046;
   return Math.round(converted * 10) / 10;
@@ -63,7 +83,7 @@ function setReminderEnabled(v) {
 
 // Returns { meanMinutes, stdDevMinutes } from ISO start_time strings, or null if
 // the pattern is too irregular (std dev > REMINDER_MAX_STDDEV).
-function computeTrainingWindow(startTimes) {
+export function computeTrainingWindow(startTimes) {
   const minutes = startTimes.map(t => {
     const d = new Date(t);
     return d.getHours() * 60 + d.getMinutes();
@@ -93,7 +113,7 @@ function dismissReminderBanner() {
 // Decides whether the generic session reminder (F-04) should show.
 // Returns a render thunk that fills in the banner text, or null.
 // Priority against the plan banners is handled by IDLE_BANNERS order, not here.
-function computeReminderBanner() {
+export function computeReminderBanner() {
   if (!getReminderEnabled()) return null;
 
   const startTimes = dbGetRecentSessionStartTimes(10);
@@ -158,7 +178,7 @@ const SIGNAL_GAP_DAYS   = 3;    // gap threshold for "Back after a few days"
 // Deterministic rule engine — returns a signal string or null.
 // Priority order: P1 (long-term) > P2 (session best) > P3 (last session) > P4 (negative).
 // Same inputs always produce the same output (no randomness, no side effects).
-function computeProgressionSignal(exercise, sessionId) {
+export function computeProgressionSignal(exercise, sessionId) {
   if (getExerciseType(exercise) === 'timed') return null;
 
   const currentBestKg = dbGetSessionBestForExercise(sessionId, exercise);
@@ -254,7 +274,7 @@ function _sessionInterpretation({ daysSincePrev, volumeDeltaRatio, improvementCo
 // Aggregates session stats and returns the 3–4 closure signal lines.
 // Must be called after dbFinishSession() so the current session is 'completed'.
 // Uses beforeSessionId to exclude the current session from historical queries.
-function computeSessionSignal(sessionId) {
+export function computeSessionSignal(sessionId) {
   const currentExerciseCount = dbGetSessionExerciseCount(sessionId);
   const currentVolumeKg      = dbGetSessionVolume(sessionId);
   const prevSession          = dbGetPreviousCompletedSession(sessionId);
@@ -763,7 +783,7 @@ function switchExercise(name, type = null) {
 
 // Returns the exercise that follows the current one in last session's logged order,
 // or null if there is no prior session, the current exercise wasn't in it, or it was last.
-function computeUpNext(exercise) {
+export function computeUpNext(exercise) {
   // Prefer plan order over history order when a plan is linked to this session
   const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
   if (plan?.exercises?.length) {
@@ -1106,7 +1126,7 @@ function _prFanfare() {
 // improved twice in one session celebrates both times). Requires prior
 // completed-session history — a first-ever exercise has nothing to beat.
 // Call BEFORE inserting the set, so the new set isn't compared against itself.
-function isAllTimePR(exercise, sessionId, weightKg) {
+export function isAllTimePR(exercise, sessionId, weightKg) {
   const allTimeKg = dbGetAllTimeBestForExercise(exercise);
   if (allTimeKg == null) return false;
   if (weightKg <= allTimeKg + WEIGHT_EPSILON_KG) return false;
@@ -1438,7 +1458,7 @@ function renderPlanAdherence(sessionId) {
 
 // Plan expiry banner — fires when the active plan has run over its duration.
 // Returns a render thunk or null (visibility is the mediator's job).
-function computePlanExpiryBanner() {
+export function computePlanExpiryBanner() {
   const plan = dbGetActivePlan();
   if (!plan || !plan.duration_weeks) return null;
 
@@ -1474,7 +1494,7 @@ function dismissPlanNudge() {
 //      ≥ days left including today.
 //   2. Gap (any active plan): SIGNAL_GAP_DAYS+ days since the last session.
 // Never fires if there's a completed session today.
-function computePlanNudge() {
+export function computePlanNudge() {
   const plan = dbGetActivePlan();
   if (!plan) return null;
   if (dbHasSessionToday()) return null;
@@ -1511,7 +1531,7 @@ function computePlanNudge() {
 // Plan nudge banner — cooldown gate plus the computePlanNudge() rules.
 // Returns a render thunk or null. The expiry banner outranks this via
 // IDLE_BANNERS order — no cross-check needed here.
-function computePlanNudgeBanner() {
+export function computePlanNudgeBanner() {
   const lastDismissed = parseInt(localStorage.getItem(PLAN_NUDGE_DISMISSED_AT) ?? '0');
   if (Date.now() - lastDismissed < PLAN_NUDGE_COOLDOWN_MS) return null;
 

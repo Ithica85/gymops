@@ -227,8 +227,9 @@ async function _uploadFile(token, folderId, filename, csv) {
 
 // Uploads a session's CSV to GymOps/Gym Session Data/YYYY-MM/ in Drive.
 // Runs a one-time migration of any legacy files still in the GymOps root.
-// Non-blocking — failures throw so finishWorkout() can trigger a local fallback.
-async function gdriveUpload(csv, sessionStartIso) {
+// Failures throw so the caller can trigger a local fallback — all user-facing
+// messaging lives with the drive-status line in app.js, not here.
+export async function gdriveUpload(csv, sessionStartIso) {
   try {
     const token   = await _getToken();
     const d       = new Date(sessionStartIso);
@@ -239,10 +240,8 @@ async function gdriveUpload(csv, sessionStartIso) {
 
     const filename = await _resolveFilename(token, monthId, dateStr);
     await _uploadFile(token, monthId, filename, csv);
-    showToast('Saved to Google Drive');
   } catch (err) {
     console.error('Drive upload failed:', err);
-    showToast('Drive save failed — saving CSV locally', true);
-    throw err; // propagate so finishWorkout() can trigger local fallback
+    throw err; // propagate so _startDriveUpload() can show fail state + local fallback
   }
 }
