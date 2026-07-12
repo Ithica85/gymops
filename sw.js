@@ -3,7 +3,7 @@
 // Bump CACHE version when deploying new code
 // ═══════════════════════════════════════════════════════
 
-const CACHE = 'gymops-v55';
+const CACHE = 'gymops-v56';
 
 const ASSETS = [
   '/',
@@ -14,6 +14,7 @@ const ASSETS = [
   '/js/gdrive.js',
   '/lib/sql-wasm.js',
   '/lib/sql-wasm.wasm',
+  '/lib/speed-insights.js',
 ];
 
 // Cache all assets on install

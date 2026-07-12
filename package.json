@@ -1,0 +1,26 @@
+{
+  "name": "gymops",
+  "version": "3.5.0",
+  "description": "A friction-free training companion for lifters who already have a plan",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "build": "echo 'Static site - no build needed'",
+    "lint": "echo 'No linter configured'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ithica85/gymops.git"
+  },
+  "keywords": [
+    "gym",
+    "fitness",
+    "workout",
+    "training"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}
