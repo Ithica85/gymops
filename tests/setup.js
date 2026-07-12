@@ -22,3 +22,35 @@ globalThis.localStorage = {
   removeItem: k => store.delete(k),
   clear: () => store.clear(),
 };
+
+// Minimal DOM stub so js/app.js can be imported for its exported pure functions
+// (it wires a DOMContentLoaded listener and looks up elements at module scope).
+// Tests only exercise DOM-free compute* functions — the stub is never asserted on.
+const elements = new Map();
+function stubElement(id) {
+  if (!elements.has(id)) {
+    const classes = new Set(['hidden']);
+    elements.set(id, {
+      id, textContent: '', value: '', innerHTML: '', style: {}, dataset: {},
+      classList: {
+        add: c => classes.add(c), remove: c => classes.delete(c),
+        toggle: (c, f) => (f ? classes.add(c) : classes.delete(c)),
+        contains: c => classes.has(c),
+      },
+      addEventListener: () => {}, focus: () => {}, blur: () => {},
+      querySelectorAll: () => [], appendChild: () => {}, remove: () => {},
+    });
+  }
+  return elements.get(id);
+}
+globalThis.document = {
+  getElementById: stubElement,
+  querySelector: () => stubElement('_q' + Math.random()),
+  querySelectorAll: () => [],
+  createElement: () => stubElement('_el' + Math.random()),
+  addEventListener: () => {},
+  body: stubElement('_body'),
+  documentElement: stubElement('_root'),
+};
+globalThis.window = globalThis;
+globalThis.navigator ??= {};
