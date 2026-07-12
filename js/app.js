@@ -58,8 +58,7 @@ function setReminderEnabled(v) {
   document.querySelectorAll('.reminder-btn').forEach(btn => {
     btn.classList.toggle('unit-btn--active', btn.dataset.reminder === String(v));
   });
-  if (!v) hideReminderBanner();
-  else    checkSessionReminder();
+  checkIdleBanners(); // re-evaluate: hides the reminder when disabled, may show it when enabled
 }
 
 // Returns { meanMinutes, stdDevMinutes } from ISO start_time strings, or null if
@@ -73,14 +72,6 @@ function computeTrainingWindow(startTimes) {
   const stdDev  = Math.sqrt(minutes.reduce((s, m) => s + (m - mean) ** 2, 0) / minutes.length);
   if (stdDev > REMINDER_MAX_STDDEV) return null;
   return { meanMinutes: mean, stdDevMinutes: stdDev };
-}
-
-function showReminderBanner(overdue) {
-  const el = document.getElementById('reminder-banner');
-  document.getElementById('reminder-text').textContent = overdue
-    ? "Haven't trained yet today"
-    : 'Time to train';
-  el.classList.remove('hidden');
 }
 
 function hideReminderBanner() {
@@ -99,24 +90,21 @@ function dismissReminderBanner() {
   }
 }
 
-// Evaluates whether to show the reminder banner. Called on every idle screen visit.
-function checkSessionReminder() {
-  hideReminderBanner();
-  if (!getReminderEnabled()) return;
-
-  // Plan banners outrank the generic reminder — never stack banners
-  if (!document.getElementById('plan-expiry-banner').classList.contains('hidden') ||
-      !document.getElementById('plan-nudge-banner').classList.contains('hidden')) return;
+// Decides whether the generic session reminder (F-04) should show.
+// Returns a render thunk that fills in the banner text, or null.
+// Priority against the plan banners is handled by IDLE_BANNERS order, not here.
+function computeReminderBanner() {
+  if (!getReminderEnabled()) return null;
 
   const startTimes = dbGetRecentSessionStartTimes(10);
-  if (startTimes.length < REMINDER_MIN_SESSIONS) return;
-  if (dbHasSessionToday()) return;
+  if (startTimes.length < REMINDER_MIN_SESSIONS) return null;
+  if (dbHasSessionToday()) return null;
 
   const lastDismissed = parseInt(localStorage.getItem(REMINDER_DISMISSED_AT) ?? '0');
-  if (Date.now() - lastDismissed < REMINDER_COOLDOWN_MS) return;
+  if (Date.now() - lastDismissed < REMINDER_COOLDOWN_MS) return null;
 
   const window = computeTrainingWindow(startTimes);
-  if (!window) return;
+  if (!window) return null;
 
   const now            = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -124,8 +112,41 @@ function checkSessionReminder() {
   const targetMinutes  = window.meanMinutes + offset;
   const diff           = currentMinutes - targetMinutes;
 
-  if (diff >= -REMINDER_WINDOW_MIN && diff <= REMINDER_OVERDUE_MIN) {
-    showReminderBanner(diff > REMINDER_WINDOW_MIN);
+  if (diff < -REMINDER_WINDOW_MIN || diff > REMINDER_OVERDUE_MIN) return null;
+  const overdue = diff > REMINDER_WINDOW_MIN;
+  return () => {
+    document.getElementById('reminder-text').textContent = overdue
+      ? "Haven't trained yet today"
+      : 'Time to train';
+  };
+}
+
+// ── Idle banners (mediator) ───────────────────────────
+
+// The idle screen shows at most ONE banner at a time. Entries are in priority
+// order: the first compute() that returns a render thunk wins; every other
+// banner is hidden. To add a banner, add an entry at the right priority —
+// no cross-banner visibility checks needed.
+const IDLE_BANNERS = [
+  { id: 'plan-expiry-banner', compute: computePlanExpiryBanner },
+  { id: 'plan-nudge-banner',  compute: computePlanNudgeBanner  },
+  { id: 'reminder-banner',    compute: computeReminderBanner   },
+];
+
+// Evaluates all idle banners in priority order. Called on every idle screen
+// visit and whenever a setting changes banner eligibility.
+function checkIdleBanners() {
+  let winner = null;
+  for (const banner of IDLE_BANNERS) {
+    document.getElementById(banner.id).classList.add('hidden');
+    if (!winner) {
+      const render = banner.compute();
+      if (render) winner = { id: banner.id, render };
+    }
+  }
+  if (winner) {
+    winner.render();
+    document.getElementById(winner.id).classList.remove('hidden');
   }
 }
 
@@ -608,8 +629,8 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(`screen-${name}`).classList.add('active');
   // Banner hierarchy on idle: expiry > plan nudge > generic reminder —
-  // checkPlanNudge defers to a visible expiry banner, checkSessionReminder to both
-  if (name === 'idle') { renderIdleDashboard(); checkPlanExpiry(); checkPlanNudge(); checkSessionReminder(); }
+  // Banner priority (expiry > nudge > reminder) is owned by the IDLE_BANNERS mediator
+  if (name === 'idle') { renderIdleDashboard(); checkIdleBanners(); }
   if (name === 'plans') renderPlansScreen();
   if (name === 'history') renderHistoryScreen();
 }
@@ -1378,20 +1399,21 @@ function renderPlanAdherence(sessionId) {
   el.classList.remove('hidden');
 }
 
-// Plan expiry check — shows a banner on the idle screen if the active plan has run over duration.
-function checkPlanExpiry() {
-  const banner = document.getElementById('plan-expiry-banner');
-  const plan   = dbGetActivePlan();
-  if (!plan || !plan.duration_weeks) { banner.classList.add('hidden'); return; }
+// Plan expiry banner — fires when the active plan has run over its duration.
+// Returns a render thunk or null (visibility is the mediator's job).
+function computePlanExpiryBanner() {
+  const plan = dbGetActivePlan();
+  if (!plan || !plan.duration_weeks) return null;
 
-  const endMs      = new Date(plan.start_date).getTime() + plan.duration_weeks * 7 * 24 * 60 * 60 * 1000;
-  const daysOver   = Math.floor((Date.now() - endMs) / (24 * 60 * 60 * 1000));
-  if (daysOver < 0) { banner.classList.add('hidden'); return; }
+  const endMs    = new Date(plan.start_date).getTime() + plan.duration_weeks * 7 * 24 * 60 * 60 * 1000;
+  const daysOver = Math.floor((Date.now() - endMs) / (24 * 60 * 60 * 1000));
+  if (daysOver < 0) return null;
 
   const daysStr = daysOver === 0 ? 'today' : `${daysOver} day${daysOver !== 1 ? 's' : ''} ago`;
-  document.getElementById('plan-expiry-text').textContent =
-    `"${plan.name}" ended ${daysStr} — time to review.`;
-  banner.classList.remove('hidden');
+  return () => {
+    document.getElementById('plan-expiry-text').textContent =
+      `"${plan.name}" ended ${daysStr} — time to review.`;
+  };
 }
 
 // ── Plan nudges ───────────────────────────────────────
@@ -1449,20 +1471,18 @@ function computePlanNudge() {
   return null;
 }
 
-// Evaluates and shows the plan nudge banner. Called on every idle screen visit,
-// after checkPlanExpiry() — the expiry banner outranks the nudge.
-function checkPlanNudge() {
-  hidePlanNudge();
-  const expiryVisible = !document.getElementById('plan-expiry-banner').classList.contains('hidden');
-  if (expiryVisible) return;
-
+// Plan nudge banner — cooldown gate plus the computePlanNudge() rules.
+// Returns a render thunk or null. The expiry banner outranks this via
+// IDLE_BANNERS order — no cross-check needed here.
+function computePlanNudgeBanner() {
   const lastDismissed = parseInt(localStorage.getItem(PLAN_NUDGE_DISMISSED_AT) ?? '0');
-  if (Date.now() - lastDismissed < PLAN_NUDGE_COOLDOWN_MS) return;
+  if (Date.now() - lastDismissed < PLAN_NUDGE_COOLDOWN_MS) return null;
 
   const message = computePlanNudge();
-  if (!message) return;
-  document.getElementById('plan-nudge-text').textContent = message; // plan names are user text
-  document.getElementById('plan-nudge-banner').classList.remove('hidden');
+  if (!message) return null;
+  return () => {
+    document.getElementById('plan-nudge-text').textContent = message; // plan names are user text
+  };
 }
 
 // ── Plans screen ──────────────────────────────────────
