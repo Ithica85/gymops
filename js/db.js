@@ -176,8 +176,8 @@ function _migrate() {
 }
 
 // Serialises the in-memory sql.js database to localStorage.
-// IMPORTANT: _db.export() resets last_insert_rowid() to 0. Always read
-// last_insert_rowid() BEFORE calling _persist() after an INSERT.
+// IMPORTANT: _db.export() resets last_insert_rowid() to 0. INSERTs must go
+// through _runInsert(), which reads the ID before persisting.
 function _persist() {
   localStorage.setItem(DB_KEY, JSON.stringify(Array.from(_db.export())));
 }
@@ -200,18 +200,24 @@ function _one(sql, params = []) {
   return _all(sql, params)[0] ?? null;
 }
 
-// ── Sessions ──────────────────────────────────────────
-
-// Creates a new active session and returns its session_id.
-// last_insert_rowid() MUST be called before _persist() — _db.export() inside
-// _persist() resets it to 0, which would cause all sets to be stored under session_id=0.
-function dbCreateSession(defaultUnit) {
-  _db.run('INSERT INTO sessions (start_time, status, default_unit) VALUES (?, ?, ?)', [
-    new Date().toISOString(), 'active', defaultUnit,
-  ]);
+// Runs a single-row INSERT, reads the new row's ID, then persists — in that order.
+// _db.export() inside _persist() resets last_insert_rowid() to 0, so the ID must
+// be read before persisting. All INSERTs route through this helper so the ordering
+// is structural rather than a convention each call site has to remember.
+function _runInsert(sql, params) {
+  _db.run(sql, params);
   const id = _one('SELECT last_insert_rowid() AS id').id;
   _persist();
   return id;
+}
+
+// ── Sessions ──────────────────────────────────────────
+
+// Creates a new active session and returns its session_id.
+function dbCreateSession(defaultUnit) {
+  return _runInsert('INSERT INTO sessions (start_time, status, default_unit) VALUES (?, ?, ?)', [
+    new Date().toISOString(), 'active', defaultUnit,
+  ]);
 }
 
 // Marks a session as completed with the current timestamp.
@@ -261,26 +267,25 @@ function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins,
   const now = new Date().toISOString();
   if (durationMins != null) {
     if (calories != null) {
-      _db.run(
+      _runInsert(
         `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, calories, unit)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [sessionId, now, exercise, setNumber, durationMins, calories, unit]
       );
     } else {
-      _db.run(
+      _runInsert(
         `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, unit)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [sessionId, now, exercise, setNumber, durationMins, unit]
       );
     }
   } else {
-    _db.run(
+    _runInsert(
       `INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps, unit)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [sessionId, now, exercise, setNumber, weight, reps, unit]
     );
   }
-  _persist();
 }
 
 // Hard-deletes an incomplete session and all its sets. Used when the user
@@ -580,13 +585,10 @@ function dbHasSessionToday() {
 // ── Plans ─────────────────────────────────────────────
 
 function dbCreatePlan(name, startDate, durationWeeks, objectivesJson, targetSessionsPerWeek) {
-  _db.run(
+  return _runInsert(
     'INSERT INTO plans (name, start_date, duration_weeks, objectives_json, status, target_sessions_per_week) VALUES (?, ?, ?, ?, ?, ?)',
     [name, startDate, durationWeeks ?? null, objectivesJson ?? null, 'active', targetSessionsPerWeek ?? null]
   );
-  const row = _one('SELECT last_insert_rowid() AS id');
-  _persist();
-  return row.id;
 }
 
 function dbUpdatePlan(planId, name, durationWeeks, objectivesJson, targetSessionsPerWeek) {
