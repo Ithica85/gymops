@@ -1,0 +1,11 @@
+{
+  "name": "gymops",
+  "private": true,
+  "description": "GymOps — mobile-first gym workout logger PWA. No runtime npm dependencies; devDependencies are test-only and nothing here ships to the browser.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
+  }
+}

@@ -8,7 +8,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 
 - **Vanilla HTML/CSS/JS only.** No frameworks (React, Vue), no build tools (webpack, vite), no bundlers. JS files are native ES modules (`<script type="module">`, real import/export) — `lib/sql-wasm.js` stays a classic script providing the `initSqlJs` global.
 - **SQLite via sql.js** persisted to localStorage. The sql.js library is vendored in `/lib`.
-- **No npm dependencies** beyond sql.js.
+- **No runtime npm dependencies** beyond sql.js (vendored in `/lib`). Test-only devDependencies are allowed (Vitest) — nothing in `node_modules` ships to the browser. `npm test` runs the suite in `tests/`.
 - **PWA** with service worker (`sw.js`) and `manifest.json`.
 - **Dark theme** using CSS custom properties defined in `:root` in `css/style.css`.
 - **Mobile-first** — design target is 375px width. All content on the active workout screen must remain above the fold.
@@ -93,6 +93,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 ## After Any Change
 
+0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
 3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v60`.
