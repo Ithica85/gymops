@@ -896,6 +896,42 @@ function cancelFinishConfirm() {
 let _resumeExercise     = null;
 let _resumeExerciseType = null;
 
+// ── Drive upload state ────────────────────────────────
+
+// Uploads are chained so two quick finishes (finish → resume → finish) can't
+// run concurrently against the shared token client and migration check in
+// gdrive.js. The pending counter keeps the inline status honest when a second
+// upload starts before the first resolves.
+let _driveUploadChain    = Promise.resolve();
+let _driveUploadsPending = 0;
+
+// Sets the inline Drive status line on the completed screen. Pass null to hide.
+// Inline rather than only a toast: a toast is gone in seconds, but the status
+// should still be readable when the user unlocks their phone a minute later.
+function _setDriveStatus(text, fail = false) {
+  const el = document.getElementById('drive-status');
+  if (text === null) { el.classList.add('hidden'); return; }
+  el.textContent = text;
+  el.classList.toggle('drive-status--fail', fail);
+  el.classList.remove('hidden');
+}
+
+function _startDriveUpload(csv, sessionStartIso) {
+  _driveUploadsPending++;
+  _setDriveStatus('Saving to Drive…');
+  _driveUploadChain = _driveUploadChain
+    .then(() => gdriveUpload(csv, sessionStartIso))
+    .then(() => {
+      _driveUploadsPending--;
+      if (_driveUploadsPending === 0) _setDriveStatus('Saved to Google Drive ✓');
+    })
+    .catch(() => {
+      _driveUploadsPending--;
+      _setDriveStatus('Drive save failed — CSV downloaded instead', true);
+      triggerExport(); // preserve the local-CSV fallback
+    });
+}
+
 // Ends the session, triggers Drive upload, and shows the completed screen.
 function finishWorkout() {
   hideFinishConfirm();
@@ -917,7 +953,8 @@ function finishWorkout() {
   // Auto-save to Google Drive (non-blocking — failure falls back to local CSV download)
   const csv     = dbExportSessionCSV(state.sessionId);
   const session = dbGetSession(state.sessionId);
-  if (csv && session) gdriveUpload(csv, session.start_time).catch(() => triggerExport());
+  if (csv && session) _startDriveUpload(csv, session.start_time);
+  else _setDriveStatus(null); // nothing to upload — don't show a stale status
 
   document.getElementById('session-summary').textContent =
     `${count} set${count !== 1 ? 's' : ''} logged`;

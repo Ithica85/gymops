@@ -1142,6 +1142,17 @@ body {
   margin-top: 4px;
 }
 
+/* Drive upload state on the completed screen */
+.drive-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.drive-status--fail {
+  color: var(--danger);
+}
+
 /* Plans screen */
 .plan-card {
   background: var(--surface2);
