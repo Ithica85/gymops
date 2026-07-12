@@ -129,6 +129,7 @@ async function _migrateToMonthFolders(token, gymOpsId, sessionDataId) {
   const data = await res.json();
   const gymFiles = (data.files ?? []).filter(f => /^gym_\d{4}_\d{2}_\d{2}/.test(f.name));
 
+  const failed = [];
   for (const file of gymFiles) {
     try {
       const m = file.name.match(/^gym_(\d{4})_(\d{2})_\d{2}/);
@@ -136,7 +137,7 @@ async function _migrateToMonthFolders(token, gymOpsId, sessionDataId) {
       const monthLabel = `${m[1]}-${m[2]}`;
       const monthId = await _findOrCreateFolder(token, monthLabel, sessionDataId);
       // Move file by updating its parents (add new, remove old) — no copy, no data loss
-      await fetch(
+      const move = await fetch(
         `https://www.googleapis.com/drive/v3/files/${file.id}?addParents=${monthId}&removeParents=${gymOpsId}&fields=id`,
         {
           method: 'PATCH',
@@ -144,12 +145,21 @@ async function _migrateToMonthFolders(token, gymOpsId, sessionDataId) {
           body: JSON.stringify({}),
         }
       );
+      if (!move.ok) throw new Error(`Move failed: ${move.status}`);
     } catch (err) {
-      console.error('Migration skipped for:', file.name, err);
+      failed.push(file.name);
+      console.error('Migration failed for:', file.name, err);
       // Non-blocking — continue migrating remaining files
     }
   }
 
+  // Only mark migration done if every file moved. On partial failure the flag
+  // stays unset so the next upload retries — already-moved files are no longer
+  // in the GymOps root, so the query above naturally excludes them.
+  if (failed.length) {
+    console.error(`Drive migration incomplete — ${failed.length} file(s) will retry next upload:`, failed);
+    return;
+  }
   localStorage.setItem(MIGRATION_KEY, 'true');
 }
 
