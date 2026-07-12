@@ -11,10 +11,8 @@ vi.mock('../js/db.js', async (importOriginal) => {
 });
 
 import * as db from '../js/db.js';
-import {
-  computeProgressionSignal, computeSessionSignal, computePlanNudge,
-  computePlanExpiryBanner, computePlanNudgeBanner,
-} from '../js/app.js';
+import { computeProgressionSignal, computeSessionSignal } from '../js/signals.js';
+import { computePlanNudge, computePlanExpiryBanner, computePlanNudgeBanner } from '../js/plans.js';
 
 const daysAgoIso = d => new Date(Date.now() - d * 86400000).toISOString();
 // history entries are newest-first, matching dbGetRecentSessionsBestForExercise
