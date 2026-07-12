@@ -96,7 +96,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v61`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v62`. The DB is stored in localStorage as base64 (legacy JSON-array blobs from pre-v62 installs are read transparently and upgraded on the next write).
 4. Verify CSV export still works and includes any new columns.
 
 ---

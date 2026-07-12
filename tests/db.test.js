@@ -166,3 +166,52 @@ describe('session lifecycle', () => {
     expect(session.end_time).toBeTruthy();
   });
 });
+
+describe('persistence encoding (base64 with legacy JSON-array fallback)', () => {
+  it('stores base64, not a JSON byte array', () => {
+    dbCreateSession('kg');
+    const stored = localStorage.getItem('gymops_db');
+    expect(stored.startsWith('[')).toBe(false);
+    expect(() => atob(stored)).not.toThrow();
+  });
+
+  it('loads a legacy JSON-array DB losslessly and upgrades it on next write', async () => {
+    // Build real data, then rewrite storage in the legacy format
+    const sessionId = dbCreateSession('kg');
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg');
+
+    const base64 = localStorage.getItem('gymops_db');
+    const binary = atob(base64);
+    const bytes  = Array.from(binary, c => c.charCodeAt(0));
+    localStorage.setItem('gymops_db', JSON.stringify(bytes)); // legacy format
+
+    await initDB(); // must read the legacy format
+    expect(dbGetSetCount(sessionId)).toBe(1);
+    expect(dbGetAllSets(sessionId)[0].weight).toBe(60);
+
+    dbCreateSession('kg'); // any write upgrades the stored format
+    const upgraded = localStorage.getItem('gymops_db');
+    expect(upgraded.startsWith('[')).toBe(false);
+
+    await initDB(); // and the upgraded format round-trips
+    expect(dbGetSetCount(sessionId)).toBe(1);
+  });
+
+  it('base64 is smaller than the legacy encoding', () => {
+    // Base64 is a fixed ~1.33 chars/byte; legacy JSON is ≥2 chars/byte (zeros)
+    // up to ~4 (values ≥100). A small mostly-empty DB is the WORST case for
+    // this comparison — real data-dense DBs save closer to 3×.
+    dbCreateSession('kg');
+    for (let i = 1; i <= 50; i++) dbInsertSet(1, 'Chest Press', i, 60 + i, 8, null, null, 'kg');
+    const base64 = localStorage.getItem('gymops_db');
+    const legacyLength = JSON.stringify(Array.from(_legacyBytes(base64))).length;
+    expect(base64.length).toBeLessThan(legacyLength / 1.4);
+  });
+});
+
+function _legacyBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}

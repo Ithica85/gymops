@@ -16,7 +16,7 @@ export async function initDB() {
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
     try {
-      _db = new SQL.Database(new Uint8Array(JSON.parse(saved)));
+      _db = new SQL.Database(_decodeDB(saved));
       _migrate(); // Apply any schema changes needed for this version
     } catch (_) {
       // Corrupt DB — start fresh rather than leaving the app broken
@@ -179,7 +179,31 @@ function _migrate() {
 // IMPORTANT: _db.export() resets last_insert_rowid() to 0. INSERTs must go
 // through _runInsert(), which reads the ID before persisting.
 function _persist() {
-  localStorage.setItem(DB_KEY, JSON.stringify(Array.from(_db.export())));
+  localStorage.setItem(DB_KEY, _encodeDB(_db.export()));
+}
+
+// Base64-encodes the exported DB bytes (~1.33× the raw size). The previous
+// format — a JSON array of byte values — inflated every byte to ~4 characters
+// and pushed large DBs toward the ~5MB localStorage quota much sooner.
+// Chunked fromCharCode avoids blowing the argument-count limit on big exports.
+function _encodeDB(bytes) {
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+// Decodes a stored DB string. Accepts both formats: legacy JSON byte arrays
+// (start with '[') from pre-v3.6 installs, and base64. The first _persist()
+// after loading a legacy DB rewrites it as base64 — a one-way, lossless upgrade.
+function _decodeDB(stored) {
+  if (stored.charCodeAt(0) === 0x5B /* '[' */) return new Uint8Array(JSON.parse(stored));
+  const binary = atob(stored);
+  const bytes  = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 // ── Query helpers ─────────────────────────────────────
