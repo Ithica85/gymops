@@ -96,7 +96,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v60`.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v61`.
 4. Verify CSV export still works and includes any new columns.
 
 ---
@@ -230,7 +230,7 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
 
 - Weight normalisation: all cross-session comparisons use `CASE WHEN unit='lbs' THEN weight/2.2046 ELSE weight END` in SQL to produce kg values. `convertWeight()` in app.js handles display conversion.
 - `beforeSessionId` guard: `dbGetRecentSessionsBestForExercise` accepts an optional `beforeSessionId` to exclude the current session from its own prior-history lookup (used by F-06).
-- `switchExercise(name, type=null)`: single entry point for exercise changes. `type` param lets `applyOtherExercise` pass an explicit 'reps'/'timed' choice without `getExerciseType` overriding it.
+- `setActiveExercise(name, type=null, { render })`: THE single mutation point for `state.exercise`/`state.exerciseType`/`state.setNumber` (renamed from `switchExercise` in the 2026-07 hardening pass). `type` param lets `applyOtherExercise` pass an explicit 'reps'/'timed' choice without `getExerciseType` overriding it; `render: false` is for bookkeeping resyncs (set logged/deleted) that manage their own re-render. `setNumber` is always recomputed from the DB. Never mutate these state fields directly.
 - Rolling baseline (`dbGetRecentSessionsBestForExercise` with `limit=6`): prerequisite data shape for Phase 3 AI summary work — already in place.
 
 ---

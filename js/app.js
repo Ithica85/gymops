@@ -769,16 +769,23 @@ function clearInputs() {
 
 // ── Exercise navigation (F-05) ────────────────────────
 
-// Switches to a named exercise without opening the picker.
-// type is optional — callers that know the type (e.g. applyOtherExercise) pass it
-// explicitly; otherwise getExerciseType is used (covers all EXERCISES array entries).
-function switchExercise(name, type = null) {
+// The single owned transition for the active exercise (Story 3.1): the ONLY
+// place that mutates state.exercise / state.exerciseType / state.setNumber.
+// setNumber is always recomputed from the DB, so it can't drift from reality.
+// - type: pass explicitly to bypass getExerciseType (custom "Other" exercises);
+//   null derives it from the EXERCISES list.
+// - render: false is for bookkeeping callers (set logged / deleted) that manage
+//   their own re-render and must not steal focus (quick-log) — they only need
+//   the state resync.
+function setActiveExercise(name, type = null, { render = true } = {}) {
   state.exercise     = name;
   state.exerciseType = type ?? getExerciseType(name);
   state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
-  renderActive();
-  focusInput();
-  resetInactivityTimer();
+  if (render) {
+    renderActive();
+    focusInput();
+    resetInactivityTimer();
+  }
 }
 
 // Returns the exercise that follows the current one in last session's logged order,
@@ -822,27 +829,20 @@ function renderUpNext() {
 function _doStartSession() {
   document.getElementById('btn-resume-idle').classList.add('hidden');
 
-  state.sessionId    = dbCreateSession(getWeightUnit());
-  state.exercise     = EXERCISES[0].name;
-  state.exerciseType = EXERCISES[0].type;
-  state.setNumber    = 1;
+  state.sessionId = dbCreateSession(getWeightUnit());
 
   // Link session to active plan if one exists; use plan's first exercise as starting point
-  const activePlan = dbGetActivePlan();
+  let startExercise = EXERCISES[0].name;
+  const activePlan  = dbGetActivePlan();
   if (activePlan) {
     dbLinkSessionToPlan(state.sessionId, activePlan.plan_id);
     const planExs = dbGetPlanExercises(activePlan.plan_id);
-    if (planExs.length) {
-      state.exercise     = planExs[0].exercise;
-      state.exerciseType = getExerciseType(planExs[0].exercise);
-    }
+    if (planExs.length) startExercise = planExs[0].exercise;
   }
 
   document.getElementById('session-notes').value = '';
   showScreen('active');
-  renderActive();
-  focusInput();
-  resetInactivityTimer();
+  setActiveExercise(startExercise);
   const newSession = dbGetSession(state.sessionId);
   if (newSession) startSessionTimer(newSession.start_time);
 }
@@ -868,53 +868,29 @@ function resumeSession(session) {
   const sessionData = dbGetSession(session.session_id);
   document.getElementById('session-notes').value = sessionData?.notes ?? '';
 
-  const lastSet      = dbGetRecentSets(session.session_id, 1)[0];
-  state.exercise     = lastSet ? lastSet.exercise : EXERCISES[0].name;
-  state.exerciseType = getExerciseType(state.exercise);
-  state.setNumber    = dbGetSetCountForExercise(session.session_id, state.exercise) + 1;
-
+  const lastSet = dbGetRecentSets(session.session_id, 1)[0];
   showScreen('active');
-  renderActive();
-  focusInput();
-  resetInactivityTimer();
+  setActiveExercise(lastSet ? lastSet.exercise : EXERCISES[0].name);
   if (sessionData) startSessionTimer(sessionData.start_time);
 }
 
-// Saved when the Finish confirmation modal opens, restored if the user cancels.
-// Ensures dismissing the modal returns to the exact exercise the user was on,
-// even if no sets had been logged for it yet (so it doesn't appear in dbGetRecentSets).
-let _savedExercise     = null;
-let _savedExerciseType = null;
-
 function showFinishConfirm() {
-  _savedExercise     = state.exercise;
-  _savedExerciseType = state.exerciseType;
   document.getElementById('confirm-finish').classList.remove('hidden');
 }
 
-// Used only by the confirmed-finish path (finishWorkout). Clears saved state
-// without restoring it. Kept separate from cancelFinishConfirm to avoid
-// triggering a re-render mid-finish.
+// Used only by the confirmed-finish path (finishWorkout). Kept separate from
+// cancelFinishConfirm to avoid triggering a re-render mid-finish.
 function hideFinishConfirm() {
   document.getElementById('confirm-finish').classList.add('hidden');
-  _savedExercise     = null;
-  _savedExerciseType = null;
 }
 
-// Used by the Cancel button and backdrop tap. Restores the saved exercise
-// before hiding the modal, then re-renders and returns focus to the input.
+// Used by the Cancel button and backdrop tap. Nothing can change the active
+// exercise while the modal is open, so cancelling only needs to hide the modal
+// and hand the user back to the exercise they were on.
 function cancelFinishConfirm() {
-  state.exercise     = _savedExercise;
-  state.exerciseType = _savedExerciseType;
   hideFinishConfirm();
-  renderActive();
-  focusInput();
+  setActiveExercise(state.exercise, state.exerciseType);
 }
-
-// Saved at the moment Finish is confirmed, so resumeLastWorkout() can restore
-// the exact exercise the user was on — not just the last exercise with a logged set.
-let _resumeExercise     = null;
-let _resumeExerciseType = null;
 
 // ── Drive upload state ────────────────────────────────
 
@@ -962,9 +938,8 @@ function finishWorkout() {
   clearTimeout(_notesDebounce);
   saveNotesNow(); // Flush any unsaved notes before closing the session
 
-  // Capture current exercise before state changes, so resume can restore it
-  _resumeExercise     = state.exercise;
-  _resumeExerciseType = state.exerciseType;
+  // state.exercise / state.exerciseType are deliberately left untouched here —
+  // resumeLastWorkout() reads them to restore the exercise active at Finish time.
 
   const count   = dbGetSetCount(state.sessionId);
   dbFinishSession(state.sessionId);
@@ -1000,16 +975,14 @@ function resumeLastWorkout() {
     document.getElementById('btn-resume').classList.add('hidden');
     return;
   }
+  // state.exercise still holds the exercise active at Finish time (finishWorkout
+  // leaves it untouched); capture it before resumeSession overwrites it from the
+  // last logged set.
+  const finishExercise = state.exercise;
+  const finishType     = state.exerciseType;
   dbResumeSession(state.sessionId);
   resumeSession({ session_id: state.sessionId });
-  if (_resumeExercise !== null) {
-    state.exercise     = _resumeExercise;
-    state.exerciseType = _resumeExerciseType;
-    state.setNumber    = dbGetSetCountForExercise(state.sessionId, state.exercise) + 1;
-    _resumeExercise     = null;
-    _resumeExerciseType = null;
-    renderActive(); // Re-render to reflect restored exercise
-  }
+  if (finishExercise) setActiveExercise(finishExercise, finishType);
 }
 
 // ── Core actions ──────────────────────────────────────
@@ -1087,7 +1060,8 @@ function logSet() {
 // typing is its entire purpose.
 function _afterSetLogged(focus = true) {
   const signal = computeProgressionSignal(state.exercise, state.sessionId);
-  state.setNumber += 1;
+  // Resync setNumber from the DB (the set is already inserted, so this advances it)
+  setActiveExercise(state.exercise, state.exerciseType, { render: false });
   clearInputs();
   renderActive();
   renderProgressionSignal(signal);
@@ -1249,7 +1223,7 @@ function undoSet() {
   }
 
   if (deleted.exercise === state.exercise) {
-    state.setNumber = Math.max(1, state.setNumber - 1);
+    setActiveExercise(state.exercise, state.exerciseType, { render: false });
   }
 
   renderActive();
@@ -1302,7 +1276,7 @@ function _renderExerciseList() {
         return;
       }
       closePicker();
-      switchExercise(ex.name);
+      setActiveExercise(ex.name);
     });
     return li;
   }
@@ -1366,7 +1340,7 @@ function applyOtherExercise(name, type) {
   if (ctx === 'plan') {
     addExerciseToPlan(name, type);
   } else {
-    switchExercise(name, type);
+    setActiveExercise(name, type);
   }
 }
 
@@ -2292,7 +2266,7 @@ async function boot() {
   document.getElementById('btn-change-exercise').addEventListener('click', openPicker);
   document.getElementById('up-next-hint').addEventListener('click', () => {
     const name = document.getElementById('up-next-name').textContent;
-    if (name) switchExercise(name);
+    if (name) setActiveExercise(name);
   });
   document.getElementById('btn-log-set').addEventListener('click', logSet);
   document.getElementById('btn-quick-log').addEventListener('click', quickLogSet);
@@ -2316,7 +2290,7 @@ async function boot() {
         dbResequenceSets(state.sessionId, row.exercise);
         // Keep state.setNumber in sync for the currently selected exercise
         if (row.exercise === state.exercise) {
-          state.setNumber = dbGetSetCountForExercise(state.sessionId, state.exercise) + 1;
+          setActiveExercise(state.exercise, state.exerciseType, { render: false });
         }
       }
       renderActive();
