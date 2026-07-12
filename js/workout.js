@@ -36,7 +36,7 @@ import {
   getWeightUnit,
   state,
 } from './state.js';
-import { downloadCSV, showScreen } from './ui.js';
+import { downloadCSV, escapeHTML, showScreen } from './ui.js';
 import {
   computeProgressionSignal,
   computeSessionSignal,
@@ -335,7 +335,7 @@ export function renderRecentSets() {
     }
     return `
       <div class="set-item" data-set-id="${s.set_id}">
-        <span class="set-item-exercise">${s.exercise}</span>
+        <span class="set-item-exercise">${escapeHTML(s.exercise)}</span>
         <span class="set-item-details">${details}</span>
         <button class="set-delete-btn" data-set-id="${s.set_id}" aria-label="Delete set">🗑</button>
       </div>

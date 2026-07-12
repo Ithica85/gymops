@@ -6,6 +6,7 @@ import { dbGetExerciseRecency, dbGetSessionPlan, dbGetSetCountForExercise } from
 import { CARDIO_KEYWORDS, EXERCISES, getExerciseType, state } from './state.js';
 import { setActiveExercise } from './workout.js';
 import { addExerciseToPlan } from './plans.js';
+import { escapeHTML } from './ui.js';
 
 // Picker sort preference — 'recent' (default) or 'az'. Persisted across sessions.
 let _pickerSort    = localStorage.getItem('gymops_picker_sort') || 'recent';
@@ -64,7 +65,7 @@ function _renderExerciseList() {
       ? dbGetSetCountForExercise(state.sessionId, ex.name) > 0
       : false;
     if (targetHint) {
-      li.innerHTML = `<span>${ex.name}</span><span class="picker-target-hint">${targetHint}</span>`;
+      li.innerHTML = `<span>${escapeHTML(ex.name)}</span><span class="picker-target-hint">${targetHint}</span>`;
     } else {
       li.textContent = ex.name;
     }

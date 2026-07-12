@@ -17,6 +17,15 @@ export function showScreen(name) {
 
 // ── UI rendering ──────────────────────────────────────
 
+// Escapes user-entered text (plan names, objectives, custom exercise names)
+// for safe interpolation into innerHTML templates. Prefer textContent / DOM
+// APIs for new code (see history.js); use this when a template literal is
+// genuinely clearer.
+export function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // Shows a brief notification at the bottom of the screen.
 // Errors display for 5 seconds; success messages display for 3 seconds.
 // Currently has no callers (Drive messaging moved to the inline drive-status

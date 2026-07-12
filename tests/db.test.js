@@ -7,7 +7,7 @@ import {
   dbCreateSession, dbGetSession, dbFinishSession,
   dbInsertSet, dbGetAllSets, dbGetSetCount,
   dbDeleteSetById, dbResequenceSets, dbDeleteLastSet,
-  dbCreatePlan, dbGetPlan,
+  dbCreatePlan, dbGetPlan, dbClearAll,
 } from '../js/db.js';
 
 beforeEach(async () => {
@@ -215,3 +215,21 @@ function _legacyBytes(base64) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+describe('dbClearAll', () => {
+  it('wipes the DB and all gymops_* keys — credentials included', () => {
+    dbCreateSession('kg');
+    localStorage.setItem('gymops_anthropic_key', 'sk-ant-test');
+    localStorage.setItem('gymops_gdrive_token', '{"token":"x","expiry":1}');
+    localStorage.setItem('gymops_weight_unit', 'kg');
+    localStorage.setItem('unrelated_key', 'survives');
+
+    dbClearAll();
+
+    expect(localStorage.getItem('gymops_db')).toBeNull();
+    expect(localStorage.getItem('gymops_anthropic_key')).toBeNull();
+    expect(localStorage.getItem('gymops_gdrive_token')).toBeNull();
+    expect(localStorage.getItem('gymops_weight_unit')).toBeNull();
+    expect(localStorage.getItem('unrelated_key')).toBe('survives');
+  });
+});

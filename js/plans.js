@@ -18,7 +18,7 @@ import {
   dbUpdatePlanStatus,
 } from './db.js';
 import { SIGNAL_GAP_DAYS, getExerciseType } from './state.js';
-import { onScreenShow, showScreen } from './ui.js';
+import { escapeHTML, onScreenShow, showScreen } from './ui.js';
 import { IDLE_BANNERS, _weekStart } from './idle.js';
 
 // Plan adherence: compares plan exercises to what was actually logged.
@@ -147,15 +147,15 @@ function renderPlansScreen() {
     cardEl.innerHTML = `
       <div class="plan-card-header">
         <div>
-          <p class="plan-card-name">${active.name}</p>
+          <p class="plan-card-name">${escapeHTML(active.name)}</p>
           <p class="plan-card-meta">${durationStr}</p>
         </div>
         <button class="btn-text plan-card-edit" data-plan-id="${active.plan_id}">Edit</button>
       </div>
-      ${objectives.length ? `<ul class="plan-objectives-list">${objectives.map(o => `<li>${o}</li>`).join('')}</ul>` : ''}
+      ${objectives.length ? `<ul class="plan-objectives-list">${objectives.map(o => `<li>${escapeHTML(o)}</li>`).join('')}</ul>` : ''}
       <p class="plan-exercises-preview">${exs.map(e => {
         const t = (e.target_sets && e.target_reps) ? ` ${e.target_sets}×${e.target_reps}` : '';
-        return `${e.exercise}${t}`;
+        return `${escapeHTML(e.exercise)}${t}`;
       }).join(' · ')}</p>
     `;
     cardEl.classList.remove('hidden');
@@ -176,7 +176,7 @@ function renderPlansScreen() {
       const row = document.createElement('div');
       row.className = 'past-plan-row';
       row.innerHTML = `
-        <span class="past-plan-name">${p.name}</span>
+        <span class="past-plan-name">${escapeHTML(p.name)}</span>
         <button class="btn-text plan-card-edit" data-plan-id="${p.plan_id}">View</button>
       `;
       row.querySelector('.plan-card-edit').addEventListener('click', () => openEditPlan(p.plan_id));
@@ -241,7 +241,7 @@ function renderPlanEditorExercises() {
     const row = document.createElement('div');
     row.className = 'plan-exercise-row';
     row.innerHTML = `
-      <span class="plan-exercise-row-name">${ex.exercise}</span>
+      <span class="plan-exercise-row-name">${escapeHTML(ex.exercise)}</span>
       <div class="plan-exercise-row-targets">
         <input type="number" class="plan-target-input" placeholder="Sets" value="${ex.targetSets ?? ''}" min="1" max="20" inputmode="numeric" data-idx="${i}" data-field="sets">
         <span class="plan-target-sep">×</span>

@@ -675,8 +675,13 @@ export function dbGetSessionPlan(sessionId) {
 
 // Wipes the entire database from localStorage. The page must be reloaded after this
 // to reinitialise the in-memory DB.
+// Removes the database AND every other gymops_* localStorage key — credentials
+// (Anthropic API key, Drive OAuth token) and preferences included. "Clear All
+// Data" must leave nothing readable behind on a shared or handed-over device.
 export function dbClearAll() {
-  localStorage.removeItem(DB_KEY);
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('gymops_'))
+    .forEach(k => localStorage.removeItem(k));
 }
 
 // ── CSV Export ────────────────────────────────────────

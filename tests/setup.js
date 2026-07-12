@@ -15,13 +15,19 @@ globalThis.initSqlJs = () => initSqlJs({ locateFile: f => path.join(LIB_DIR, f) 
 
 // Minimal localStorage stub. Tests call localStorage.clear() + initDB() in
 // beforeEach to get a fresh in-memory database per test.
-const store = new Map();
-globalThis.localStorage = {
-  getItem: k => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: k => store.delete(k),
-  clear: () => store.clear(),
-};
+// Faithful to real Storage in one important way: stored keys are own
+// enumerable properties, so Object.keys(localStorage) lists them —
+// dbClearAll() relies on that to find gymops_* keys.
+const storage = {};
+for (const [name, fn] of Object.entries({
+  getItem(k)     { return Object.prototype.hasOwnProperty.call(storage, k) ? storage[k] : null; },
+  setItem(k, v)  { storage[k] = String(v); },
+  removeItem(k)  { delete storage[k]; },
+  clear()        { for (const k of Object.keys(storage)) delete storage[k]; },
+})) {
+  Object.defineProperty(storage, name, { value: fn, enumerable: false });
+}
+globalThis.localStorage = storage;
 
 // Minimal DOM stub so js/app.js can be imported for its exported pure functions
 // (it wires a DOMContentLoaded listener and looks up elements at module scope).
