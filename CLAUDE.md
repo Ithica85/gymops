@@ -19,10 +19,10 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 
 - `index.html` — Single-page structure with all screens (idle, active, completed, settings, plans, plan-editor, history, exercise-history), exercise picker modal, session-signal modal, AI summary modal, plan expiry banner, and up-next hint.
 - `js/app.js` — Entry point ONLY: `boot()` (initDB + all event-listener wiring) and the Layer 1 / Layer 2 decision comment. All feature logic lives in the modules below (split July 2026; app.js imports them, index.html loads only app.js).
-- `js/state.js` — Shared `state` object, `APP_VERSION`, `EXERCISES` catalogue (`{ name, type }`, `type` is `"reps"`/`"timed"`), `getExerciseType()`, `getWeightUnit()` / `convertWeight()`, shared constants (`WEIGHT_EPSILON_KG`, `SIGNAL_GAP_DAYS`).
+- `js/state.js` — Shared `state` object, `APP_VERSION`, `EXERCISES` catalogue (114 entries, `{ name, type, muscleGroup }`; `type` is `"reps"`/`"timed"`, groups per `MUSCLE_GROUPS`), `getExerciseType()` / `getExerciseGroup()`, `getWeightUnit()` / `convertWeight()`, shared constants. Legacy exercise names must never change (history references them); `EXERCISES[0]` is the plan-less default; both rules are test-guarded.
 - `js/ui.js` — `showScreen()` + `onScreenShow(name, fn)` hook registry (screens register their own render-on-show), `showToast()` (currently no callers), `downloadCSV()`.
 - `js/workout.js` — **Layer 1**: session lifecycle (`startSession`/`_doStartSession`/`resumeSession`/`finishWorkout`/`resumeLastWorkout`), `setActiveExercise()` (the ONLY exercise/setNumber mutation point), `logSet`/`_afterSetLogged`, quick-log, `undoSet`, rest + session + inactivity timers (`initInactivityWatchdog()`), notes autosave, Drive upload status chain, PR celebration, active-screen renders, `computeUpNext`, `triggerExport`.
-- `js/picker.js` — Exercise picker bottom sheet: session + plan-editor modes (`openPicker`/`openPickerForPlan`), MRU/A–Z sort (`setPickerSort`), custom "Other" exercise flow.
+- `js/picker.js` — Exercise picker bottom sheet: session + plan-editor modes (`openPicker`/`openPickerForPlan`), search (`setPickerQuery`, never autofocused), muscle-group chips (`setPickerGroup`, generated from `MUSCLE_GROUPS`), sectioned catalogue below the Recent block, MRU/A–Z sort (`setPickerSort`), custom "Other" exercise flow.
 - `js/signals.js` — Deterministic rule engines: `computeProgressionSignal` (F-03), `computeSessionSignal` (F-06), and their renderers.
 - `js/idle.js` — Idle dashboard (week strip, hook line, plan line), `IDLE_BANNERS` mediator + `checkIdleBanners()`, smart session reminder (F-04) incl. `computeTrainingWindow`.
 - `js/plans.js` — Plan banners (`computePlanExpiryBanner`/`computePlanNudge`/`computePlanNudgeBanner`), plans screen, plan editor, `renderPlanAdherence`.
@@ -106,7 +106,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v65`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v66`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
 5. User-entered text (plan names, objectives, custom exercise names) must go through `escapeHTML()` (js/ui.js) when interpolated into `innerHTML` — or better, use `textContent`/DOM APIs like history.js. `dbClearAll()` wipes ALL `gymops_*` localStorage keys (credentials included), not just the DB. The DB is stored in localStorage as base64 (legacy JSON-array blobs from pre-v62 installs are read transparently and upgraded on the next write).
 4. Verify CSV export still works and includes any new columns.
 
