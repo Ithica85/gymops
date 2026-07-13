@@ -58,6 +58,8 @@ import {
   confirmOtherName,
   openPicker,
   openPickerForPlan,
+  setPickerGroup,
+  setPickerQuery,
   setPickerSort,
 } from './picker.js';
 import { archiveCurrentPlan, dismissPlanNudge, openNewPlan, savePlan } from './plans.js';
@@ -153,7 +155,12 @@ async function boot() {
   notesEl.addEventListener('input', scheduleNotesSave);
   notesEl.addEventListener('blur', saveNotesNow); // flushes + cancels any pending debounce
 
-  // Exercise picker — sort toggle
+  // Exercise picker — search, muscle-group chips, sort toggle
+  document.getElementById('picker-search').addEventListener('input', e => setPickerQuery(e.target.value));
+  document.getElementById('picker-chips').addEventListener('click', e => {
+    const chip = e.target.closest('.picker-chip');
+    if (chip) setPickerGroup(chip.dataset.group);
+  });
   document.getElementById('picker-sort-recent').addEventListener('click', () => setPickerSort('recent'));
   document.getElementById('picker-sort-az').addEventListener('click', () => setPickerSort('az'));
 

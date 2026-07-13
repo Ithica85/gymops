@@ -370,9 +370,23 @@
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <p class="modal-title" id="modal-title">Select Exercise</p>
-      <div class="picker-sort-toggle">
-        <button class="picker-sort-btn picker-sort-btn--active" id="picker-sort-recent">Recent</button>
-        <button class="picker-sort-btn" id="picker-sort-az">A–Z</button>
+      <div id="picker-controls">
+        <input
+          type="search"
+          id="picker-search"
+          class="picker-search"
+          placeholder="Search exercises"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        >
+        <div class="picker-chips" id="picker-chips">
+          <!-- Populated by JS from MUSCLE_GROUPS -->
+        </div>
+        <div class="picker-sort-toggle">
+          <button class="picker-sort-btn picker-sort-btn--active" id="picker-sort-recent">Recent</button>
+          <button class="picker-sort-btn" id="picker-sort-az">A–Z</button>
+        </div>
       </div>
       <ul class="exercise-list" id="exercise-list">
         <!-- Populated by JS -->

@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { dbGetExerciseRecency, dbGetSessionPlan, dbGetSetCountForExercise } from './db.js';
-import { CARDIO_KEYWORDS, EXERCISES, getExerciseType, state } from './state.js';
+import { CARDIO_KEYWORDS, EXERCISES, MUSCLE_GROUPS, getExerciseType, state } from './state.js';
 import { setActiveExercise } from './workout.js';
 import { addExerciseToPlan } from './plans.js';
 import { escapeHTML } from './ui.js';
@@ -18,36 +18,45 @@ let _recencyRanks  = {};
 // 'session' (default) or 'plan' — controls what happens when an exercise is selected.
 let _pickerContext = 'session';
 
+// Live filters (v3.6): search query and active muscle-group chip.
+// Both reset when the picker closes so it always reopens in the default view.
+let _pickerQuery = '';
+let _pickerGroup = 'All';
+
 function _refreshRecencyRanks() {
   _recencyRanks = {};
   dbGetExerciseRecency().forEach((r, i) => { _recencyRanks[r.exercise] = i; });
 }
 
-// Returns EXERCISES sorted per current _pickerSort mode.
-// "Other" is always pinned last regardless of sort mode.
-// Never-used exercises fall below used ones, sorted A–Z among themselves.
-function _sortedExercises() {
-  const regular = EXERCISES.filter(e => e.name !== 'Other');
-  const other   = EXERCISES.find(e => e.name === 'Other');
-
-  if (_pickerSort === 'az') {
-    regular.sort((a, b) => a.name.localeCompare(b.name));
-  } else {
-    regular.sort((a, b) => {
-      const ra = _recencyRanks[a.name];
-      const rb = _recencyRanks[b.name];
-      if (ra !== undefined && rb !== undefined) return ra - rb;
-      if (ra !== undefined) return -1;
-      if (rb !== undefined) return  1;
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  return other ? [...regular, other] : regular;
+// Recency comparator: used exercises by most-recent-first, never-used A–Z below.
+function _byRecency(a, b) {
+  const ra = _recencyRanks[a.name];
+  const rb = _recencyRanks[b.name];
+  if (ra !== undefined && rb !== undefined) return ra - rb;
+  if (ra !== undefined) return -1;
+  if (rb !== undefined) return  1;
+  return a.name.localeCompare(b.name);
 }
 
-// Rebuilds the exercise list in the picker using the current sort mode.
-// Called by openPicker() and by sort-toggle handlers.
+export function setPickerQuery(q) {
+  _pickerQuery = q;
+  _renderExerciseList();
+}
+
+export function setPickerGroup(g) {
+  _pickerGroup = g;
+  _renderExerciseList();
+}
+
+// Rebuilds the exercise list from the current sort mode, search query, and
+// group chip. Three views (v3.6):
+//   searching     — flat filtered results, used exercises first, no sections
+//   recent (dflt) — Today's Plan, then Recent (used, by recency), then the
+//                   never-used catalogue under muscle-group section headers
+//   a–z           — Today's Plan, then the whole catalogue flat A–Z (pre-v3.6
+//                   behavior, kept for the US-04 toggle)
+// "Other" is always appended last — it's the escape hatch when search finds
+// nothing. Used exercises appear ONLY in Recent, never duplicated in sections.
 function _renderExerciseList() {
   const ul = document.getElementById('exercise-list');
   ul.innerHTML = '';
@@ -76,6 +85,7 @@ function _renderExerciseList() {
       if (ex.name === 'Other') {
         document.getElementById('exercise-list').classList.add('hidden');
         document.getElementById('btn-close-picker').classList.add('hidden');
+        document.getElementById('picker-controls').classList.add('hidden');
         document.getElementById('other-name-section').classList.remove('hidden');
         document.getElementById('other-name-input').value = '';
         document.getElementById('other-name-error').classList.add('hidden');
@@ -94,13 +104,16 @@ function _renderExerciseList() {
     return li;
   }
 
-  // If session has a plan, render plan exercises first with targets, then a divider, then the rest
-  if (planExerciseNames.length > 0) {
-    const planHeader = document.createElement('li');
-    planHeader.className = 'picker-section-header';
-    planHeader.textContent = 'Today\'s Plan';
-    ul.appendChild(planHeader);
+  function sectionHeader(label) {
+    const li = document.createElement('li');
+    li.className = 'picker-section-header';
+    li.textContent = label;
+    ul.appendChild(li);
+  }
 
+  function renderPlanSection() {
+    if (!planExerciseNames.length) return;
+    sectionHeader("Today's Plan");
     planExerciseNames.forEach(name => {
       const ex  = EXERCISES.find(e => e.name === name) ?? { name, type: getExerciseType(name) };
       const tgt = planTargetMap[name];
@@ -108,20 +121,72 @@ function _renderExerciseList() {
         ? `${tgt.target_sets}×${tgt.target_reps}` : null;
       ul.appendChild(makeItem(ex, hint));
     });
-
     const divider = document.createElement('li');
     divider.className = 'picker-divider';
     ul.appendChild(divider);
   }
 
-  // All exercises (sorted), excluding ones already shown in plan section
-  _sortedExercises()
-    .filter(ex => !planExerciseNames.includes(ex.name))
-    .forEach(ex => ul.appendChild(makeItem(ex, null)));
+  // Apply chip + search filters to the catalogue (Other is exempt — always shown)
+  let entries = EXERCISES.filter(e => e.name !== 'Other');
+  if (_pickerGroup !== 'All') entries = entries.filter(e => e.muscleGroup === _pickerGroup);
+  const query = _pickerQuery.trim().toLowerCase();
+  if (query) entries = entries.filter(e => e.name.toLowerCase().includes(query));
+
+  if (query) {
+    // Searching: flat results, used exercises first
+    entries.sort(_byRecency);
+    if (!entries.length) {
+      const li = document.createElement('li');
+      li.className = 'picker-empty';
+      li.textContent = 'No matches — add it as a custom exercise:';
+      ul.appendChild(li);
+    }
+    entries.forEach(ex => ul.appendChild(makeItem(ex, null)));
+  } else if (_pickerSort === 'az') {
+    // Flat A–Z (pre-v3.6 behavior)
+    renderPlanSection();
+    entries
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .filter(ex => !planExerciseNames.includes(ex.name))
+      .forEach(ex => ul.appendChild(makeItem(ex, null)));
+  } else {
+    // Default: Recent block, then never-used catalogue in muscle-group sections
+    renderPlanSection();
+    const inPlan = ex => planExerciseNames.includes(ex.name);
+    const used   = entries
+      .filter(ex => _recencyRanks[ex.name] !== undefined && !inPlan(ex))
+      .sort((a, b) => _recencyRanks[a.name] - _recencyRanks[b.name]);
+    if (used.length) {
+      sectionHeader('Recent');
+      used.forEach(ex => ul.appendChild(makeItem(ex, null)));
+    }
+    for (const group of MUSCLE_GROUPS) {
+      const fresh = entries
+        .filter(ex => ex.muscleGroup === group && _recencyRanks[ex.name] === undefined && !inPlan(ex))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      if (!fresh.length) continue;
+      sectionHeader(group);
+      fresh.forEach(ex => ul.appendChild(makeItem(ex, null)));
+    }
+  }
+
+  // "Other" always last, regardless of filters
+  ul.appendChild(makeItem(EXERCISES.find(e => e.name === 'Other'), null));
 
   // Keep sort toggle buttons in sync with current mode
   document.getElementById('picker-sort-recent').classList.toggle('picker-sort-btn--active', _pickerSort === 'recent');
   document.getElementById('picker-sort-az').classList.toggle('picker-sort-btn--active',     _pickerSort === 'az');
+
+  // Rebuild chips (from MUSCLE_GROUPS so they can never drift from the catalogue)
+  const chipsEl = document.getElementById('picker-chips');
+  chipsEl.innerHTML = '';
+  for (const group of ['All', ...MUSCLE_GROUPS]) {
+    const btn = document.createElement('button');
+    btn.className = 'picker-chip' + (group === _pickerGroup ? ' picker-chip--active' : '');
+    btn.textContent = group;
+    btn.dataset.group = group;
+    chipsEl.appendChild(btn);
+  }
 }
 
 // Opens the exercise picker bottom sheet. Refreshes recency data and renders the list.
@@ -147,12 +212,17 @@ export function setPickerSort(mode) {
   _renderExerciseList();
 }
 
-// Resets the picker to its default state (list visible, name-entry hidden).
+// Resets the picker to its default state (list visible, name-entry hidden,
+// filters cleared so it always reopens in the default Recent view).
 export function closePicker() {
   _pickerContext = 'session';
+  _pickerQuery   = '';
+  _pickerGroup   = 'All';
+  document.getElementById('picker-search').value = '';
   document.getElementById('exercise-picker').classList.add('hidden');
   document.getElementById('exercise-list').classList.remove('hidden');
   document.getElementById('btn-close-picker').classList.remove('hidden');
+  document.getElementById('picker-controls').classList.remove('hidden');
   document.getElementById('other-name-section').classList.add('hidden');
   document.getElementById('other-type-prompt').classList.add('hidden');
   document.getElementById('btn-other-done').classList.remove('hidden');
