@@ -3,7 +3,7 @@
 // Bump CACHE version when deploying new code
 // ═══════════════════════════════════════════════════════
 
-const CACHE = 'gymops-v66';
+const CACHE = 'gymops-v67';
 
 const ASSETS = [
   '/',

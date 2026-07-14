@@ -12,9 +12,10 @@ import {
   dbGetSessionExerciseCount,
   dbGetSessionRepsExercises,
   dbGetSetCount,
+  dbGetSetCountsByExerciseSince,
   dbHasSessionToday,
 } from './db.js';
-import { WEIGHT_EPSILON_KG, convertWeight, getWeightUnit } from './state.js';
+import { MUSCLE_GROUPS, WEIGHT_EPSILON_KG, convertWeight, getExerciseGroup, getWeightUnit } from './state.js';
 import { onScreenShow } from './ui.js';
 import { computePlanExpiryBanner, computePlanNudgeBanner } from './plans.js';
 
@@ -212,7 +213,41 @@ function renderWeekStrip() {
   streakEl.classList.toggle('hidden', streak < 2);
   if (streak >= 2) streakEl.textContent = `${streak}-week streak`;
 
+  renderMuscleCoverage();
   card.classList.remove('hidden');
+}
+
+// Folds { exercise, set_count } rows into per-muscle-group set totals, in
+// MUSCLE_GROUPS display order. Exercises with no group (custom "Other" names)
+// are skipped — they were deliberately never forced into a group.
+export function computeMuscleCoverage(rows) {
+  const totals = new Map(MUSCLE_GROUPS.map(g => [g, 0]));
+  rows.forEach(({ exercise, set_count }) => {
+    const group = getExerciseGroup(exercise);
+    if (group) totals.set(group, totals.get(group) + set_count);
+  });
+  return MUSCLE_GROUPS.map(group => ({ group, sets: totals.get(group) }));
+}
+
+// Renders the muscle-coverage chip row inside the week-strip card: one chip
+// per group, lit with its set count when trained this week, dimmed otherwise.
+// An all-dim row is intentional — it shows what the week is still missing.
+function renderMuscleCoverage() {
+  const row = document.getElementById('week-strip-coverage');
+  row.innerHTML = '';
+  const weekISO = _weekStart(new Date()).toISOString();
+  computeMuscleCoverage(dbGetSetCountsByExerciseSince(weekISO)).forEach(({ group, sets }) => {
+    const chip = document.createElement('span');
+    chip.className = 'coverage-chip' + (sets > 0 ? ' coverage-chip--hit' : '');
+    chip.textContent = group;
+    if (sets > 0) {
+      const count = document.createElement('span');
+      count.className = 'coverage-chip-count';
+      count.textContent = sets;
+      chip.appendChild(count);
+    }
+    row.appendChild(chip);
+  });
 }
 
 // Sets the idle subtitle: a hook from the last session when history exists

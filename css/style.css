@@ -159,6 +159,39 @@ body {
   font-weight: 700;
 }
 
+/* — Muscle coverage row (inside the week-strip card) — */
+.week-strip-coverage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.coverage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.coverage-chip--hit {
+  border-color: transparent;
+  background: rgba(200, 255, 87, 0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.coverage-chip-count {
+  font-weight: 700;
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
 .idle-plan-line {
   font-size: 0.8rem;
   color: var(--muted);

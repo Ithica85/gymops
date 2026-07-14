@@ -546,6 +546,20 @@ export function dbGetCompletedSessionsSince(sinceISO) {
   ).map(r => r.start_time);
 }
 
+// Returns { exercise, set_count } rows for all sets logged in completed
+// sessions on or after the given ISO timestamp. Muscle-group mapping happens
+// in JS (the catalogue lives in state.js, not the DB) — powers the weekly
+// muscle-coverage row on the idle screen.
+export function dbGetSetCountsByExerciseSince(sinceISO) {
+  return _all(`
+    SELECT st.exercise, COUNT(*) AS set_count
+    FROM sets st
+    JOIN sessions s ON s.session_id = st.session_id
+    WHERE s.status = 'completed' AND s.start_time >= ?
+    GROUP BY st.exercise
+  `, [sinceISO]);
+}
+
 // ── Exercise history queries ─────────────────────────
 
 // Returns exercises that appear in at least one completed session, with

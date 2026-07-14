@@ -13,6 +13,8 @@ vi.mock('../js/db.js', async (importOriginal) => {
 import * as db from '../js/db.js';
 import { computeProgressionSignal, computeSessionSignal } from '../js/signals.js';
 import { computePlanNudge, computePlanExpiryBanner, computePlanNudgeBanner } from '../js/plans.js';
+import { computeMuscleCoverage } from '../js/idle.js';
+import { MUSCLE_GROUPS } from '../js/state.js';
 
 const daysAgoIso = d => new Date(Date.now() - d * 86400000).toISOString();
 // history entries are newest-first, matching dbGetRecentSessionsBestForExercise
@@ -235,5 +237,31 @@ describe('banner priority building blocks (expiry vs nudge)', () => {
 
     localStorage.setItem('gymops_plan_nudge_dismissed_at', String(Date.now() - 25 * 60 * 60 * 1000)); // 25h ago
     expect(computePlanNudgeBanner()).toBeTypeOf('function');
+  });
+});
+
+describe('computeMuscleCoverage', () => {
+  it('sums set counts per group and returns every group in MUSCLE_GROUPS order', () => {
+    const result = computeMuscleCoverage([
+      { exercise: 'Chest Press',  set_count: 3 },
+      { exercise: 'Press Ups',    set_count: 2 }, // also Chest
+      { exercise: 'Lat Pulldown', set_count: 4 },
+      { exercise: 'Elliptical',   set_count: 1 }, // timed → Cardio
+    ]);
+    expect(result.map(r => r.group)).toEqual(MUSCLE_GROUPS);
+    const byGroup = Object.fromEntries(result.map(r => [r.group, r.sets]));
+    expect(byGroup.Chest).toBe(5);
+    expect(byGroup.Back).toBe(4);
+    expect(byGroup.Cardio).toBe(1);
+    expect(byGroup.Legs).toBe(0);
+  });
+
+  it('returns all-zero groups for an empty week', () => {
+    expect(computeMuscleCoverage([]).every(r => r.sets === 0)).toBe(true);
+  });
+
+  it('skips custom exercises with no muscle group', () => {
+    const result = computeMuscleCoverage([{ exercise: 'Farmer Walk (custom)', set_count: 3 }]);
+    expect(result.every(r => r.sets === 0)).toBe(true);
   });
 });
