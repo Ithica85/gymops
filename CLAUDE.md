@@ -36,6 +36,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 - `sw.js` — Service worker for PWA caching.
 - `manifest.json` — PWA manifest.
 - `lib/` — Vendored sql.js (sql-wasm.js + sql-wasm.wasm).
+- `docs/` — Planning documents (not app assets, not SW-cached): `PHASE4_CONSUMER_PLAN.md` (phase structure + success criteria for the consumer-product turn), `REVIEW_RESPONSE.md` (verdict + disposition for every external-review finding, IDs C1–P11).
 
 ## Database Schema
 
@@ -106,7 +107,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v66`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v67`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
 5. User-entered text (plan names, objectives, custom exercise names) must go through `escapeHTML()` (js/ui.js) when interpolated into `innerHTML` — or better, use `textContent`/DOM APIs like history.js. `dbClearAll()` wipes ALL `gymops_*` localStorage keys (credentials included), not just the DB. The DB is stored in localStorage as base64 (legacy JSON-array blobs from pre-v62 installs are read transparently and upgraded on the next write).
 4. Verify CSV export still works and includes any new columns.
 
@@ -114,10 +115,15 @@ All weight comparisons across sessions (progression signal, session signal) norm
 
 # Current Phase
 
-**Phase 3 — AI & Plans** (started July 1, 2026)
+**Phase 4 — Trust & Correctness** (started July 14, 2026)
+
+The consumer-product turn. Full phase structure (Phases 4–7) and per-phase success criteria: `docs/PHASE4_CONSUMER_PLAN.md`. Itemized disposition of every external-review finding: `docs/REVIEW_RESPONSE.md`. Standing frame: consumer-grade quality bar on a personal-first product; north star is **"the fastest logger that never loses your history"**; no monetization planned (option preserved via architecture — stable exercise IDs, real backup/restore, no deeper BYOK coupling); staying PWA + vanilla.
+
+## Phase 4 Status
+🚧 **IN PROGRESS** — plan documents committed July 14, 2026. First targets: corrupt-DB quarantine (4.1) and `undoSet` scope fix (4.2) — both verified production bugs (see REVIEW_RESPONSE.md #C1, #C5).
 
 ## Phase 3 Status
-🚧 **IN PROGRESS** — AI summary + plans shipped July 1, 2026; exercise history view, quick-log button, idle dashboard, PR celebration, and plan nudges shipped July 2, 2026 (SW cache: `gymops-v54`, app: `v3.5`). All five product-strategy priorities complete.
+✅ **COMPLETE** (July 13, 2026, SW cache: `gymops-v67`, app: `v3.7`) — AI summary, plans, exercise history, quick-log, idle dashboard, PR celebration, plan nudges (v3.0–v3.5); 114-exercise muscle-grouped catalogue + picker search/chips/sections (v3.6); weekly muscle-coverage chips (v3.7). Unshipped Phase 3 backlog items re-queued behind Phases 4–6.
 
 ## Phase 2.1 Status
 ✅ **COMPLETE** (May 19, 2026, SW cache: `gymops-v45`, app: `v2.1`)
@@ -366,12 +372,20 @@ All Phase 1 work complete as of commit `104f752`. See git tag `v1.0-phase1-compl
   - Dismiss ✕ with 24h cooldown (`gymops_plan_nudge_dismissed_at`)
   - `computePlanNudge()` / `checkPlanNudge()` / `dismissPlanNudge()` in app.js
 
+- [x] **Expanded Exercise Catalogue + Picker Upgrades** — SHIPPED (July 12, 2026, SW cache: `gymops-v66`, app: `v3.6`)
+  - EXERCISES expanded to 114 entries with `muscleGroup` tags (`MUSCLE_GROUPS` in state.js); legacy names preserved (test-guarded)
+  - Picker: search field (never autofocused), muscle-group chips, sectioned full catalogue below the Recent block
+
+- [x] **Weekly Muscle-Coverage Chips** — SHIPPED (July 13, 2026, SW cache: `gymops-v67`, app: `v3.7`)
+  - Muscle-group coverage chips on the idle week card, computed from the current week's logged sets
+
 ---
 
 # Next / Backlog
 
-- **Muscle group tagging** — Add `muscleGroup` to EXERCISES; enables weekly coverage view and richer AI context
-- **Weekly AI summary** — On-demand summary of the week's sessions (reuses existing serverless function)
-- **Plan iterations** — Auto-detect objective completion (e.g. "hit 100kg bench"); plan-to-plan progression suggestions
-- **Push notifications** — True OS-level smart reminder (requires backend; FCM/APNS)
+**Re-queued behind Phases 4–6** — see `docs/PHASE4_CONSUMER_PLAN.md` for the active roadmap (trust & correctness → identity & program model → consumer readiness). These flavour features resume when the trust work is done:
+
+- **Weekly AI summary** — On-demand summary of the week's sessions (reuses existing serverless function; muscleGroup tags now available for richer context)
+- **Plan iterations** — Auto-detect objective completion (e.g. "hit 100kg bench"); plan-to-plan progression suggestions (partially superseded by Phase 5 multi-day program model)
+- **Push notifications** — True OS-level smart reminder (requires backend; gated in Phase 7)
 - **Mid-session unit switch** — Allow unit toggle during an active session

@@ -18,13 +18,16 @@ The friction-free philosophy: fewer screens, fewer fields, one tap to log a set.
 
 ---
 
-## Status: Phase 3 — AI & Plans (v3.5, live)
+## Status: Phase 4 — Trust & Correctness (v3.7 live)
 
 | Phase | Theme | Status |
 |---|---|---|
 | 1 | Core logging | ✅ Shipped April–May 2026 |
 | 2 / 2.1 | Habit & progression signals, usability | ✅ Shipped May 2026 |
-| 3 | AI, plans, and the training-companion turn | 🚧 In progress — seven features live (July 2026) |
+| 3 | AI, plans, and the training-companion turn | ✅ Complete July 2026 (v3.0–v3.7) |
+| 4 | Trust & correctness — the consumer turn begins | 🚧 Started July 14, 2026 |
+
+Phase 4 is the start of a deliberate shift: holding GymOps to a **consumer-product quality bar** while it remains a personal-first tool. The full plan — phases, decisions, and success criteria — lives in [`docs/PHASE4_CONSUMER_PLAN.md`](docs/PHASE4_CONSUMER_PLAN.md), alongside [`docs/REVIEW_RESPONSE.md`](docs/REVIEW_RESPONSE.md), an itemized response to an external deep review of the codebase.
 
 ---
 
@@ -53,12 +56,31 @@ Beating your **all-time best** on any exercise gets a real moment: trophy card, 
 ### Smarter Plan Nudges (v3.5)
 Plans gain an optional sessions-per-week target. Fall behind the week's pace and the home screen tells you plainly: *"0 of 3 sessions this week — 4 days left."* Plans without a target still nudge after a few idle days. Nudges never fire on days you've already trained, and never stack with other banners.
 
+### Muscle-Grouped Catalogue + Picker Search (v3.6)
+The exercise catalogue grew to 114 exercises, each tagged with a muscle group. The picker gained search, muscle-group filter chips, and a sectioned full catalogue below your recents — without slowing down the "tap your usual exercise" fast path.
+
+### Weekly Muscle Coverage (v3.7)
+The home-screen week card now shows which muscle groups you've hit this week, computed from your actual logged sets. The last Phase 3 release.
+
+---
+
+## Where We're Headed: Phase 4+ — The Consumer Turn
+
+Phase 3 made GymOps smart. Phases 4–6 make it **trustworthy enough for a stranger** — because the honest gap, confirmed by both our own competitor-review research and an external code review, is that gym-app users churn on *data fear* and *program structure*, not logging elegance.
+
+The north star from here: **the fastest logger that never loses your history.**
+
+- **Phase 4 — Trust & Correctness.** Data becomes impossible to lose by accident: corrupt-database quarantine and recovery, full backup *and restore* (not just export), verified bug fixes (undo scope, decimal weight input), auto-starting rest timer, and integration tests over the core logging loop.
+- **Phase 5 — Identity & Program Model.** Stable exercise IDs, multi-day training programs (Push/Pull/Legs, not one flat list), sessions that start on the right day, and the database moving out of localStorage.
+- **Phase 6 — Consumer Readiness.** First-run experience, import from Strong/Hevy CSV, accessibility, and service-worker updates that can't strand clients.
+- **Phase 7 — gated, unscheduled.** Sync, watch, native wrapper, monetization — each parked behind an explicit trigger, not a date. GymOps has no monetization plan; if that ever changes, core logging stays free, always.
+
 ---
 
 ## What Works (cumulative)
 
 **Core logging (Phase 1)**
-- Single-screen session logging; 16 predefined exercises + free-text "Other" with cardio auto-detection
+- Single-screen session logging; 114-exercise muscle-grouped catalogue (searchable, filterable) + free-text "Other" with cardio auto-detection
 - Weight + reps in separate fields; duration + calories for cardio
 - Ghost-text placeholders show last session's values per set
 - Session notes, full in-session log, undo, per-set delete, rest timer
@@ -77,17 +99,17 @@ Plans gain an optional sessions-per-week target. Fall behind the week's pace and
 
 ## Roadmap
 
-**Next up (backlog):**
-- Muscle group tagging → weekly coverage view, richer AI context
-- Weekly AI summary (on-demand, reuses the serverless function)
-- Plan iterations — auto-detect objective completion, plan-to-plan progression
-- True OS-level push notifications (needs a backend; FCM/APNS)
-- Mid-session unit switch
+The active roadmap is [`docs/PHASE4_CONSUMER_PLAN.md`](docs/PHASE4_CONSUMER_PLAN.md) — Phases 4 through 7, summarised in "Where We're Headed" above.
 
-**Further out:**
-- Multi-device sync
-- Landing page and positioning vs. Strong, JEFIT, Hevy
-- Optional paid tier (advanced analytics, sync) — core logging stays free
+**Immediately next (Phase 4, in order):**
+- Corrupt-database quarantine + recovery UI (never silently lose data)
+- Undo scoped to the current exercise (verified bug fix)
+- Full database backup **and restore** — the "new phone" path
+- Decimal-friendly weight input; auto-starting rest timer
+- Integration tests over the core log/undo/finish/resume loop
+
+**Re-queued behind the trust work:**
+- Weekly AI summary · plan iterations · push notifications · mid-session unit switch
 
 ---
 
@@ -98,6 +120,8 @@ Plans gain an optional sessions-per-week target. Fall behind the week's pace and
 GymOps exists to build a personal strength dataset — rep maxes, volume trends, exercise progression, recovery signals. Phase 3 is where that dataset started paying rent: the history charts, the idle-screen hooks, the PR detection, and the AI summaries are all computed from data you logged months ago.
 
 CSV export and Google Drive sync aren't features; they're **data sovereignty guarantees**. You own it. You can port it.
+
+The honest caveat — and Phase 4's whole job: today those exports are one-way. Backup without *restore* isn't a guarantee yet. Making history genuinely immortal (quarantine on corruption, full backup/restore, storage that survives a new phone) is the current work.
 
 ---
 
@@ -130,11 +154,14 @@ Then visit `http://localhost:8080` in your browser. Hard refresh (Cmd+Shift+R) a
 gymops/
 ├── index.html          # Single-page markup: all screens + modals
 ├── css/style.css       # Full styling; dark theme tokens in :root
-├── js/app.js           # UI logic, state, rule engines, charts
+├── js/app.js           # Entry point: boot + event wiring only
+├── js/                 # Feature modules (ES modules): workout, picker, signals,
+│                       #   idle, plans, history, settings, ai, state, ui
 ├── js/db.js            # SQLite schema, migrations, CRUD, queries
 ├── js/gdrive.js        # Google Drive upload + auth
 ├── api/ai-summary.js   # Vercel function: Anthropic API proxy
 ├── sw.js               # Service worker (cache version bumped every release)
+├── docs/               # Phase plan + external-review response
 └── CLAUDE.md           # Architecture decisions, schema, phase history
 ```
 
