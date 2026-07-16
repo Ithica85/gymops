@@ -3,13 +3,17 @@
 // ═══════════════════════════════════════════════════════
 
 const DB_KEY = 'gymops_db';
+const CORRUPT_KEY_PREFIX = DB_KEY + '_corrupt_';
 
 let _db = null;
 
 // ── Init ──────────────────────────────────────────────
 
-// Boots the sql.js database. Tries to restore an existing DB from localStorage;
-// falls back to a fresh schema if the stored data is missing or corrupt.
+// Boots the sql.js database. Restores an existing DB from localStorage, or
+// creates a fresh schema when none is stored. If the stored blob can't be
+// opened it is NEVER silently replaced: the original string is quarantined
+// under gymops_db_corrupt_<ts> and `{ blob, quarantineKey }` is returned so
+// boot() can show the recovery screen. Returns null on a normal boot.
 export async function initDB() {
   const SQL = await initSqlJs({ locateFile: f => `lib/${f}` });
 
@@ -18,15 +22,44 @@ export async function initDB() {
     try {
       _db = new SQL.Database(_decodeDB(saved));
       _migrate(); // Apply any schema changes needed for this version
+      return null;
     } catch (_) {
-      // Corrupt DB — start fresh rather than leaving the app broken
-      _db = new SQL.Database();
-      _createSchema();
+      // gymops_db is left in place so every reload lands back on the recovery
+      // screen until the user explicitly starts fresh (dbDiscardCorrupt).
+      // The quarantine copies `saved` — the string read at boot — because a
+      // half-completed _migrate() may already have rewritten gymops_db.
+      _db = null;
+      return { blob: saved, quarantineKey: _quarantine(saved) };
     }
-  } else {
-    _db = new SQL.Database();
-    _createSchema();
   }
+  _db = new SQL.Database();
+  _createSchema();
+  return null;
+}
+
+// Copies a corrupt blob to gymops_db_corrupt_<ts>. Reuses an existing
+// quarantine key holding identical content (reloads before the user acts on
+// the recovery screen) and tolerates quota failure — the blob still exists
+// in gymops_db and is passed to the recovery screen in memory.
+function _quarantine(blob) {
+  const existing = Object.keys(localStorage)
+    .filter(k => k.startsWith(CORRUPT_KEY_PREFIX))
+    .find(k => localStorage.getItem(k) === blob);
+  if (existing) return existing;
+  const key = CORRUPT_KEY_PREFIX + Date.now();
+  try {
+    localStorage.setItem(key, blob);
+  } catch (_) {
+    return null;
+  }
+  return key;
+}
+
+// Recovery-screen "Start Fresh": drops the unreadable gymops_db blob. The
+// quarantine copy is kept (only "Clear All Data" removes it). The page must
+// be reloaded afterwards — initDB() then creates a fresh schema.
+export function dbDiscardCorrupt() {
+  localStorage.removeItem(DB_KEY);
 }
 
 // Creates the full schema on a brand-new database.

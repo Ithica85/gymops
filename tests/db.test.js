@@ -3,7 +3,7 @@
 // runs against a brand-new in-memory sql.js database — no shared state.
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  initDB,
+  initDB, dbDiscardCorrupt,
   dbCreateSession, dbGetSession, dbFinishSession,
   dbInsertSet, dbGetAllSets, dbGetSetCount,
   dbDeleteSetById, dbResequenceSets, dbDeleteLastSet,
@@ -215,6 +215,71 @@ function _legacyBytes(base64) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+describe('corrupt-DB quarantine (4.1)', () => {
+  const CORRUPT_BASE64 = btoa('this is not a sqlite database, not even close');
+
+  it('a normal boot returns null', async () => {
+    localStorage.clear();
+    expect(await initDB()).toBeNull();
+  });
+
+  it('quarantines an unreadable blob instead of silently wiping it', async () => {
+    localStorage.clear();
+    localStorage.setItem('gymops_db', CORRUPT_BASE64);
+
+    const corrupt = await initDB();
+    expect(corrupt).not.toBeNull();
+    expect(corrupt.blob).toBe(CORRUPT_BASE64);
+    expect(corrupt.quarantineKey.startsWith('gymops_db_corrupt_')).toBe(true);
+    expect(localStorage.getItem(corrupt.quarantineKey)).toBe(CORRUPT_BASE64);
+    // The original stays put so a plain reload lands back on recovery
+    expect(localStorage.getItem('gymops_db')).toBe(CORRUPT_BASE64);
+  });
+
+  it('handles a blob that is not even decodable (atob throws)', async () => {
+    localStorage.clear();
+    localStorage.setItem('gymops_db', '!!!neither base64 nor a JSON array!!!');
+
+    const corrupt = await initDB();
+    expect(corrupt.blob).toBe('!!!neither base64 nor a JSON array!!!');
+    expect(localStorage.getItem(corrupt.quarantineKey)).toBe(corrupt.blob);
+  });
+
+  it('reloads reuse the existing quarantine key — no duplicate copies', async () => {
+    localStorage.clear();
+    localStorage.setItem('gymops_db', CORRUPT_BASE64);
+
+    const first  = await initDB();
+    const second = await initDB(); // user reloaded without acting
+    expect(second.quarantineKey).toBe(first.quarantineKey);
+
+    const corruptKeys = Object.keys(localStorage).filter(k => k.startsWith('gymops_db_corrupt_'));
+    expect(corruptKeys).toHaveLength(1);
+  });
+
+  it('dbDiscardCorrupt drops only gymops_db; next boot is fresh, quarantine survives', async () => {
+    localStorage.clear();
+    localStorage.setItem('gymops_db', CORRUPT_BASE64);
+    const corrupt = await initDB();
+
+    dbDiscardCorrupt();
+    expect(localStorage.getItem('gymops_db')).toBeNull();
+
+    expect(await initDB()).toBeNull(); // fresh schema, no recovery loop
+    expect(dbCreateSession('kg')).toBe(1); // and the fresh DB works
+    expect(localStorage.getItem(corrupt.quarantineKey)).toBe(CORRUPT_BASE64);
+  });
+
+  it('dbClearAll wipes quarantined blobs too', async () => {
+    localStorage.clear();
+    localStorage.setItem('gymops_db', CORRUPT_BASE64);
+    const corrupt = await initDB();
+
+    dbClearAll();
+    expect(localStorage.getItem(corrupt.quarantineKey)).toBeNull();
+  });
+});
 
 describe('dbClearAll', () => {
   it('wipes the DB and all gymops_* keys — credentials included', () => {

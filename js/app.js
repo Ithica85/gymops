@@ -15,13 +15,14 @@ import {
   dbClearAll,
   dbDeleteSession,
   dbDeleteSetById,
+  dbDiscardCorrupt,
   dbExportCSVByRange,
   dbGetActiveSession,
   dbResequenceSets,
   initDB,
 } from './db.js';
 import { APP_VERSION, getWeightUnit, state } from './state.js';
-import { downloadCSV, showScreen } from './ui.js';
+import { downloadCSV, downloadFile, showScreen } from './ui.js';
 import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
 import { dismissReminderBanner, getReminderEnabled, setReminderEnabled } from './idle.js';
 import {
@@ -75,7 +76,13 @@ import { generateAISummary, hideAISummaryModal } from './ai.js';
 // Always shows the idle screen on load, even if an active session exists —
 // the user must explicitly tap "Resume" rather than being dropped into a session.
 async function boot() {
-  await initDB();
+  const corrupt = await initDB();
+  if (corrupt) {
+    // Stored DB couldn't be read — no usable database, so nothing else boots.
+    // initDB() has already quarantined the blob; offer download / start fresh.
+    bootRecovery(corrupt);
+    return;
+  }
 
   // Always show idle screen on boot
   const active = dbGetActiveSession();
@@ -279,6 +286,28 @@ async function boot() {
   document.getElementById('btn-ai-summary').addEventListener('click', generateAISummary);
   document.getElementById('btn-ai-summary-done').addEventListener('click', hideAISummaryModal);
   document.getElementById('ai-summary-backdrop').addEventListener('click', hideAISummaryModal);
+}
+
+// Wires and shows the recovery screen (4.1). `blob` is the raw string read
+// from localStorage at boot — downloaded as-is so the copy predates any
+// partial migration writes. Start Fresh reloads: initDB() then builds a
+// fresh schema because dbDiscardCorrupt() removed the unreadable blob.
+function bootRecovery({ blob }) {
+  document.getElementById('btn-recovery-download').addEventListener('click', () => {
+    downloadFile(blob, `gymops-db-backup-${new Date().toISOString().slice(0, 10)}.txt`);
+  });
+
+  const modal = document.getElementById('confirm-recovery-fresh');
+  const hideModal = () => modal.classList.add('hidden');
+  document.getElementById('btn-recovery-fresh').addEventListener('click', () => modal.classList.remove('hidden'));
+  document.getElementById('btn-cancel-recovery-fresh').addEventListener('click', hideModal);
+  document.getElementById('confirm-recovery-fresh-backdrop').addEventListener('click', hideModal);
+  document.getElementById('btn-confirm-recovery-fresh').addEventListener('click', () => {
+    dbDiscardCorrupt();
+    location.reload();
+  });
+
+  showScreen('recovery');
 }
 
 document.addEventListener('DOMContentLoaded', boot);

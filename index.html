@@ -57,6 +57,24 @@
   </div>
 
   <!-- ═══════════════════════════════════
+       RECOVERY — corrupt database (4.1)
+  ════════════════════════════════════ -->
+  <div id="screen-recovery" class="screen">
+    <div class="idle-container">
+      <h1 class="app-title">GymOps</h1>
+      <p class="recovery-title">Couldn't read your workout data</p>
+      <p class="recovery-body">
+        The stored database couldn't be opened. Nothing has been deleted —
+        the unreadable data is preserved on this device. Download a backup
+        copy now, before doing anything else.
+      </p>
+      <button class="btn-primary btn-large" id="btn-recovery-download">Download Backup File</button>
+      <p class="recovery-hint">Keep the file safe — the data may be repairable.</p>
+      <button class="btn-secondary btn-large" id="btn-recovery-fresh">Start Fresh</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
        SETTINGS
   ════════════════════════════════════ -->
   <div id="screen-settings" class="screen">
@@ -452,6 +470,22 @@
   </div>
 
   <!-- ═══════════════════════════════════
+       RECOVERY — start-fresh confirmation
+  ════════════════════════════════════ -->
+  <div id="confirm-recovery-fresh" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-recovery-fresh-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Start fresh?</p>
+      <p class="modal-body">GymOps will restart with an empty workout history. The unreadable data stays preserved on this device until you use "Clear All Data".</p>
+      <div class="modal-actions">
+        <button class="btn-danger btn-large" id="btn-confirm-recovery-fresh">Start Fresh</button>
+        <button class="btn-secondary" id="btn-cancel-recovery-fresh">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
        EXPORT DATE RANGE
   ════════════════════════════════════ -->
   <div id="export-range" class="modal hidden" role="dialog" aria-modal="true">
@@ -485,6 +519,13 @@
       <div class="modal-handle"></div>
       <p class="modal-title">What's New</p>
       <div class="release-notes-scroll">
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 4 — Trust &amp; Data Safety · July 2026</p>
+          <ul class="release-notes-list">
+            <li>Data protection — if the stored database ever becomes unreadable, GymOps preserves it and shows a recovery screen with a backup download; nothing is wiped without your explicit say-so</li>
+          </ul>
+        </div>
 
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 3 — AI &amp; Plans · July 2026</p>

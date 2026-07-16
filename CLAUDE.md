@@ -107,7 +107,7 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v67`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v68`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
 5. User-entered text (plan names, objectives, custom exercise names) must go through `escapeHTML()` (js/ui.js) when interpolated into `innerHTML` — or better, use `textContent`/DOM APIs like history.js. `dbClearAll()` wipes ALL `gymops_*` localStorage keys (credentials included), not just the DB. The DB is stored in localStorage as base64 (legacy JSON-array blobs from pre-v62 installs are read transparently and upgraded on the next write).
 4. Verify CSV export still works and includes any new columns.
 
@@ -120,7 +120,9 @@ All weight comparisons across sessions (progression signal, session signal) norm
 The consumer-product turn. Full phase structure (Phases 4–7) and per-phase success criteria: `docs/PHASE4_CONSUMER_PLAN.md`. Itemized disposition of every external-review finding: `docs/REVIEW_RESPONSE.md`. Standing frame: consumer-grade quality bar on a personal-first product; north star is **"the fastest logger that never loses your history"**; no monetization planned (option preserved via architecture — stable exercise IDs, real backup/restore, no deeper BYOK coupling); staying PWA + vanilla.
 
 ## Phase 4 Status
-🚧 **IN PROGRESS** — plan documents committed July 14, 2026. First targets: corrupt-DB quarantine (4.1) and `undoSet` scope fix (4.2) — both verified production bugs (see REVIEW_RESPONSE.md #C1, #C5).
+🚧 **IN PROGRESS**
+- [x] **4.1 Corrupt-DB quarantine + recovery UI** — SHIPPED (July 15, 2026, SW cache: `gymops-v68`, app: `v4.0`). `initDB()` never silently wipes: on decode/migrate failure the original blob is quarantined to `gymops_db_corrupt_<ts>` (deduped across reloads, quota-tolerant), `gymops_db` is left in place so every reload returns to `#screen-recovery` (download backup file / Start Fresh with confirm modal). `dbDiscardCorrupt()` drops only the unreadable blob; quarantine copies survive Start Fresh and are removed only by Clear All Data. `downloadFile()` extracted in ui.js (downloadCSV delegates). 6 regression tests in tests/db.test.js.
+- [ ] **4.2 `undoSet` scope fix** — next (see REVIEW_RESPONSE.md #C5).
 
 ## Phase 3 Status
 ✅ **COMPLETE** (July 13, 2026, SW cache: `gymops-v67`, app: `v3.7`) — AI summary, plans, exercise history, quick-log, idle dashboard, PR celebration, plan nudges (v3.0–v3.5); 114-exercise muscle-grouped catalogue + picker search/chips/sections (v3.6); weekly muscle-coverage chips (v3.7). Unshipped Phase 3 backlog items re-queued behind Phases 4–6.

@@ -38,14 +38,18 @@ export function showToast(message, isError = false) {
   setTimeout(() => el.classList.remove('show'), isError ? 5000 : 3000);
 }
 
-// ── CSV export ────────────────────────────────────────
+// ── File downloads ────────────────────────────────────
 
-export function downloadCSV(csv, filename) {
-  const blob = new Blob([csv], { type: 'text/csv' });
+export function downloadFile(text, filename, mime = 'text/plain') {
+  const blob = new Blob([text], { type: mime });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function downloadCSV(csv, filename) {
+  downloadFile(csv, filename, 'text/csv');
 }
