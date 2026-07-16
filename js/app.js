@@ -65,7 +65,11 @@ import {
 } from './picker.js';
 import { archiveCurrentPlan, dismissPlanNudge, openNewPlan, savePlan } from './plans.js';
 import {
+  cancelRestore,
+  confirmRestore,
+  downloadBackup,
   getAnthropicKey,
+  handleRestoreFile,
   openExportRangeModal,
   setAnthropicKey,
   setWeightUnit,
@@ -232,6 +236,18 @@ async function boot() {
     downloadCSV(csv, `gymops-${suffix}.csv`);
     hideExportModal();
   });
+
+  // Backup & restore
+  document.getElementById('btn-backup-download').addEventListener('click', downloadBackup);
+  const restoreInput = document.getElementById('restore-file-input');
+  document.getElementById('btn-restore-backup').addEventListener('click', () => restoreInput.click());
+  restoreInput.addEventListener('change', () => {
+    handleRestoreFile(restoreInput.files[0]);
+    restoreInput.value = ''; // allow re-selecting the same file after a cancel
+  });
+  document.getElementById('btn-confirm-restore').addEventListener('click', confirmRestore);
+  document.getElementById('btn-cancel-restore').addEventListener('click', cancelRestore);
+  document.getElementById('confirm-restore-backdrop').addEventListener('click', cancelRestore);
 
   // Anthropic API key input — load saved value; save on blur
   const keyInput = document.getElementById('input-anthropic-key');

@@ -1,8 +1,11 @@
 // ═══════════════════════════════════════════════════════
-// GymOps — Settings: weight unit, Anthropic API key, ranged CSV export
+// GymOps — Settings: weight unit, Anthropic API key, ranged CSV export,
+// full-database backup & restore
 // ═══════════════════════════════════════════════════════
 
+import { dbExportBackup, dbRestoreBackup, dbValidateBackup } from './db.js';
 import { UNIT_KEY, state } from './state.js';
+import { downloadFile } from './ui.js';
 import { updateInputFields } from './workout.js';
 
 export function setWeightUnit(u) {
@@ -39,6 +42,49 @@ export function openExportRangeModal() {
   document.getElementById('export-from').value = fmt(from);
   document.getElementById('export-to').value   = fmt(today);
   document.getElementById('export-range').classList.remove('hidden');
+}
+
+// ── Backup & restore (4.3) ────────────────────────────
+
+// Holds the validated blob between file selection and the user's confirmation.
+let _pendingRestoreBlob = null;
+
+export function downloadBackup() {
+  downloadFile(
+    dbExportBackup(),
+    `gymops-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    'application/json'
+  );
+}
+
+// File-input change handler: validates the chosen file without touching the
+// live DB, then opens the confirm modal with a summary of what it contains.
+export async function handleRestoreFile(file) {
+  if (!file) return;
+  let info;
+  try {
+    info = dbValidateBackup(await file.text());
+  } catch (err) {
+    alert(err.message);
+    return;
+  }
+  _pendingRestoreBlob = info.blob;
+  const when = info.lastDate ? new Date(info.lastDate).toLocaleDateString() : '—';
+  document.getElementById('restore-summary').textContent =
+    `Backup contains ${info.sessions} session${info.sessions === 1 ? '' : 's'}, ` +
+    `${info.sets} set${info.sets === 1 ? '' : 's'} · last workout ${when}`;
+  document.getElementById('confirm-restore').classList.remove('hidden');
+}
+
+export function cancelRestore() {
+  _pendingRestoreBlob = null;
+  document.getElementById('confirm-restore').classList.add('hidden');
+}
+
+export function confirmRestore() {
+  if (!_pendingRestoreBlob) return;
+  dbRestoreBackup(_pendingRestoreBlob);
+  location.reload(); // Reboot onto the restored database
 }
 
 // ── Plans ─────────────────────────────────────────────

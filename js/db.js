@@ -4,8 +4,10 @@
 
 const DB_KEY = 'gymops_db';
 const CORRUPT_KEY_PREFIX = DB_KEY + '_corrupt_';
+const PRERESTORE_KEY = DB_KEY + '_prerestore';
 
 let _db = null;
+let _SQL = null; // sql.js module — kept for opening throwaway DBs (backup validation)
 
 // ── Init ──────────────────────────────────────────────
 
@@ -16,6 +18,7 @@ let _db = null;
 // boot() can show the recovery screen. Returns null on a normal boot.
 export async function initDB() {
   const SQL = await initSqlJs({ locateFile: f => `lib/${f}` });
+  _SQL = SQL;
 
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
@@ -60,6 +63,83 @@ function _quarantine(blob) {
 // be reloaded afterwards — initDB() then creates a fresh schema.
 export function dbDiscardCorrupt() {
   localStorage.removeItem(DB_KEY);
+}
+
+// ── Backup & restore (4.3) ────────────────────────────
+// The "new phone" / disaster-recovery path. CSV export stays for spreadsheets;
+// this round-trips the complete raw database. Deliberately excludes other
+// gymops_* keys — credentials must never land in a shareable file.
+
+// Returns the backup file contents: a JSON envelope around the base64 DB.
+// Safe to call from Settings (idle) — _db.export() resets last_insert_rowid(),
+// so this must never run between an INSERT and its ID read (see _runInsert).
+export function dbExportBackup() {
+  return JSON.stringify({
+    app: 'gymops',
+    format: 1,
+    exported_at: new Date().toISOString(),
+    db: _encodeDB(_db.export()),
+  });
+}
+
+// Parses and validates backup-file text WITHOUT touching the live database.
+// Accepts the format-1 JSON envelope, or a bare stored blob (base64 / legacy
+// JSON byte array — covers files saved from the corrupt-DB recovery screen,
+// should the data turn out to be readable after all).
+// Opens the candidate in a throwaway sql.js instance and reads its counts.
+// Returns { blob, sessions, sets, lastDate }; throws with a readable message
+// if the file is not a restorable GymOps database.
+export function dbValidateBackup(text) {
+  let blob = text.trim();
+  if (blob.startsWith('{')) {
+    let envelope;
+    try {
+      envelope = JSON.parse(blob);
+    } catch (_) {
+      throw new Error('Not a GymOps backup file.');
+    }
+    if (envelope.app !== 'gymops' || typeof envelope.db !== 'string') {
+      throw new Error('Not a GymOps backup file.');
+    }
+    blob = envelope.db;
+  }
+
+  let candidate;
+  try {
+    candidate = new _SQL.Database(_decodeDB(blob));
+  } catch (_) {
+    throw new Error("The file doesn't contain a readable database.");
+  }
+  try {
+    const one = sql => {
+      const stmt = candidate.prepare(sql);
+      const row = stmt.step() ? stmt.getAsObject() : null;
+      stmt.free();
+      return row;
+    };
+    const sessions = one('SELECT COUNT(*) AS n FROM sessions')?.n ?? 0;
+    const sets     = one('SELECT COUNT(*) AS n FROM sets')?.n ?? 0;
+    const lastDate = one('SELECT MAX(start_time) AS t FROM sessions')?.t ?? null;
+    return { blob, sessions, sets, lastDate };
+  } catch (_) {
+    throw new Error("The file doesn't contain a GymOps database.");
+  } finally {
+    candidate.close();
+  }
+}
+
+// Replaces the stored database with a validated backup blob. The current DB
+// is stashed under gymops_db_prerestore first (one slot, quota-tolerant) as a
+// last-ditch recovery layer under an already-confirmed destructive action.
+// The page must be reloaded afterwards — initDB() migrates old-schema backups.
+export function dbRestoreBackup(blob) {
+  const current = localStorage.getItem(DB_KEY);
+  if (current) {
+    try {
+      localStorage.setItem(PRERESTORE_KEY, current);
+    } catch (_) { /* quota — proceed; the restore was explicitly confirmed */ }
+  }
+  localStorage.setItem(DB_KEY, blob);
 }
 
 // Creates the full schema on a brand-new database.

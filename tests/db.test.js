@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   initDB, dbDiscardCorrupt,
+  dbExportBackup, dbValidateBackup, dbRestoreBackup,
   dbCreateSession, dbGetSession, dbFinishSession,
   dbInsertSet, dbGetAllSets, dbGetSetCount,
   dbDeleteSetById, dbResequenceSets, dbDeleteLastSet,
@@ -244,6 +245,66 @@ function _legacyBytes(base64) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+describe('backup & restore (4.3)', () => {
+  it('round-trips: export → wipe → restore → identical data', async () => {
+    const sessionId = dbCreateSession('kg');
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg');
+    dbFinishSession(sessionId);
+    const backup = dbExportBackup();
+
+    localStorage.clear();
+    await initDB(); // brand-new device: empty DB
+    expect(dbGetAllSets(sessionId)).toHaveLength(0);
+
+    const info = dbValidateBackup(backup);
+    expect(info.sessions).toBe(1);
+    expect(info.sets).toBe(1);
+    expect(info.lastDate).toBeTruthy();
+
+    dbRestoreBackup(info.blob);
+    await initDB(); // reboot onto the restored database
+    expect(dbGetAllSets(sessionId)[0].weight).toBe(60);
+    expect(dbGetSession(sessionId).status).toBe('completed');
+  });
+
+  it('backup file is a format-1 JSON envelope', () => {
+    const env = JSON.parse(dbExportBackup());
+    expect(env.app).toBe('gymops');
+    expect(env.format).toBe(1);
+    expect(env.exported_at).toBeTruthy();
+    expect(typeof env.db).toBe('string');
+  });
+
+  it('validate accepts a bare stored blob (recovery-screen download)', () => {
+    dbCreateSession('kg');
+    const info = dbValidateBackup(localStorage.getItem('gymops_db'));
+    expect(info.sessions).toBe(1);
+  });
+
+  it('validate rejects garbage, foreign JSON, and non-DB envelopes', () => {
+    expect(() => dbValidateBackup('total garbage !!!')).toThrow(/readable database/);
+    expect(() => dbValidateBackup('{"foo": 1}')).toThrow(/Not a GymOps backup/);
+    expect(() => dbValidateBackup(JSON.stringify({ app: 'gymops', format: 1, db: btoa('nope') })))
+      .toThrow(/GymOps database|readable database/);
+  });
+
+  it('validate never touches the live database', () => {
+    const sessionId = dbCreateSession('kg');
+    dbValidateBackup(dbExportBackup());
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg'); // live DB still writable
+    expect(dbGetSetCount(sessionId)).toBe(1);
+  });
+
+  it('restore stashes the previous DB under gymops_db_prerestore', () => {
+    dbCreateSession('kg');
+    const before = localStorage.getItem('gymops_db');
+    const backup = dbExportBackup();
+
+    dbRestoreBackup(dbValidateBackup(backup).blob);
+    expect(localStorage.getItem('gymops_db_prerestore')).toBe(before);
+  });
+});
 
 describe('corrupt-DB quarantine (4.1)', () => {
   const CORRUPT_BASE64 = btoa('this is not a sqlite database, not even close');

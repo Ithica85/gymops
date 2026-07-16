@@ -104,6 +104,13 @@
         <p class="settings-hint">Download a date-filtered CSV of your workouts.</p>
       </div>
       <div class="settings-section">
+        <span class="settings-label">Backup</span>
+        <button class="btn-secondary" id="btn-backup-download">Back Up All Data</button>
+        <button class="btn-secondary" id="btn-restore-backup">Restore from Backup…</button>
+        <input type="file" id="restore-file-input" accept=".json,.txt,application/json,text/plain" class="hidden">
+        <p class="settings-hint">Backup saves your complete workout database to a file. Restore replaces this device's data with a backup — for a new phone or recovering from data loss.</p>
+      </div>
+      <div class="settings-section">
         <span class="settings-label">AI</span>
         <input
           type="password"
@@ -465,6 +472,23 @@
       <div class="modal-actions">
         <button class="btn-danger btn-large" id="btn-confirm-discard">Discard &amp; Start New</button>
         <button class="btn-secondary" id="btn-cancel-discard">Keep Resuming</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       RESTORE FROM BACKUP — confirmation
+  ════════════════════════════════════ -->
+  <div id="confirm-restore" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-restore-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Restore from backup?</p>
+      <p class="modal-body" id="restore-summary"></p>
+      <p class="modal-body">This replaces all workout data on this device with the backup.</p>
+      <div class="modal-actions">
+        <button class="btn-danger btn-large" id="btn-confirm-restore">Replace &amp; Restore</button>
+        <button class="btn-secondary" id="btn-cancel-restore">Cancel</button>
       </div>
     </div>
   </div>
