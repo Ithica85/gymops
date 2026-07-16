@@ -377,12 +377,14 @@ export function dbResequenceSets(sessionId, exercise) {
   _persist();
 }
 
-// Deletes the most recently logged set for a session and returns the deleted row.
-// Returns null if the session has no sets (nothing to undo).
-export function dbDeleteLastSet(sessionId) {
+// Deletes the most recently logged set of a given exercise within a session
+// and returns the deleted row. Returns null if nothing matches. Scoped to one
+// exercise so Undo can never delete another exercise's set (4.2 / review #C5) —
+// the session-global last set may belong to an exercise no longer on screen.
+export function dbDeleteLastSet(sessionId, exercise) {
   const last = _one(
-    'SELECT * FROM sets WHERE session_id = ? ORDER BY set_id DESC LIMIT 1',
-    [sessionId]
+    'SELECT * FROM sets WHERE session_id = ? AND exercise = ? ORDER BY set_id DESC LIMIT 1',
+    [sessionId, exercise]
   );
   if (!last) return null;
   _db.run('DELETE FROM sets WHERE set_id = ?', [last.set_id]);

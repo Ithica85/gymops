@@ -125,20 +125,49 @@ describe('mid-session delete + resequence', () => {
   });
 });
 
-describe('dbDeleteLastSet', () => {
-  it('deletes and returns the most recently logged set', () => {
+describe('dbDeleteLastSet (scoped to one exercise — 4.2)', () => {
+  it('deletes and returns the most recently logged set of the exercise', () => {
     const sessionId = dbCreateSession('kg');
     dbInsertSet(sessionId, 'Squat', 1, 80, 5, null, null, 'kg');
     dbInsertSet(sessionId, 'Squat', 2, 85, 5, null, null, 'kg');
 
-    const deleted = dbDeleteLastSet(sessionId);
+    const deleted = dbDeleteLastSet(sessionId, 'Squat');
     expect(deleted.weight).toBe(85);
     expect(dbGetSetCount(sessionId)).toBe(1);
   });
 
-  it('returns null when the session has no sets', () => {
+  it('returns null when the session has no sets for the exercise', () => {
     const sessionId = dbCreateSession('kg');
-    expect(dbDeleteLastSet(sessionId)).toBeNull();
+    expect(dbDeleteLastSet(sessionId, 'Squat')).toBeNull();
+  });
+
+  it('never deletes another exercise\'s set, even when logged later (#C5)', () => {
+    // The verified bug: log Bench → log Squat → switch back to Bench → Undo
+    // deleted the Squat set (session-global last). Undo must stay scoped.
+    const sessionId = dbCreateSession('kg');
+    dbInsertSet(sessionId, 'Bench', 1, 50, 8, null, null, 'kg');
+    dbInsertSet(sessionId, 'Squat', 1, 100, 5, null, null, 'kg');
+
+    const deleted = dbDeleteLastSet(sessionId, 'Bench');
+    expect(deleted.exercise).toBe('Bench');
+    expect(deleted.weight).toBe(50);
+
+    const remaining = dbGetAllSets(sessionId);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].exercise).toBe('Squat'); // untouched
+  });
+
+  it('deletes only the latest set of the exercise, not earlier ones', () => {
+    const sessionId = dbCreateSession('kg');
+    dbInsertSet(sessionId, 'Bench', 1, 50, 8, null, null, 'kg');
+    dbInsertSet(sessionId, 'Squat', 1, 100, 5, null, null, 'kg');
+    dbInsertSet(sessionId, 'Bench', 2, 55, 6, null, null, 'kg');
+
+    const deleted = dbDeleteLastSet(sessionId, 'Bench');
+    expect(deleted.set_number).toBe(2);
+
+    const remaining = dbGetAllSets(sessionId).map(s => `${s.exercise} ${s.set_number}`);
+    expect(remaining.sort()).toEqual(['Bench 1', 'Squat 1']);
   });
 });
 

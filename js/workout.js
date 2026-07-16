@@ -818,7 +818,9 @@ export function quickLogSet() {
   _afterSetLogged(false); // no refocus — keep the keyboard down
 }
 
-// Deletes the most recently logged set for the session.
+// Deletes the most recently logged set of the CURRENT exercise — never the
+// session-global last set, which may belong to an exercise logged later and
+// no longer on screen (4.2 / review #C5).
 // If no sets exist for the current exercise, opens the exercise picker instead —
 // this lets the user recover from selecting the wrong exercise without losing session data.
 export function undoSet() {
@@ -827,16 +829,15 @@ export function undoSet() {
     return;
   }
 
-  const deleted = dbDeleteLastSet(state.sessionId);
+  const deleted = dbDeleteLastSet(state.sessionId, state.exercise);
   if (!deleted) {
     showError('Nothing to undo');
     setTimeout(clearError, 1500);
     return;
   }
 
-  if (deleted.exercise === state.exercise) {
-    setActiveExercise(state.exercise, state.exerciseType, { render: false });
-  }
+  // Resync setNumber from the DB (always the current exercise's set now)
+  setActiveExercise(state.exercise, state.exerciseType, { render: false });
 
   renderActive();
   focusInput();
