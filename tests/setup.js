@@ -39,13 +39,15 @@ function stubElement(id) {
   if (!elements.has(id)) {
     const classes = new Set(['hidden']);
     elements.set(id, {
-      id, textContent: '', value: '', innerHTML: '', style: {}, dataset: {},
+      id, textContent: '', value: '', innerHTML: '', dataset: {},
+      style: { setProperty: () => {} }, // celebratePR sets CSS custom props on confetti pieces
       classList: {
         add: c => classes.add(c), remove: c => classes.delete(c),
         toggle: (c, f) => (f ? classes.add(c) : classes.delete(c)),
         contains: c => classes.has(c),
       },
       addEventListener: () => {}, focus: () => {}, blur: () => {},
+      click: () => {}, // downloadFile() clicks a created <a>
       querySelectorAll: () => [], appendChild: () => {}, remove: () => {},
     });
   }
