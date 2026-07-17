@@ -1,9 +1,9 @@
 // Write-path tests for js/db.js (Story 1.3).
 // Each test starts from a cleared localStorage + fresh initDB(), so every test
 // runs against a brand-new in-memory sql.js database — no shared state.
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  initDB, dbDiscardCorrupt,
+  initDB, dbDiscardCorrupt, dbOnPersistStateChange,
   dbExportBackup, dbValidateBackup, dbRestoreBackup,
   dbCreateSession, dbGetSession, dbFinishSession,
   dbInsertSet, dbGetAllSets, dbGetSetCount,
@@ -245,6 +245,72 @@ function _legacyBytes(base64) {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+describe('persist-failure handling (4.4)', () => {
+  const _realSetItem = localStorage.setItem;
+  const _breakStorage = () => {
+    localStorage.setItem = () => { throw new Error('QuotaExceededError (simulated)'); };
+  };
+
+  afterEach(() => {
+    localStorage.setItem = _realSetItem;
+    dbOnPersistStateChange(() => {}); // detach this test's listener
+  });
+
+  it('a failed persist never throws; data stays available in memory', () => {
+    const sessionId = dbCreateSession('kg');
+    _breakStorage();
+    expect(() => dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg')).not.toThrow();
+    expect(dbGetAllSets(sessionId)).toHaveLength(1); // in-memory DB has the set
+  });
+
+  it('notifies the listener on failure and again on recovery — once each', () => {
+    const calls = [];
+    dbOnPersistStateChange(f => calls.push(f));
+    const sessionId = dbCreateSession('kg');
+
+    _breakStorage();
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg');
+    dbInsertSet(sessionId, 'Chest Press', 2, 60, 8, null, null, 'kg');
+    expect(calls).toEqual([true]); // state change only, not one per failed write
+
+    localStorage.setItem = _realSetItem;
+    dbInsertSet(sessionId, 'Chest Press', 3, 60, 8, null, null, 'kg');
+    dbInsertSet(sessionId, 'Chest Press', 4, 60, 8, null, null, 'kg');
+    expect(calls).toEqual([true, false]);
+  });
+
+  it('sets logged while storage was full are persisted by the recovery write', async () => {
+    const sessionId = dbCreateSession('kg');
+    _breakStorage();
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg'); // not persisted
+    localStorage.setItem = _realSetItem;
+    dbInsertSet(sessionId, 'Chest Press', 2, 62.5, 8, null, null, 'kg'); // persist retries here
+
+    await initDB(); // reload from localStorage — both sets must be there
+    const sets = dbGetAllSets(sessionId);
+    expect(sets).toHaveLength(2);
+    expect(sets.map(s => s.weight)).toEqual([62.5, 60]); // dbGetAllSets is newest-first
+  });
+
+  it('a listener registered after a failure fires immediately', () => {
+    const sessionId = dbCreateSession('kg');
+    _breakStorage();
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg');
+    const calls = [];
+    dbOnPersistStateChange(f => calls.push(f));
+    expect(calls).toEqual([true]);
+  });
+
+  it('backup export still works while storage is full (the banner CTA)', () => {
+    const sessionId = dbCreateSession('kg');
+    _breakStorage();
+    dbInsertSet(sessionId, 'Chest Press', 1, 60, 8, null, null, 'kg');
+    const info = dbValidateBackup(dbExportBackup()); // reads the in-memory DB
+    expect(info.sessions).toBe(1);
+    expect(info.sets).toBe(1);
+  });
+});
 
 describe('backup & restore (4.3)', () => {
   it('round-trips: export → wipe → restore → identical data', async () => {

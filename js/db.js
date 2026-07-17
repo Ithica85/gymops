@@ -9,6 +9,22 @@ const PRERESTORE_KEY = DB_KEY + '_prerestore';
 let _db = null;
 let _SQL = null; // sql.js module — kept for opening throwaway DBs (backup validation)
 
+// Persist-failure state (4.4). When localStorage.setItem fails (quota), the
+// in-memory DB still holds every logged set — writes keep working and each
+// one retries the persist. The listener lets the UI show/hide a warning
+// without db.js knowing about the DOM.
+let _persistFailed = false;
+let _persistListener = null;
+
+// Registers the (single) persist-state listener. Called with `true` when a
+// persist fails, `false` when a later persist succeeds again. If a failure
+// already happened before registration (e.g. during initDB's schema create),
+// the listener is invoked immediately.
+export function dbOnPersistStateChange(fn) {
+  _persistListener = fn;
+  if (_persistFailed) fn(true);
+}
+
 // ── Init ──────────────────────────────────────────────
 
 // Boots the sql.js database. Restores an existing DB from localStorage, or
@@ -19,6 +35,7 @@ let _SQL = null; // sql.js module — kept for opening throwaway DBs (backup val
 export async function initDB() {
   const SQL = await initSqlJs({ locateFile: f => `lib/${f}` });
   _SQL = SQL;
+  _persistFailed = false; // fresh boot starts with a clean persist state
 
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
@@ -291,8 +308,23 @@ function _migrate() {
 // Serialises the in-memory sql.js database to localStorage.
 // IMPORTANT: _db.export() resets last_insert_rowid() to 0. INSERTs must go
 // through _runInsert(), which reads the ID before persisting.
+// A setItem failure (quota) never throws out of here: the write that
+// triggered it has already applied to the in-memory DB, so the session keeps
+// working; the listener puts up the storage-full banner, and the next write's
+// persist is the retry. State-change notifications only — not one per write.
 function _persist() {
-  localStorage.setItem(DB_KEY, _encodeDB(_db.export()));
+  try {
+    localStorage.setItem(DB_KEY, _encodeDB(_db.export()));
+    if (_persistFailed) {
+      _persistFailed = false;
+      _persistListener?.(false);
+    }
+  } catch (_) {
+    if (!_persistFailed) {
+      _persistFailed = true;
+      _persistListener?.(true);
+    }
+  }
 }
 
 // Base64-encodes the exported DB bytes (~1.33× the raw size). The previous

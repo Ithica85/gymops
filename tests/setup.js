@@ -25,7 +25,9 @@ for (const [name, fn] of Object.entries({
   removeItem(k)  { delete storage[k]; },
   clear()        { for (const k of Object.keys(storage)) delete storage[k]; },
 })) {
-  Object.defineProperty(storage, name, { value: fn, enumerable: false });
+  // writable/configurable so tests can swap methods in (e.g. a setItem that
+  // throws, to simulate a full-quota device for the persist-failure tests)
+  Object.defineProperty(storage, name, { value: fn, enumerable: false, writable: true, configurable: true });
 }
 globalThis.localStorage = storage;
 

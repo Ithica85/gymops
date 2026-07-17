@@ -15,6 +15,17 @@
 <body>
 
   <!-- ═══════════════════════════════════
+       STORAGE-FULL BANNER (persist failure)
+  ════════════════════════════════════ -->
+  <div id="persist-error-banner" class="persist-banner hidden" role="alert">
+    <p class="persist-banner-text">
+      <strong>Device storage is full — changes aren't being saved.</strong>
+      Your workout is safe in memory: back it up now, and don't close the app.
+    </p>
+    <button class="btn-danger persist-banner-btn" id="btn-persist-backup">Back Up Now</button>
+  </div>
+
+  <!-- ═══════════════════════════════════
        IDLE STATE
   ════════════════════════════════════ -->
   <div id="screen-idle" class="screen">

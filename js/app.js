@@ -18,6 +18,7 @@ import {
   dbDiscardCorrupt,
   dbExportCSVByRange,
   dbGetActiveSession,
+  dbOnPersistStateChange,
   dbResequenceSets,
   initDB,
 } from './db.js';
@@ -248,6 +249,13 @@ async function boot() {
   document.getElementById('btn-confirm-restore').addEventListener('click', confirmRestore);
   document.getElementById('btn-cancel-restore').addEventListener('click', cancelRestore);
   document.getElementById('confirm-restore-backdrop').addEventListener('click', cancelRestore);
+
+  // Storage-full banner — shown while _persist() fails (quota), hidden again
+  // once a later write persists. Data lives on in memory either way; the
+  // button downloads a backup of it (4.3's export reads the in-memory DB).
+  dbOnPersistStateChange(failed =>
+    document.getElementById('persist-error-banner').classList.toggle('hidden', !failed));
+  document.getElementById('btn-persist-backup').addEventListener('click', downloadBackup);
 
   // Anthropic API key input — load saved value; save on blur
   const keyInput = document.getElementById('input-anthropic-key');
