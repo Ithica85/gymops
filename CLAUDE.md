@@ -41,6 +41,14 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 ## Database Schema
 
 ```sql
+exercises (                          -- added Phase 5.1: stable exercise identity
+  exercise_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+  name         TEXT NOT NULL UNIQUE, -- display name (denormalised copies on sets/plan_exercises stay in sync)
+  type         TEXT NOT NULL DEFAULT 'reps',  -- 'reps' | 'timed'
+  muscle_group TEXT,                 -- per MUSCLE_GROUPS; null for custom
+  is_custom    INTEGER NOT NULL DEFAULT 0     -- 1 = created via the "Other" flow
+)
+
 sessions (
   session_id    INTEGER PRIMARY KEY AUTOINCREMENT,
   start_time    TEXT NOT NULL,
@@ -62,6 +70,7 @@ sets (
   duration_mins REAL,              -- null for reps exercises
   calories      INTEGER,           -- null for reps exercises, optional for timed
   unit          TEXT NOT NULL DEFAULT 'lbs',  -- unit at log time (added Phase 2 F-02)
+  exercise_id   INTEGER,           -- FK to exercises (added Phase 5.1, backfilled by _syncExercises)
   FOREIGN KEY (session_id) REFERENCES sessions(session_id)
 )
 
@@ -82,6 +91,7 @@ plan_exercises (
   target_sets INTEGER,
   target_reps INTEGER,
   sort_order  INTEGER NOT NULL,
+  exercise_id INTEGER,             -- FK to exercises (added Phase 5.1)
   FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
 )
 ```
@@ -107,13 +117,23 @@ All weight comparisons across sessions (progression signal, session signal) norm
 0. Run `npm test` (Vitest — db.js write paths and pure-logic tests).
 1. Test at 375px width in Chrome DevTools mobile view.
 2. Verify existing session/sets data is not corrupted (load app with pre-existing localStorage data).
-3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v76`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
+3. Update the service worker cache version in `sw.js` if any cached files changed. Current version: `gymops-v77`. New JS files must be added to the `ASSETS` list in `sw.js` or offline mode breaks.
 5. User-entered text (plan names, objectives, custom exercise names) must go through `escapeHTML()` (js/ui.js) when interpolated into `innerHTML` — or better, use `textContent`/DOM APIs like history.js. `dbClearAll()` wipes ALL `gymops_*` localStorage keys (credentials included), not just the DB. The DB is stored in localStorage as base64 (legacy JSON-array blobs from pre-v62 installs are read transparently and upgraded on the next write).
 4. Verify CSV export still works and includes any new columns.
 
 ---
 
 # Current Phase
+
+**Phase 5 — Identity & Program Model** (started July 16, 2026)
+
+Theme: make the data model able to survive years and fit real training. Items: 5.1 stable exercise IDs · 5.2 multi-day program model · 5.3 session start chooser · 5.4 storage backend migration (IndexedDB/OPFS) · 5.5 plan adherence rework. Success criteria in `docs/PHASE4_CONSUMER_PLAN.md`.
+
+## Phase 5 Status
+🚧 **IN PROGRESS**
+- [x] **5.1 Stable exercise IDs** — SHIPPED (July 16, 2026, SW cache: `gymops-v77`, app: `v5.0`). New `exercises` table (see schema); nullable `exercise_id` on `sets` and `plan_exercises`. `_syncExercises()` runs every boot (idempotent, no-writes-when-clean): seeds catalogue rows (new EXERCISES entries auto-adopt), adopts historical custom names as `is_custom` rows (type inferred from data — a row with duration is timed; plan-only names use `getExerciseType`), backfills missing IDs. **Ordering matters: catalogue seeding must precede orphan adoption or historical catalogue names duplicate (UNIQUE violation → quarantine).** Write paths stamp IDs: `dbInsertSet` (via `_exerciseId(name, type)`, creates is_custom rows on first sight), `dbSavePlanExercises`. `dbRenameExercise(id, name)` updates the identity row + denormalised name copies on sets/plan_exercises atomically — history can't orphan; ID never changes. Queries stay name-based (names stay consistent) — deliberate: identity is additive, not a big-bang rewrite. No rename UI yet (later in Phase 5). `dbGetExercise`/`dbGetAllExercises` exported. 10 tests in tests/exercises.test.js incl. real pre-5.1-blob migration; CDP-verified against a legacy DB in the browser (history, plan, ghost text, logging all intact). db.js now imports from state.js (EXERCISES, getExerciseType) — state.js must stay import-free to avoid cycles.
+
+---
 
 **Phase 4 — Trust & Correctness** (started July 14, 2026)
 

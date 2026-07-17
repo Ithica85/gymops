@@ -2,6 +2,8 @@
 // GymOps — Database layer (sql.js + localStorage)
 // ═══════════════════════════════════════════════════════
 
+import { EXERCISES, getExerciseType } from './state.js';
+
 const DB_KEY = 'gymops_db';
 const CORRUPT_KEY_PREFIX = DB_KEY + '_corrupt_';
 const PRERESTORE_KEY = DB_KEY + '_prerestore';
@@ -42,6 +44,7 @@ export async function initDB() {
     try {
       _db = new SQL.Database(_decodeDB(saved));
       _migrate(); // Apply any schema changes needed for this version
+      _syncExercises();
       return null;
     } catch (_) {
       // gymops_db is left in place so every reload lands back on the recovery
@@ -54,6 +57,7 @@ export async function initDB() {
   }
   _db = new SQL.Database();
   _createSchema();
+  _syncExercises();
   return null;
 }
 
@@ -172,6 +176,13 @@ function _createSchema() {
       default_unit TEXT,
       plan_id      INTEGER
     );
+    CREATE TABLE IF NOT EXISTS exercises (
+      exercise_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL UNIQUE,
+      type         TEXT NOT NULL DEFAULT 'reps',
+      muscle_group TEXT,
+      is_custom    INTEGER NOT NULL DEFAULT 0
+    );
     CREATE TABLE IF NOT EXISTS sets (
       set_id        INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id    INTEGER NOT NULL,
@@ -183,7 +194,9 @@ function _createSchema() {
       duration_mins REAL,
       calories      INTEGER,
       unit          TEXT NOT NULL DEFAULT 'lbs',
-      FOREIGN KEY (session_id) REFERENCES sessions(session_id)
+      exercise_id   INTEGER,
+      FOREIGN KEY (session_id) REFERENCES sessions(session_id),
+      FOREIGN KEY (exercise_id) REFERENCES exercises(exercise_id)
     );
     CREATE TABLE IF NOT EXISTS plans (
       plan_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,7 +214,9 @@ function _createSchema() {
       target_sets INTEGER,
       target_reps INTEGER,
       sort_order  INTEGER NOT NULL,
-      FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+      exercise_id INTEGER,
+      FOREIGN KEY (plan_id) REFERENCES plans(plan_id),
+      FOREIGN KEY (exercise_id) REFERENCES exercises(exercise_id)
     );
   `);
   _persist();
@@ -303,6 +318,128 @@ function _migrate() {
     `);
     _persist();
   }
+
+  // Phase 5.1 — exercise identity. The exercises table plus nullable
+  // exercise_id columns; _syncExercises() (every boot) seeds the catalogue,
+  // adopts historical custom names, and backfills the IDs.
+  if (!tables.includes('exercises')) {
+    _db.run(`
+      CREATE TABLE exercises (
+        exercise_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+        name         TEXT NOT NULL UNIQUE,
+        type         TEXT NOT NULL DEFAULT 'reps',
+        muscle_group TEXT,
+        is_custom    INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+    _persist();
+  }
+  // Fresh PRAGMA reads — setNames from above may predate the duration_mins
+  // table rebuild, and pre-Phase-3 DBs only just gained plan_exercises.
+  if (!_all('PRAGMA table_info(sets)').some(c => c.name === 'exercise_id')) {
+    _db.run('ALTER TABLE sets ADD COLUMN exercise_id INTEGER');
+    _persist();
+  }
+  if (!_all('PRAGMA table_info(plan_exercises)').some(c => c.name === 'exercise_id')) {
+    _db.run('ALTER TABLE plan_exercises ADD COLUMN exercise_id INTEGER');
+    _persist();
+  }
+}
+
+// ── Exercise identity (5.1) ───────────────────────────
+
+// Runs on every boot, after schema create/migrate. Idempotent and cheap when
+// there is nothing to do (three SELECTs, no writes):
+//   1. Seeds catalogue entries that don't have a row yet (new app versions
+//      can extend EXERCISES; 'Other' is a UI flow, not an exercise).
+//   2. Adopts historical names found in sets/plan_exercises but not in the
+//      table (custom "Other" exercises logged before 5.1) as is_custom rows —
+//      type inferred from the data itself (a row with duration is timed).
+//   3. Backfills exercise_id on any row still missing one.
+function _syncExercises() {
+  let changed = false;
+
+  // 1. Catalogue first — orphan detection below depends on these rows existing,
+  //    otherwise a historical 'Chest Press' would be adopted as a duplicate.
+  for (const ex of EXERCISES) {
+    if (ex.name === 'Other') continue;
+    if (_one('SELECT 1 AS x FROM exercises WHERE name = ?', [ex.name])) continue;
+    _db.run('INSERT INTO exercises (name, type, muscle_group) VALUES (?, ?, ?)',
+      [ex.name, ex.type, ex.muscleGroup ?? null]);
+    changed = true;
+  }
+
+  // 2. Historical custom names (pre-5.1 "Other" exercises).
+  const orphans = _all(`
+    SELECT exercise AS name, MAX(duration_mins IS NOT NULL) AS timed FROM sets
+      WHERE exercise NOT IN (SELECT name FROM exercises) GROUP BY exercise
+    UNION
+    SELECT exercise AS name, NULL AS timed FROM plan_exercises
+      WHERE exercise NOT IN (SELECT name FROM exercises)
+        AND exercise NOT IN (SELECT exercise FROM sets)
+  `);
+  for (const o of orphans) {
+    // Data wins over name heuristics; plan-only names fall back to the
+    // cardio-keyword detection used by the "Other" flow.
+    const type = o.timed != null ? (o.timed ? 'timed' : 'reps') : getExerciseType(o.name);
+    _db.run('INSERT INTO exercises (name, type, is_custom) VALUES (?, ?, 1)', [o.name, type]);
+    changed = true;
+  }
+
+  // 3. Backfill IDs on any row still missing one.
+  const unlinked = _one(`
+    SELECT (SELECT COUNT(*) FROM sets WHERE exercise_id IS NULL) +
+           (SELECT COUNT(*) FROM plan_exercises WHERE exercise_id IS NULL) AS n
+  `).n;
+  if (unlinked) {
+    _db.run(`UPDATE sets SET exercise_id =
+      (SELECT e.exercise_id FROM exercises e WHERE e.name = sets.exercise)
+      WHERE exercise_id IS NULL`);
+    _db.run(`UPDATE plan_exercises SET exercise_id =
+      (SELECT e.exercise_id FROM exercises e WHERE e.name = plan_exercises.exercise)
+      WHERE exercise_id IS NULL`);
+    changed = true;
+  }
+
+  if (changed) _persist();
+}
+
+// Resolves a name to its exercise_id, creating an is_custom row on first
+// sight (the "Other" flow's new names arrive here). `type` comes from the
+// write itself so a custom cardio name is typed by its data.
+function _exerciseId(name, type) {
+  const row = _one('SELECT exercise_id FROM exercises WHERE name = ?', [name]);
+  if (row) return row.exercise_id;
+  return _runInsert('INSERT INTO exercises (name, type, is_custom) VALUES (?, ?, 1)',
+    [name, type ?? getExerciseType(name)]);
+}
+
+// Renames an exercise everywhere, atomically from the caller's view: the
+// identity row plus the denormalised name copies on sets and plan_exercises.
+// History cannot orphan — exercise_id never changes. Throws on a name that
+// already belongs to a different exercise.
+export function dbRenameExercise(exerciseId, newName) {
+  const name = String(newName ?? '').trim();
+  if (!name) throw new Error('Enter a name.');
+  const clash = _one('SELECT exercise_id FROM exercises WHERE name = ?', [name]);
+  if (clash && clash.exercise_id !== exerciseId) {
+    throw new Error('An exercise with that name already exists.');
+  }
+  const row = _one('SELECT exercise_id FROM exercises WHERE exercise_id = ?', [exerciseId]);
+  if (!row) return false;
+  _db.run('UPDATE exercises SET name = ? WHERE exercise_id = ?', [name, exerciseId]);
+  _db.run('UPDATE sets SET exercise = ? WHERE exercise_id = ?', [name, exerciseId]);
+  _db.run('UPDATE plan_exercises SET exercise = ? WHERE exercise_id = ?', [name, exerciseId]);
+  _persist();
+  return true;
+}
+
+export function dbGetExercise(name) {
+  return _one('SELECT * FROM exercises WHERE name = ?', [name]);
+}
+
+export function dbGetAllExercises() {
+  return _all('SELECT * FROM exercises ORDER BY name');
 }
 
 // Serialises the in-memory sql.js database to localStorage.
@@ -434,25 +571,26 @@ export function dbUpdateSessionNotes(sessionId, notes) {
 // for timed exercises the value is the user's preference but is not used for display.
 export function dbInsertSet(sessionId, exercise, setNumber, weight, reps, durationMins, calories, unit) {
   const now = new Date().toISOString();
+  const exerciseId = _exerciseId(exercise, durationMins != null ? 'timed' : 'reps');
   if (durationMins != null) {
     if (calories != null) {
       _runInsert(
-        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, calories, unit)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [sessionId, now, exercise, setNumber, durationMins, calories, unit]
+        `INSERT INTO sets (session_id, timestamp, exercise, exercise_id, set_number, duration_mins, calories, unit)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, exerciseId, setNumber, durationMins, calories, unit]
       );
     } else {
       _runInsert(
-        `INSERT INTO sets (session_id, timestamp, exercise, set_number, duration_mins, unit)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [sessionId, now, exercise, setNumber, durationMins, unit]
+        `INSERT INTO sets (session_id, timestamp, exercise, exercise_id, set_number, duration_mins, unit)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [sessionId, now, exercise, exerciseId, setNumber, durationMins, unit]
       );
     }
   } else {
     _runInsert(
-      `INSERT INTO sets (session_id, timestamp, exercise, set_number, weight, reps, unit)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [sessionId, now, exercise, setNumber, weight, reps, unit]
+      `INSERT INTO sets (session_id, timestamp, exercise, exercise_id, set_number, weight, reps, unit)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sessionId, now, exercise, exerciseId, setNumber, weight, reps, unit]
     );
   }
 }
@@ -811,8 +949,8 @@ export function dbSavePlanExercises(planId, exercises) {
   _db.run('DELETE FROM plan_exercises WHERE plan_id = ?', [planId]);
   exercises.forEach((ex, i) => {
     _db.run(
-      'INSERT INTO plan_exercises (plan_id, exercise, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?)',
-      [planId, ex.exercise, ex.targetSets ?? null, ex.targetReps ?? null, i]
+      'INSERT INTO plan_exercises (plan_id, exercise, exercise_id, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+      [planId, ex.exercise, _exerciseId(ex.exercise), ex.targetSets ?? null, ex.targetReps ?? null, i]
     );
   });
   _persist();
