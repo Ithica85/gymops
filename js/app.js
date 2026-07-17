@@ -22,8 +22,8 @@ import {
   dbResequenceSets,
   initDB,
 } from './db.js';
-import { APP_VERSION, getWeightUnit, state } from './state.js';
-import { downloadCSV, downloadFile, showScreen } from './ui.js';
+import { APP_VERSION, getRestSecs, getWeightUnit, localDateStr, state } from './state.js';
+import { downloadCSV, downloadFile, showScreen, showToast } from './ui.js';
 import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
 import { dismissReminderBanner, getReminderEnabled, setReminderEnabled } from './idle.js';
 import {
@@ -73,6 +73,7 @@ import {
   handleRestoreFile,
   openExportRangeModal,
   setAnthropicKey,
+  setRestSecs,
   setWeightUnit,
 } from './settings.js';
 import { generateAISummary, hideAISummaryModal } from './ai.js';
@@ -207,6 +208,10 @@ async function boot() {
   document.querySelectorAll('.reminder-btn').forEach(btn => {
     btn.addEventListener('click', () => setReminderEnabled(btn.dataset.reminder === 'true'));
   });
+  setRestSecs(getRestSecs());
+  document.querySelectorAll('.rest-btn').forEach(btn => {
+    btn.addEventListener('click', () => setRestSecs(Number(btn.dataset.secs)));
+  });
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-clear-data').addEventListener('click', () => {
@@ -233,8 +238,9 @@ async function boot() {
     const to   = document.getElementById('export-to').value;
     const csv  = dbExportCSVByRange(from, to);
     if (!csv) { alert('No sessions found in that date range.'); return; }
-    const suffix = (from || to) ? `${from || 'start'}-to-${to || 'today'}` : new Date().toISOString().slice(0, 10);
+    const suffix = (from || to) ? `${from || 'start'}-to-${to || 'today'}` : localDateStr();
     downloadCSV(csv, `gymops-${suffix}.csv`);
+    showToast('CSV downloaded');
     hideExportModal();
   });
 
@@ -318,7 +324,7 @@ async function boot() {
 // fresh schema because dbDiscardCorrupt() removed the unreadable blob.
 function bootRecovery({ blob }) {
   document.getElementById('btn-recovery-download').addEventListener('click', () => {
-    downloadFile(blob, `gymops-db-backup-${new Date().toISOString().slice(0, 10)}.txt`);
+    downloadFile(blob, `gymops-db-backup-${localDateStr()}.txt`);
   });
 
   const modal = document.getElementById('confirm-recovery-fresh');

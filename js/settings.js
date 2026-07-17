@@ -4,8 +4,8 @@
 // ═══════════════════════════════════════════════════════
 
 import { dbExportBackup, dbRestoreBackup, dbValidateBackup } from './db.js';
-import { UNIT_KEY, state } from './state.js';
-import { downloadFile } from './ui.js';
+import { REST_SECS_KEY, UNIT_KEY, localDateStr, state } from './state.js';
+import { downloadFile, showToast } from './ui.js';
 import { updateInputFields } from './workout.js';
 
 export function setWeightUnit(u) {
@@ -38,7 +38,7 @@ export function openExportRangeModal() {
   const today = new Date();
   const from  = new Date(today);
   from.setDate(from.getDate() - 30);
-  const fmt = d => d.toISOString().slice(0, 10);
+  const fmt = localDateStr; // local calendar day, not UTC's
   document.getElementById('export-from').value = fmt(from);
   document.getElementById('export-to').value   = fmt(today);
   document.getElementById('export-range').classList.remove('hidden');
@@ -52,9 +52,22 @@ let _pendingRestoreBlob = null;
 export function downloadBackup() {
   downloadFile(
     dbExportBackup(),
-    `gymops-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    `gymops-backup-${localDateStr()}.json`,
     'application/json'
   );
+  showToast('Backup downloaded');
+}
+
+// ── Rest timer duration (4.9) ─────────────────────────
+
+// Persists the rest countdown length and reflects it on the Settings toggle.
+// startRestTimer() reads getRestSecs() on each start, so the change applies
+// from the next rest; a countdown already running keeps its end time.
+export function setRestSecs(secs) {
+  localStorage.setItem(REST_SECS_KEY, String(secs));
+  document.querySelectorAll('.rest-btn').forEach(btn => {
+    btn.classList.toggle('unit-btn--active', Number(btn.dataset.secs) === secs);
+  });
 }
 
 // File-input change handler: validates the chosen file without touching the

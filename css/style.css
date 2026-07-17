@@ -886,7 +886,8 @@ body {
 }
 
 .unit-btn,
-.reminder-btn {
+.reminder-btn,
+.rest-btn {
   flex: 1;
   padding: 12px;
   border-radius: var(--radius);

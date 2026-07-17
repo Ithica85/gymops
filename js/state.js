@@ -2,7 +2,7 @@
 // GymOps — Shared app state, constants, and the exercise catalogue
 // ═══════════════════════════════════════════════════════
 
-export const APP_VERSION = 'v4.6';
+export const APP_VERSION = 'v4.7';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -22,6 +22,24 @@ export function convertWeight(weight, fromUnit, toUnit) {
 export const WEIGHT_EPSILON_KG = 0.05; // ~100 g tolerance — avoids float noise in "matched" checks
 
 export const SIGNAL_GAP_DAYS   = 3;    // gap threshold for "Back after a few days"
+
+// ── Rest timer duration preference ────────────────────
+// Stored in localStorage as seconds. 90 s was the hardcoded value pre-4.9.
+export const REST_SECS_KEY     = 'gymops_rest_secs';
+export const REST_SECS_DEFAULT = 90;
+export const REST_SECS_CHOICES = [60, 90, 120, 180];
+
+export function getRestSecs() {
+  const v = parseInt(localStorage.getItem(REST_SECS_KEY), 10);
+  return REST_SECS_CHOICES.includes(v) ? v : REST_SECS_DEFAULT;
+}
+
+// YYYY-MM-DD in LOCAL time. Filenames and plan dates must reflect the user's
+// calendar day — new Date().toISOString() is UTC, which names an evening
+// export with tomorrow's date east of Greenwich.
+export function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // Master exercise list. Each entry has a name and type:
 //   'reps'  — logs weight + reps

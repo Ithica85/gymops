@@ -28,8 +28,9 @@ export function escapeHTML(s) {
 
 // Shows a brief notification at the bottom of the screen.
 // Errors display for 5 seconds; success messages display for 3 seconds.
-// Currently has no callers (Drive messaging moved to the inline drive-status
-// line) — kept as the shared toast primitive for future features.
+// Shared toast primitive. Wired (4.9) to download confirmations — backup
+// file and ranged CSV export. Drive upload messaging stays on the inline
+// drive-status line, which outlives a toast.
 export function showToast(message, isError = false) {
   const el = document.getElementById('toast');
   el.textContent = message;

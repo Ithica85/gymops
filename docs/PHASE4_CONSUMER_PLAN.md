@@ -45,13 +45,13 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 
 **Explicitly experimental (build behind a judgment call, evaluate in personal use):** prefilling inputs with last-session values instead of ghost placeholders. Quick-log already covers the "same as last time" case in one tap; prefill changes validation semantics and may add friction to progression entries. Trial before committing.
 
-**Success criteria for Phase 4:**
-- [ ] It is impossible to lose workout history without an explicit, confirmed, destructive action.
-- [ ] A brand-new device can be restored to full history from a backup file in under a minute.
-- [ ] Both verified bugs fixed with regression tests.
-- [ ] A decimal weight can be logged on iOS Safari without workarounds.
-- [ ] Rest timer requires zero taps to start.
-- [ ] `npm test` covers the full log/undo/finish/resume loop.
+**Success criteria for Phase 4:** ✅ ALL MET (July 16, 2026 — Phase 4 complete, v4.0–v4.7)
+- [x] It is impossible to lose workout history without an explicit, confirmed, destructive action. (4.1 quarantine, 4.4 persist-failure banner)
+- [x] A brand-new device can be restored to full history from a backup file in under a minute. (4.3)
+- [x] Both verified bugs fixed with regression tests. (4.1 silent-wipe, 4.2 undo scope)
+- [x] A decimal weight can be logged on iOS Safari without workarounds. (4.5)
+- [x] Rest timer requires zero taps to start. (4.6)
+- [x] `npm test` covers the full log/undo/finish/resume loop. (4.8 — 95 tests)
 
 ### Phase 5 — Identity & Program Model
 

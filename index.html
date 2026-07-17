@@ -110,6 +110,16 @@
         <p class="settings-hint">Shows a nudge at your usual training time.</p>
       </div>
       <div class="settings-section">
+        <span class="settings-label">Rest Timer</span>
+        <div class="unit-toggle">
+          <button class="rest-btn" data-secs="60">1:00</button>
+          <button class="rest-btn" data-secs="90">1:30</button>
+          <button class="rest-btn" data-secs="120">2:00</button>
+          <button class="rest-btn" data-secs="180">3:00</button>
+        </div>
+        <p class="settings-hint">Countdown starts automatically after each logged set.</p>
+      </div>
+      <div class="settings-section">
         <span class="settings-label">Export</span>
         <button class="btn-secondary" id="btn-export-history">Export History (CSV)</button>
         <p class="settings-hint">Download a date-filtered CSV of your workouts.</p>
@@ -556,6 +566,8 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 4 — Trust &amp; Data Safety · July 2026</p>
           <ul class="release-notes-list">
+            <li>Rest timer length — choose 1:00, 1:30, 2:00 or 3:00 in Settings; the countdown after each set uses your pick</li>
+            <li>Correct file dates — exports and backups saved late in the evening are no longer named with tomorrow's date</li>
             <li>Pinch-zoom enabled — GymOps no longer blocks zooming, so any screen can be magnified; input text sizes were tuned so iOS doesn't auto-zoom while typing</li>
             <li>Auto rest timer — the 90-second rest countdown now starts by itself after every logged set on strength exercises; Skip dismisses it, and the Rest button still works as before</li>
             <li>Backup &amp; restore — Settings now has "Back Up All Data" (your complete workout database as a single file) and "Restore from Backup" for moving to a new phone or recovering from data loss</li>

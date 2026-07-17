@@ -33,7 +33,9 @@ import {
   WEIGHT_EPSILON_KG,
   convertWeight,
   getExerciseType,
+  getRestSecs,
   getWeightUnit,
+  localDateStr,
   state,
 } from './state.js';
 import { downloadCSV, escapeHTML, showScreen } from './ui.js';
@@ -85,9 +87,21 @@ let _sessionTimer    = null;
 
 let _sessionStart    = null; // Date object for the session's start_time
 
-// ── Rest timer ────────────────────────────────────────
+// ── Shared audio ──────────────────────────────────────
 
-const REST_SECS = 90;
+// One AudioContext for the whole session (4.9) — browsers cap the number of
+// live contexts, and creating one per beep leaks them (they're never closed).
+let _audioCtx = null;
+
+function _getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new AudioContext();
+  // iOS suspends contexts created outside a user gesture; resume is a no-op
+  // when already running.
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+// ── Rest timer ────────────────────────────────────────
 
 let _restTimer   = null;
 
@@ -102,7 +116,7 @@ function fmtRest(secs) {
 // Plays a short double-beep via Web Audio API to signal rest complete.
 function beepAlert() {
   try {
-    const ctx  = new AudioContext();
+    const ctx  = _getAudioCtx();
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     [0, 0.25].forEach(offset => {
@@ -140,7 +154,7 @@ export function _tickRest() {
 
 export function startRestTimer() {
   stopRestTimer();
-  _restEndTime = Date.now() + REST_SECS * 1000;
+  _restEndTime = Date.now() + getRestSecs() * 1000;
   document.getElementById('rest-bar').classList.remove('hidden');
   _tickRest();
   _restTimer = setInterval(_tickRest, 1000);
@@ -236,6 +250,21 @@ export function initInactivityWatchdog() {
 
 // ── State ─────────────────────────────────────────────
 
+// ── Set display helpers (4.9 dedup) ───────────────────
+
+// A stored set's weight converted to the given display unit. Pre-F-02 rows
+// have no unit column — they were always logged in lbs.
+function setDisplayWeight(set, toUnit) {
+  return convertWeight(set.weight, set.unit || 'lbs', toUnit);
+}
+
+// "20 min · 150 cal", or "20 min" when calories weren't logged.
+function fmtTimedSet(set) {
+  return set.calories != null
+    ? `${set.duration_mins} min · ${set.calories} cal`
+    : `${set.duration_mins} min`;
+}
+
 // Updates the two input field placeholders to show last-session values as ghost text.
 // Matches by set_number so Set 1 shows Set 1's previous values, Set 2 shows Set 2's, etc.
 // Falls back to generic labels ('Weight', 'Reps') when no history exists for this set number.
@@ -257,8 +286,7 @@ export function updateInputFields() {
     label1.textContent = `Weight (${unit})`;
     label2.textContent = 'Reps';
     if (reference) {
-      const displayWeight  = convertWeight(reference.weight, reference.unit || 'lbs', unit);
-      weightEl.placeholder = String(displayWeight);
+      weightEl.placeholder = String(setDisplayWeight(reference, unit));
       repsEl.placeholder   = String(reference.reps);
     } else {
       weightEl.placeholder = unit;
@@ -282,13 +310,8 @@ function renderLastSession() {
 
   const currentUnit = getWeightUnit();
   const parts = sets.map(s => {
-    if (s.duration_mins != null) {
-      return s.calories != null
-        ? `${s.duration_mins} min · ${s.calories} cal`
-        : `${s.duration_mins} min`;
-    }
-    const displayWeight = convertWeight(s.weight, s.unit || 'lbs', currentUnit);
-    return `${displayWeight} ${currentUnit}×${s.reps}`;
+    if (s.duration_mins != null) return fmtTimedSet(s);
+    return `${setDisplayWeight(s, currentUnit)} ${currentUnit}×${s.reps}`;
   });
 
   el.textContent = 'Last session: ' + parts.join(', ');
@@ -698,7 +721,7 @@ let _prDismissTimer = null;
 // the rest timer's beepAlert, so sound is already an established app behaviour.
 function _prFanfare() {
   try {
-    const ctx  = new AudioContext();
+    const ctx  = _getAudioCtx();
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     [[523.25, 0], [659.25, 0.12], [783.99, 0.24]].forEach(([freq, offset]) => {
@@ -788,12 +811,10 @@ function renderQuickLog() {
   const s = ref.set;
   let valueText;
   if (s.duration_mins != null) {
-    valueText = s.calories != null
-      ? `${s.duration_mins} min · ${s.calories} cal`
-      : `${s.duration_mins} min`;
+    valueText = fmtTimedSet(s);
   } else {
     const unit = getWeightUnit();
-    valueText = `${convertWeight(s.weight, s.unit || 'lbs', unit)} ${unit} × ${s.reps}`;
+    valueText = `${setDisplayWeight(s, unit)} ${unit} × ${s.reps}`;
   }
   document.getElementById('quick-log-label').textContent = ref.label;
   document.getElementById('quick-log-value').textContent = valueText;
@@ -815,7 +836,7 @@ export function quickLogSet() {
     } else {
       const unit = getWeightUnit();
       dbInsertSet(state.sessionId, state.exercise, state.setNumber,
-        convertWeight(s.weight, s.unit || 'lbs', unit), s.reps, null, null, unit);
+        setDisplayWeight(s, unit), s.reps, null, null, unit);
     }
   } catch (err) {
     showError('DB error: ' + err.message);
@@ -856,5 +877,5 @@ export function undoSet() {
 export function triggerExport() {
   const csv = state.sessionId ? dbExportSessionCSV(state.sessionId) : dbExportCSV();
   if (!csv) { alert('No data to export.'); return; }
-  downloadCSV(csv, `gymops-${new Date().toISOString().slice(0, 10)}.csv`);
+  downloadCSV(csv, `gymops-${localDateStr()}.csv`);
 }

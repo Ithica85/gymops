@@ -10,7 +10,7 @@ import {
   initDB,
   dbGetAllSets, dbGetSession, dbGetSetCount, dbGetActiveSession,
 } from '../js/db.js';
-import { EXERCISES, state } from '../js/state.js';
+import { EXERCISES, localDateStr, state } from '../js/state.js';
 import {
   _doStartSession, startSession, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise,
@@ -212,6 +212,26 @@ describe('rest timer auto-start (4.6)', () => {
     setActiveExercise('Elliptical');
     typeAndLog('20', '150');
     expect(_restEndTime).toBeNull();
+  });
+});
+
+describe('rest duration preference (4.9)', () => {
+  it('startRestTimer honours gymops_rest_secs; unknown values fall back to 90', () => {
+    _doStartSession();
+    localStorage.setItem('gymops_rest_secs', '120');
+    typeAndLog('60', '8');
+    expect(_restEndTime - Date.now()).toBe(120_000); // Date frozen by fake timers
+
+    localStorage.setItem('gymops_rest_secs', '45'); // not one of the offered choices
+    typeAndLog('60', '8');
+    expect(_restEndTime - Date.now()).toBe(90_000);
+  });
+});
+
+describe('localDateStr (4.9)', () => {
+  it('formats the LOCAL calendar day as YYYY-MM-DD', () => {
+    expect(localDateStr(new Date(2026, 0, 5))).toBe('2026-01-05');
+    expect(localDateStr(new Date(2026, 11, 31, 23, 59))).toBe('2026-12-31'); // late evening stays local
   });
 });
 

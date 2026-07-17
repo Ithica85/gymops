@@ -17,7 +17,7 @@ import {
   dbUpdatePlan,
   dbUpdatePlanStatus,
 } from './db.js';
-import { SIGNAL_GAP_DAYS, getExerciseType } from './state.js';
+import { SIGNAL_GAP_DAYS, getExerciseType, localDateStr } from './state.js';
 import { escapeHTML, onScreenShow, showScreen } from './ui.js';
 import { IDLE_BANNERS, _weekStart } from './idle.js';
 
@@ -297,7 +297,7 @@ export function savePlan() {
     // Archive any currently active plan before creating the new one
     const existing = dbGetActivePlan();
     if (existing) dbUpdatePlanStatus(existing.plan_id, 'archived');
-    const planId = dbCreatePlan(name, new Date().toISOString().slice(0, 10), durationWeeks, objectivesJson, targetSessions);
+    const planId = dbCreatePlan(name, localDateStr(), durationWeeks, objectivesJson, targetSessions);
     dbSavePlanExercises(planId, _editingExercises);
   }
 
