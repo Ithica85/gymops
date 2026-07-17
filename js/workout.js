@@ -604,7 +604,9 @@ export function resumeLastWorkout() {
 //   'timed' — duration required, calories optional
 //   'reps'  — both weight and reps required, must be positive numbers
 export function logSet() {
-  const field1 = document.getElementById('input-weight').value.trim();
+  // Comma → dot: iOS decimal keypads emit the locale separator, and
+  // parseFloat('62,5') would silently truncate to 62.
+  const field1 = document.getElementById('input-weight').value.trim().replace(',', '.');
   const field2 = document.getElementById('input-reps').value.trim();
 
   if (state.exerciseType === 'timed') {
