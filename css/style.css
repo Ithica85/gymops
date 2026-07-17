@@ -1024,7 +1024,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px 12px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1155,7 +1155,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-family: var(--font);
   line-height: 1.5;
   padding: 12px 14px;
@@ -1186,7 +1186,7 @@ body {
   border: 1px solid var(--border);
   background: var(--surface2);
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: 1rem;
   font-family: monospace;
   outline: none;
   box-sizing: border-box;
@@ -1417,7 +1417,7 @@ body {
   border: 1px solid var(--border);
   background: var(--surface2);
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 1rem;
   text-align: center;
   outline: none;
   -webkit-appearance: none;
