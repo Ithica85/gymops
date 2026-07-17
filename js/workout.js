@@ -681,6 +681,10 @@ function _afterSetLogged(focus = true) {
   renderProgressionSignal(signal);
   document.querySelector('.sets-log').scrollTop = 0; // Scroll log back to top to show latest set
   if (focus) focusInput();
+  // Auto-start the rest countdown after every logged set (4.6). Reps exercises
+  // only — cardio blocks don't take 90s rests. Skip dismisses; logging the
+  // next set restarts it (startRestTimer resets any running countdown).
+  if (state.exerciseType !== 'timed') startRestTimer();
   resetInactivityTimer();
 }
 
