@@ -174,7 +174,8 @@ function _createSchema() {
       status       TEXT NOT NULL DEFAULT 'active',
       notes        TEXT,
       default_unit TEXT,
-      plan_id      INTEGER
+      plan_id      INTEGER,
+      day_id       INTEGER
     );
     CREATE TABLE IF NOT EXISTS exercises (
       exercise_id  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -207,6 +208,13 @@ function _createSchema() {
       status         TEXT NOT NULL DEFAULT 'active',
       target_sessions_per_week INTEGER
     );
+    CREATE TABLE IF NOT EXISTS plan_days (
+      day_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      plan_id    INTEGER NOT NULL,
+      name       TEXT NOT NULL,
+      sort_order INTEGER NOT NULL,
+      FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+    );
     CREATE TABLE IF NOT EXISTS plan_exercises (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       plan_id     INTEGER NOT NULL,
@@ -215,8 +223,10 @@ function _createSchema() {
       target_reps INTEGER,
       sort_order  INTEGER NOT NULL,
       exercise_id INTEGER,
+      day_id      INTEGER,
       FOREIGN KEY (plan_id) REFERENCES plans(plan_id),
-      FOREIGN KEY (exercise_id) REFERENCES exercises(exercise_id)
+      FOREIGN KEY (exercise_id) REFERENCES exercises(exercise_id),
+      FOREIGN KEY (day_id) REFERENCES plan_days(day_id)
     );
   `);
   _persist();
@@ -342,6 +352,41 @@ function _migrate() {
   }
   if (!_all('PRAGMA table_info(plan_exercises)').some(c => c.name === 'exercise_id')) {
     _db.run('ALTER TABLE plan_exercises ADD COLUMN exercise_id INTEGER');
+    _persist();
+  }
+
+  // Phase 5.2 — multi-day programs. plan_days table plus nullable day_id on
+  // plan_exercises (which day the exercise belongs to) and sessions (which day
+  // was trained). Every existing plan gets a single "Day 1" holding its whole
+  // exercise list — the uniform model is "every plan has ≥1 day". Historical
+  // sessions keep day_id NULL, which readers treat as whole-plan.
+  if (!_all('PRAGMA table_info(plan_exercises)').some(c => c.name === 'day_id')) {
+    _db.run('ALTER TABLE plan_exercises ADD COLUMN day_id INTEGER');
+    _persist();
+  }
+  if (!_all('PRAGMA table_info(sessions)').some(c => c.name === 'day_id')) {
+    _db.run('ALTER TABLE sessions ADD COLUMN day_id INTEGER');
+    _persist();
+  }
+  const hasPlanDays = _all("SELECT name FROM sqlite_master WHERE type='table'")
+    .some(r => r.name === 'plan_days');
+  if (!hasPlanDays) {
+    _db.run(`
+      CREATE TABLE plan_days (
+        day_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        plan_id    INTEGER NOT NULL,
+        name       TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        FOREIGN KEY (plan_id) REFERENCES plans(plan_id)
+      )
+    `);
+    for (const p of _all('SELECT plan_id FROM plans')) {
+      const dayId = _runInsert(
+        "INSERT INTO plan_days (plan_id, name, sort_order) VALUES (?, 'Day 1', 0)",
+        [p.plan_id]
+      );
+      _db.run('UPDATE plan_exercises SET day_id = ? WHERE plan_id = ?', [dayId, p.plan_id]);
+    }
     _persist();
   }
 }
@@ -943,31 +988,96 @@ export function dbGetPlanExercises(planId) {
   return _all('SELECT * FROM plan_exercises WHERE plan_id = ? ORDER BY sort_order ASC', [planId]);
 }
 
-// Replaces all exercises for a plan atomically.
-// exercises: array of { exercise, targetSets, targetReps }
-export function dbSavePlanExercises(planId, exercises) {
+export function dbGetPlanDays(planId) {
+  return _all('SELECT * FROM plan_days WHERE plan_id = ? ORDER BY sort_order ASC', [planId]);
+}
+
+// Replaces a plan's day/exercise structure atomically.
+// days: array of { dayId, name, exercises: [{ exercise, type, targetSets, targetReps }] }
+// Existing days are updated in place (dayId preserved — sessions reference day
+// rows, so a plan edit must not re-mint the IDs of days that survived it);
+// dayId == null inserts a new day; days absent from the array are deleted.
+// plan_exercises rows are delete-and-recreate as before — nothing references
+// them by id. sort_order on exercises is a single per-plan sequence so
+// dbGetPlanExercises returns day order then within-day order with no join.
+export function dbSavePlanExercises(planId, days) {
   _db.run('DELETE FROM plan_exercises WHERE plan_id = ?', [planId]);
-  exercises.forEach((ex, i) => {
-    _db.run(
-      'INSERT INTO plan_exercises (plan_id, exercise, exercise_id, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [planId, ex.exercise, _exerciseId(ex.exercise), ex.targetSets ?? null, ex.targetReps ?? null, i]
-    );
+  const keptDayIds = [];
+  let order = 0;
+  days.forEach((day, di) => {
+    let dayId = day.dayId ?? null;
+    if (dayId) {
+      _db.run('UPDATE plan_days SET name = ?, sort_order = ? WHERE day_id = ?', [day.name, di, dayId]);
+    } else {
+      dayId = _runInsert('INSERT INTO plan_days (plan_id, name, sort_order) VALUES (?, ?, ?)',
+        [planId, day.name, di]);
+    }
+    keptDayIds.push(dayId);
+    for (const ex of day.exercises) {
+      _db.run(
+        'INSERT INTO plan_exercises (plan_id, day_id, exercise, exercise_id, target_sets, target_reps, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [planId, dayId, ex.exercise, _exerciseId(ex.exercise, ex.type), ex.targetSets ?? null, ex.targetReps ?? null, order++]
+      );
+    }
   });
+  if (keptDayIds.length) {
+    _db.run(
+      `DELETE FROM plan_days WHERE plan_id = ? AND day_id NOT IN (${keptDayIds.map(() => '?').join(',')})`,
+      [planId, ...keptDayIds]
+    );
+  }
   _persist();
 }
 
-export function dbLinkSessionToPlan(sessionId, planId) {
-  _db.run('UPDATE sessions SET plan_id = ? WHERE session_id = ?', [planId, sessionId]);
+export function dbLinkSessionToPlan(sessionId, planId, dayId = null) {
+  _db.run('UPDATE sessions SET plan_id = ?, day_id = ? WHERE session_id = ?',
+    [planId, dayId, sessionId]);
   _persist();
 }
 
-// Returns the plan and its exercises for a given session, or null if no plan was linked.
+// Re-points an in-flight session at a different plan day (the active-screen
+// day chip). The plan link itself is unchanged.
+export function dbUpdateSessionDay(sessionId, dayId) {
+  _db.run('UPDATE sessions SET day_id = ? WHERE session_id = ?', [dayId, sessionId]);
+  _persist();
+}
+
+// Returns the plan, the trained day, and the exercises in scope for a given
+// session, or null if no plan was linked. When the session has a (still
+// existing) day, `exercises` is just that day's list — the picker section,
+// Up Next, adherence, and AI context all become day-scoped through this one
+// query. Pre-5.2 sessions (day_id NULL) and sessions whose day was deleted by
+// a later plan edit fall back to day: null + the whole plan.
 export function dbGetSessionPlan(sessionId) {
-  const session = _one('SELECT plan_id FROM sessions WHERE session_id = ?', [sessionId]);
+  const session = _one('SELECT plan_id, day_id FROM sessions WHERE session_id = ?', [sessionId]);
   if (!session?.plan_id) return null;
   const plan = dbGetPlan(session.plan_id);
   if (!plan) return null;
-  return { ...plan, exercises: dbGetPlanExercises(session.plan_id) };
+  const day = session.day_id
+    ? _one('SELECT * FROM plan_days WHERE day_id = ?', [session.day_id])
+    : null;
+  const exercises = day
+    ? _all('SELECT * FROM plan_exercises WHERE plan_id = ? AND day_id = ? ORDER BY sort_order ASC',
+        [session.plan_id, day.day_id])
+    : dbGetPlanExercises(session.plan_id);
+  return { ...plan, day, exercises };
+}
+
+// The day a new session for this plan should land on: the day after the last
+// completed session's day, cycling (…Push → Pull → Legs → Push…). No trained
+// day on record → the first day. A day deleted since it was last trained
+// resolves to the first day. Returns null only for a plan with no days
+// (shouldn't exist under the uniform model, but a reader must not crash).
+export function dbGetNextPlanDay(planId) {
+  const days = dbGetPlanDays(planId);
+  if (!days.length) return null;
+  const last = _one(
+    "SELECT day_id FROM sessions WHERE plan_id = ? AND day_id IS NOT NULL AND status = 'completed' ORDER BY start_time DESC, session_id DESC LIMIT 1",
+    [planId]
+  );
+  if (!last) return days[0];
+  const idx = days.findIndex(d => d.day_id === last.day_id);
+  return days[(idx + 1) % days.length];
 }
 
 // ── Clear all data ────────────────────────────────────

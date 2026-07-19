@@ -2,7 +2,7 @@
 // GymOps — AI session summary — builds context, calls /api/ai-summary
 // ═══════════════════════════════════════════════════════
 
-import { dbGetAllSets, dbGetRecentSessionsBestForExercise, dbGetSessionPlan } from './db.js';
+import { dbGetAllSets, dbGetPlanDays, dbGetRecentSessionsBestForExercise, dbGetSessionPlan } from './db.js';
 import { getWeightUnit, state } from './state.js';
 import { getAnthropicKey } from './settings.js';
 
@@ -59,6 +59,11 @@ function _buildSessionContext(sessionId) {
     const durationStr = plan.duration_weeks ? ` (${weekNumber} of ${plan.duration_weeks} weeks)` : '';
     lines.push('');
     lines.push(`Plan: ${plan.name}${durationStr}`);
+    if (plan.day) {
+      const days = dbGetPlanDays(plan.plan_id);
+      const idx  = days.findIndex(d => d.day_id === plan.day.day_id);
+      lines.push(`Day trained: ${plan.day.name}${days.length > 1 ? ` (day ${idx + 1} of ${days.length})` : ''}`);
+    }
     const objectives = plan.objectives_json ? JSON.parse(plan.objectives_json) : [];
     if (objectives.length) lines.push(`Objectives: ${objectives.join('; ')}`);
     const planNames  = plan.exercises.map(e => e.exercise);

@@ -66,7 +66,7 @@ describe('exercise_id stamping on writes', () => {
 
   it('dbSavePlanExercises stamps exercise_id', () => {
     const planId = dbCreatePlan('Push Day', '2026-07-16', 8, null, 3);
-    dbSavePlanExercises(planId, [{ exercise: 'Chest Press', targetSets: 4, targetReps: 8 }]);
+    dbSavePlanExercises(planId, [{ dayId: null, name: 'Day 1', exercises: [{ exercise: 'Chest Press', targetSets: 4, targetReps: 8 }] }]);
     const [pe] = dbGetPlanExercises(planId);
     expect(pe.exercise_id).toBe(dbGetExercise('Chest Press').exercise_id);
   });
@@ -124,7 +124,7 @@ describe('rename (the point of 5.1)', () => {
     const sid = dbCreateSession('kg');
     dbInsertSet(sid, 'Yoke Carry', 1, 80, 10, null, null, 'kg');
     const planId = dbCreatePlan('Conditioning', '2026-07-16', null, null, null);
-    dbSavePlanExercises(planId, [{ exercise: 'Yoke Carry' }]);
+    dbSavePlanExercises(planId, [{ dayId: null, name: 'Day 1', exercises: [{ exercise: 'Yoke Carry' }] }]);
     const id = dbGetExercise('Yoke Carry').exercise_id;
 
     expect(dbRenameExercise(id, 'Yoke Walk')).toBe(true);

@@ -6,6 +6,8 @@ import {
   dbGetActivePlan,
   dbGetCompletedSessionsSince,
   dbGetLastCompletedSession,
+  dbGetNextPlanDay,
+  dbGetPlanDays,
   dbGetRecentSessionStartTimes,
   dbGetRecentSessionsBestForExercise,
   dbGetSessionBestForExercise,
@@ -293,13 +295,19 @@ function renderIdleHook() {
   el.classList.add('idle-subtitle--hook');
 }
 
-// Shows the active plan and current week number below the week strip.
+// Shows the active plan and current week number below the week strip; for
+// multi-day plans, also which day the next session will land on (5.2).
 function renderIdlePlanLine() {
   const el   = document.getElementById('idle-plan-line');
   const plan = dbGetActivePlan();
   if (!plan) { el.classList.add('hidden'); return; }
   const weekNum = Math.floor((Date.now() - new Date(plan.start_date).getTime()) / (7 * 86400000)) + 1;
-  el.textContent = `${plan.name} · Week ${weekNum}${plan.duration_weeks ? ` of ${plan.duration_weeks}` : ''}`;
+  let text = `${plan.name} · Week ${weekNum}${plan.duration_weeks ? ` of ${plan.duration_weeks}` : ''}`;
+  if (dbGetPlanDays(plan.plan_id).length > 1) {
+    const next = dbGetNextPlanDay(plan.plan_id);
+    if (next) text += ` · Next: ${next.name}`;
+  }
+  el.textContent = text;
   el.classList.remove('hidden');
 }
 

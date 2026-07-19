@@ -1413,7 +1413,7 @@ body {
 
 .plan-target-input {
   width: 48px;
-  padding: 8px 6px;
+  padding: 8px 2px; /* 1rem font is the iOS no-zoom floor (4.7) — width comes from trimming padding, not the font */
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--surface2);
@@ -1440,6 +1440,102 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
   padding: 4px 8px;
+}
+
+/* Multi-day plans (5.2) — stacked day sections in the editor */
+.plan-day-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.plan-day-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-day-name-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font);
+  padding: 6px 2px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.plan-day-name-input:focus { border-bottom-color: var(--accent); }
+
+.plan-day-name-input::placeholder {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.plan-day-exercises { margin-bottom: 10px; }
+
+.plan-day-add-ex {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 10px;
+}
+
+/* Day name lines on the plan card preview */
+.plan-preview-day {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Active-screen day chip — tap to switch the session's plan day */
+.day-chip {
+  flex: 0 0 auto;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-family: var(--font);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+/* Day switcher bottom sheet */
+.day-switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+
+.day-switch-row {
+  width: 100%;
+  text-align: left;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: var(--font);
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.day-switch-row--current {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 /* Picker plan section */

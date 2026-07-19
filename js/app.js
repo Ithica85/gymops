@@ -30,12 +30,14 @@ import {
   _doStartSession,
   cancelFinishConfirm,
   clearError,
+  closeDaySwitch,
   confirmDeleteSet,
   dismissPRCelebration,
   finishWorkout,
   hideInactivityModal,
   initInactivityWatchdog,
   logSet,
+  openDaySwitch,
   quickLogSet,
   renderActive,
   renderRecentSets,
@@ -64,7 +66,7 @@ import {
   setPickerQuery,
   setPickerSort,
 } from './picker.js';
-import { archiveCurrentPlan, dismissPlanNudge, openNewPlan, savePlan } from './plans.js';
+import { addDayToPlan, archiveCurrentPlan, dismissPlanNudge, openNewPlan, savePlan } from './plans.js';
 import {
   cancelRestore,
   confirmRestore,
@@ -307,7 +309,19 @@ async function boot() {
   document.getElementById('btn-save-plan').addEventListener('click', savePlan);
   document.getElementById('btn-archive-plan').addEventListener('click', archiveCurrentPlan);
   document.getElementById('btn-plan-expiry-review').addEventListener('click', () => showScreen('plans'));
-  document.getElementById('btn-add-plan-exercise').addEventListener('click', openPickerForPlan);
+  document.getElementById('btn-add-plan-day').addEventListener('click', addDayToPlan);
+  // Per-day "+ Add Exercise" buttons are re-rendered with the editor, so the
+  // click is delegated from the container (also keeps picker↔plans acyclic —
+  // plans.js must not import openPickerForPlan).
+  document.getElementById('plan-days-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('.plan-day-add-ex');
+    if (btn) openPickerForPlan(parseInt(btn.dataset.day));
+  });
+
+  // Plan day switcher (active screen)
+  document.getElementById('active-day-chip').addEventListener('click', openDaySwitch);
+  document.getElementById('btn-day-switch-cancel').addEventListener('click', closeDaySwitch);
+  document.getElementById('day-switch-backdrop').addEventListener('click', closeDaySwitch);
 
   // Completed screen
   document.getElementById('btn-resume').addEventListener('click', resumeLastWorkout);

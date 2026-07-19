@@ -15,7 +15,8 @@ import {
   dbGetLastSessionExerciseOrder,
   dbGetLastSessionSetsForExercise,
   dbGetLastSetForExercise,
-  dbGetPlanExercises,
+  dbGetNextPlanDay,
+  dbGetPlanDays,
   dbGetRecentSets,
   dbGetSession,
   dbGetSessionBestForExercise,
@@ -25,6 +26,7 @@ import {
   dbInsertSet,
   dbLinkSessionToPlan,
   dbResumeSession,
+  dbUpdateSessionDay,
   dbUpdateSessionNotes,
 } from './db.js';
 import { gdriveUpload } from './gdrive.js';
@@ -328,9 +330,50 @@ export function renderActive() {
   renderQuickLog();
   renderProgressionSignal(null); // clear any stale signal on exercise change / undo
   renderUpNext();
+  renderDayChip();
   // Show Rest button only after at least one set has been logged
   const hasSet = dbGetSetCount(state.sessionId) > 0;
   document.getElementById('btn-rest').classList.toggle('hidden', !hasSet);
+}
+
+// ── Plan day chip + switcher (5.2) ────────────────────
+
+// Small pill showing which plan day this session is training. Only rendered
+// for multi-day plans — on a single-day plan it would just repeat the plan.
+function renderDayChip() {
+  const chip = document.getElementById('active-day-chip');
+  const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
+  if (!plan?.day || dbGetPlanDays(plan.plan_id).length <= 1) {
+    chip.classList.add('hidden');
+    return;
+  }
+  chip.textContent = plan.day.name;
+  chip.classList.remove('hidden');
+}
+
+// The rotation escape hatch: tapping the chip lists the plan's days; picking
+// one re-points the session (dbUpdateSessionDay), which day-scopes the picker
+// section, Up Next, and adherence through dbGetSessionPlan.
+export function openDaySwitch() {
+  const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
+  if (!plan?.day) return;
+  const list = document.getElementById('day-switch-list');
+  list.replaceChildren(...dbGetPlanDays(plan.plan_id).map(d => {
+    const btn = document.createElement('button');
+    btn.className = 'day-switch-row' + (d.day_id === plan.day.day_id ? ' day-switch-row--current' : '');
+    btn.textContent = d.name; // user text — textContent, never innerHTML
+    btn.addEventListener('click', () => {
+      dbUpdateSessionDay(state.sessionId, d.day_id);
+      closeDaySwitch();
+      renderActive();
+    });
+    return btn;
+  }));
+  document.getElementById('day-switch-modal').classList.remove('hidden');
+}
+
+export function closeDaySwitch() {
+  document.getElementById('day-switch-modal').classList.add('hidden');
 }
 
 // Renders the full session log (all sets, newest first).
@@ -466,12 +509,15 @@ export function _doStartSession() {
 
   state.sessionId = dbCreateSession(getWeightUnit());
 
-  // Link session to active plan if one exists; use plan's first exercise as starting point
+  // Link session to active plan if one exists, landing on the next day in
+  // rotation (day after the last one trained, cycling); the starting exercise
+  // is that day's first. dbGetSessionPlan day-scopes the exercises once linked.
   let startExercise = EXERCISES[0].name;
   const activePlan  = dbGetActivePlan();
   if (activePlan) {
-    dbLinkSessionToPlan(state.sessionId, activePlan.plan_id);
-    const planExs = dbGetPlanExercises(activePlan.plan_id);
+    const day = dbGetNextPlanDay(activePlan.plan_id);
+    dbLinkSessionToPlan(state.sessionId, activePlan.plan_id, day?.day_id ?? null);
+    const planExs = dbGetSessionPlan(state.sessionId)?.exercises ?? [];
     if (planExs.length) startExercise = planExs[0].exercise;
   }
 

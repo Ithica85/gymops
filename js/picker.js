@@ -18,6 +18,9 @@ let _recencyRanks  = {};
 // 'session' (default) or 'plan' — controls what happens when an exercise is selected.
 let _pickerContext = 'session';
 
+// In plan mode: index of the _editingDays entry picks are added to (5.2).
+let _pickerDayIdx = 0;
+
 // Live filters (v3.6): search query and active muscle-group chip.
 // Both reset when the picker closes so it always reopens in the default view.
 let _pickerQuery = '';
@@ -94,8 +97,9 @@ function _renderExerciseList() {
         return;
       }
       if (_pickerContext === 'plan') {
+        const dayIdx = _pickerDayIdx; // save before closePicker() resets it
         closePicker();
-        addExerciseToPlan(ex.name, ex.type);
+        addExerciseToPlan(ex.name, ex.type, dayIdx);
         return;
       }
       closePicker();
@@ -113,7 +117,8 @@ function _renderExerciseList() {
 
   function renderPlanSection() {
     if (!planExerciseNames.length) return;
-    sectionHeader("Today's Plan");
+    // Multi-day sessions name the day so "Today's Plan" reads as e.g. "— Push"
+    sectionHeader(plan?.day ? `Today's Plan — ${plan.day.name}` : "Today's Plan");
     planExerciseNames.forEach(name => {
       const ex  = EXERCISES.find(e => e.name === name) ?? { name, type: getExerciseType(name) };
       const tgt = planTargetMap[name];
@@ -196,10 +201,12 @@ export function openPicker() {
   document.getElementById('exercise-picker').classList.remove('hidden');
 }
 
-// Opens the picker in plan-editing mode: picks add exercises to the plan draft
-// instead of switching the active exercise. closePicker() resets to session mode.
-export function openPickerForPlan() {
+// Opens the picker in plan-editing mode: picks add exercises to the given
+// day of the plan draft instead of switching the active exercise.
+// closePicker() resets to session mode.
+export function openPickerForPlan(dayIdx = 0) {
   _pickerContext = 'plan';
+  _pickerDayIdx  = dayIdx;
   _refreshRecencyRanks();
   _renderExerciseList();
   document.getElementById('exercise-picker').classList.remove('hidden');
@@ -247,10 +254,11 @@ export function backFromOtherType() {
 
 // Applies a confirmed custom exercise name with a resolved type, then closes the picker.
 function applyOtherExercise(name, type) {
-  const ctx = _pickerContext; // save before closePicker() resets it
+  const ctx    = _pickerContext; // save before closePicker() resets it
+  const dayIdx = _pickerDayIdx;
   closePicker();
   if (ctx === 'plan') {
-    addExerciseToPlan(name, type);
+    addExerciseToPlan(name, type, dayIdx);
   } else {
     setActiveExercise(name, type);
   }

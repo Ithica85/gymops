@@ -213,11 +213,11 @@
       </div>
 
       <div class="settings-section">
-        <span class="settings-label">Exercises</span>
-        <div id="plan-exercises-list">
-          <!-- populated by JS -->
+        <span class="settings-label">Training Days</span>
+        <div id="plan-days-list">
+          <!-- day sections populated by JS -->
         </div>
-        <button class="btn-secondary" id="btn-add-plan-exercise">+ Add Exercise</button>
+        <button class="btn-secondary" id="btn-add-plan-day">+ Add Day</button>
       </div>
 
       <p class="input-error hidden" id="plan-save-error">Enter a plan name and at least one exercise.</p>
@@ -291,6 +291,7 @@
 
         <div class="exercise-row">
           <span class="exercise-name" id="exercise-name">Seated Shoulder Press</span>
+          <button class="day-chip hidden" id="active-day-chip" aria-label="Switch plan day">Push</button>
           <button class="btn-text" id="btn-change-exercise">Change</button>
         </div>
 
@@ -496,6 +497,21 @@
   </div>
 
   <!-- ═══════════════════════════════════
+       PLAN DAY SWITCHER (5.2)
+  ════════════════════════════════════ -->
+  <div id="day-switch-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="day-switch-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Training day</p>
+      <div id="day-switch-list" class="day-switch-list"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="btn-day-switch-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
        RESTORE FROM BACKUP — confirmation
   ════════════════════════════════════ -->
   <div id="confirm-restore" class="modal hidden" role="dialog" aria-modal="true">
@@ -562,6 +578,15 @@
       <div class="modal-handle"></div>
       <p class="modal-title">What's New</p>
       <div class="release-notes-scroll">
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 5 — Programs · July 2026</p>
+          <ul class="release-notes-list">
+            <li>Multi-day plans — split a plan into training days (Push / Pull / Legs, Upper / Lower) with their own exercises and targets</li>
+            <li>Sessions land on the right day automatically, rotating through your split; tap the day name during a workout to switch</li>
+            <li>Idle screen shows which day is up next; picker, Up Next, and the finish summary follow the day you're training</li>
+          </ul>
+        </div>
 
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 4 — Trust &amp; Data Safety · July 2026</p>

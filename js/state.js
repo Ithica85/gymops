@@ -2,7 +2,7 @@
 // GymOps — Shared app state, constants, and the exercise catalogue
 // ═══════════════════════════════════════════════════════
 
-export const APP_VERSION = 'v5.0';
+export const APP_VERSION = 'v5.1';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time

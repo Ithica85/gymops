@@ -10,6 +10,7 @@ import {
   dbGetCompletedSessionsSince,
   dbGetLastCompletedSession,
   dbGetPlan,
+  dbGetPlanDays,
   dbGetPlanExercises,
   dbGetSessionPlan,
   dbHasSessionToday,
@@ -21,7 +22,8 @@ import { SIGNAL_GAP_DAYS, getExerciseType, localDateStr } from './state.js';
 import { escapeHTML, onScreenShow, showScreen } from './ui.js';
 import { IDLE_BANNERS, _weekStart } from './idle.js';
 
-// Plan adherence: compares plan exercises to what was actually logged.
+// Plan adherence: compares the session's plan-day exercises (whole plan for
+// day-less legacy sessions — dbGetSessionPlan scopes this) to what was logged.
 export function renderPlanAdherence(sessionId) {
   const el   = document.getElementById('plan-adherence');
   const plan = dbGetSessionPlan(sessionId);
@@ -32,7 +34,8 @@ export function renderPlanAdherence(sessionId) {
   const done        = plan.exercises.filter(e => loggedNames.has(e.exercise)).length;
   const skipped     = plan.exercises.filter(e => !loggedNames.has(e.exercise)).map(e => e.exercise);
 
-  let text = `${plan.name}: ${done}/${total} exercises`;
+  const dayLabel = plan.day ? ` · ${plan.day.name}` : '';
+  let text = `${plan.name}${dayLabel}: ${done}/${total} exercises`;
   if (skipped.length) text += ` · skipped ${skipped.join(', ')}`;
   el.textContent = text;
   el.classList.remove('hidden');
@@ -136,6 +139,7 @@ function renderPlansScreen() {
 
   if (active) {
     const exs        = dbGetPlanExercises(active.plan_id);
+    const days       = dbGetPlanDays(active.plan_id);
     const startDate  = new Date(active.start_date);
     const weekNum    = Math.floor((Date.now() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
     let durationStr = active.duration_weeks
@@ -153,10 +157,7 @@ function renderPlansScreen() {
         <button class="btn-text plan-card-edit" data-plan-id="${active.plan_id}">Edit</button>
       </div>
       ${objectives.length ? `<ul class="plan-objectives-list">${objectives.map(o => `<li>${escapeHTML(o)}</li>`).join('')}</ul>` : ''}
-      <p class="plan-exercises-preview">${exs.map(e => {
-        const t = (e.target_sets && e.target_reps) ? ` ${e.target_sets}×${e.target_reps}` : '';
-        return `${escapeHTML(e.exercise)}${t}`;
-      }).join(' · ')}</p>
+      ${_renderPlanPreview(days, exs)}
     `;
     cardEl.classList.remove('hidden');
     cardEl.querySelector('.plan-card-edit').addEventListener('click', () => openEditPlan(active.plan_id));
@@ -185,17 +186,38 @@ function renderPlansScreen() {
   }
 }
 
+// Exercise preview on the plan card: multi-day plans get one line per day
+// ("Push — Bench Press 4×8 · OHP"); single-day plans stay a flat list.
+function _renderPlanPreview(days, exs) {
+  const fmt = e => {
+    const t = (e.target_sets && e.target_reps) ? ` ${e.target_sets}×${e.target_reps}` : '';
+    return `${escapeHTML(e.exercise)}${t}`;
+  };
+  if (days.length <= 1) {
+    return `<p class="plan-exercises-preview">${exs.map(fmt).join(' · ')}</p>`;
+  }
+  return days.map(d => {
+    const dayExs = exs.filter(e => e.day_id === d.day_id);
+    return `<p class="plan-exercises-preview"><span class="plan-preview-day">${escapeHTML(d.name)}</span> — ${dayExs.map(fmt).join(' · ')}</p>`;
+  }).join('');
+}
+
 onScreenShow('plans', renderPlansScreen);
 
 // ── Plan editor ───────────────────────────────────────
 
-let _editingPlanId    = null; // null = new plan
+let _editingPlanId = null; // null = new plan
 
-let _editingExercises = [];   // { exercise, type, targetSets, targetReps }
+// One entry per training day. dayId is the plan_days PK for days loaded from
+// the DB (preserved across saves — sessions reference it) and null for days
+// added this edit. exercises: { exercise, type, targetSets, targetReps }.
+let _editingDays = [];
+
+const _newDay = () => ({ dayId: null, name: '', exercises: [] });
 
 export function openNewPlan() {
-  _editingPlanId    = null;
-  _editingExercises = [];
+  _editingPlanId = null;
+  _editingDays   = [_newDay()];
   document.getElementById('plan-editor-title').textContent    = 'New Plan';
   document.getElementById('plan-name-input').value            = '';
   document.getElementById('plan-duration-input').value        = '';
@@ -205,21 +227,32 @@ export function openNewPlan() {
   document.getElementById('plan-obj-3').value                 = '';
   document.getElementById('plan-save-error').classList.add('hidden');
   document.getElementById('btn-archive-plan').classList.add('hidden');
-  renderPlanEditorExercises();
+  renderPlanEditorDays();
   showScreen('plan-editor');
 }
 
 function openEditPlan(planId) {
   const plan = dbGetPlan(planId);
   if (!plan) return;
-  const exs = dbGetPlanExercises(planId);
+  const exs  = dbGetPlanExercises(planId);
+  const days = dbGetPlanDays(planId);
   const objectives = plan.objectives_json ? JSON.parse(plan.objectives_json) : [];
 
-  _editingPlanId    = planId;
-  _editingExercises = exs.map(e => ({
+  const toDraft = e => ({
     exercise: e.exercise, type: getExerciseType(e.exercise),
     targetSets: e.target_sets, targetReps: e.target_reps,
+  });
+  _editingPlanId = planId;
+  _editingDays   = days.map(d => ({
+    dayId: d.day_id, name: d.name,
+    exercises: exs.filter(e => e.day_id === d.day_id).map(toDraft),
   }));
+  // Safety nets, not expected paths: a plan with no day rows loads flat; any
+  // exercise pointing at a missing day surfaces on the first day instead of
+  // silently vanishing from the editor.
+  if (!_editingDays.length) _editingDays = [_newDay()];
+  const dayIds = new Set(days.map(d => d.day_id));
+  _editingDays[0].exercises.push(...exs.filter(e => !dayIds.has(e.day_id)).map(toDraft));
 
   document.getElementById('plan-editor-title').textContent = plan.name;
   document.getElementById('plan-name-input').value         = plan.name;
@@ -230,52 +263,96 @@ function openEditPlan(planId) {
   document.getElementById('plan-obj-3').value              = objectives[2] ?? '';
   document.getElementById('plan-save-error').classList.add('hidden');
   document.getElementById('btn-archive-plan').classList.toggle('hidden', plan.status !== 'active');
-  renderPlanEditorExercises();
+  renderPlanEditorDays();
   showScreen('plan-editor');
 }
 
-function renderPlanEditorExercises() {
-  const container = document.getElementById('plan-exercises-list');
-  container.innerHTML = '';
-  _editingExercises.forEach((ex, i) => {
-    const row = document.createElement('div');
-    row.className = 'plan-exercise-row';
-    row.innerHTML = `
-      <span class="plan-exercise-row-name">${escapeHTML(ex.exercise)}</span>
-      <div class="plan-exercise-row-targets">
-        <input type="number" class="plan-target-input" placeholder="Sets" value="${ex.targetSets ?? ''}" min="1" max="20" inputmode="numeric" data-idx="${i}" data-field="sets">
-        <span class="plan-target-sep">×</span>
-        <input type="number" class="plan-target-input" placeholder="Reps" value="${ex.targetReps ?? ''}" min="1" max="100" inputmode="numeric" data-idx="${i}" data-field="reps">
+// Stacked day sections: name input + exercise rows + per-day "+ Add Exercise".
+// The add buttons carry data-day and are wired by delegation in app.js
+// (plans.js importing openPickerForPlan would close a picker↔plans cycle).
+function renderPlanEditorDays() {
+  const container = document.createElement('div');
+  _editingDays.forEach((day, di) => {
+    const section = document.createElement('div');
+    section.className = 'plan-day-section';
+    section.innerHTML = `
+      <div class="plan-day-header">
+        <input type="text" class="plan-day-name-input" placeholder="e.g. Push" maxlength="30" data-day="${di}">
+        ${_editingDays.length > 1 ? `<button class="plan-exercise-remove plan-day-remove" data-day="${di}">✕</button>` : ''}
       </div>
-      <button class="plan-exercise-remove" data-idx="${i}">✕</button>
+      <div class="plan-day-exercises"></div>
+      <button class="btn-secondary plan-day-add-ex" data-day="${di}">+ Add Exercise</button>
     `;
-    row.querySelectorAll('.plan-target-input').forEach(inp => {
-      inp.addEventListener('change', () => {
-        const idx = parseInt(inp.dataset.idx);
-        if (inp.dataset.field === 'sets') _editingExercises[idx].targetSets = parseInt(inp.value) || null;
-        else                              _editingExercises[idx].targetReps = parseInt(inp.value) || null;
+    const nameInput = section.querySelector('.plan-day-name-input');
+    nameInput.value = day.name; // user text — never interpolated into HTML
+    nameInput.addEventListener('input', () => { _editingDays[di].name = nameInput.value; });
+
+    section.querySelector('.plan-day-remove')?.addEventListener('click', () => {
+      if (day.exercises.length &&
+          !confirm(`Remove ${day.name.trim() || `Day ${di + 1}`} and its ${day.exercises.length} exercise${day.exercises.length !== 1 ? 's' : ''}?`)) return;
+      _editingDays.splice(di, 1);
+      renderPlanEditorDays();
+    });
+
+    const list = section.querySelector('.plan-day-exercises');
+    day.exercises.forEach((ex, i) => {
+      const row = document.createElement('div');
+      row.className = 'plan-exercise-row';
+      row.innerHTML = `
+        <span class="plan-exercise-row-name">${escapeHTML(ex.exercise)}</span>
+        <div class="plan-exercise-row-targets">
+          <input type="number" class="plan-target-input" placeholder="Sets" value="${ex.targetSets ?? ''}" min="1" max="20" inputmode="numeric" data-field="sets">
+          <span class="plan-target-sep">×</span>
+          <input type="number" class="plan-target-input" placeholder="Reps" value="${ex.targetReps ?? ''}" min="1" max="100" inputmode="numeric" data-field="reps">
+        </div>
+        <button class="plan-exercise-remove">✕</button>
+      `;
+      row.querySelectorAll('.plan-target-input').forEach(inp => {
+        inp.addEventListener('change', () => {
+          if (inp.dataset.field === 'sets') ex.targetSets = parseInt(inp.value) || null;
+          else                              ex.targetReps = parseInt(inp.value) || null;
+        });
       });
+      row.querySelector('.plan-exercise-remove').addEventListener('click', () => {
+        day.exercises.splice(i, 1);
+        renderPlanEditorDays();
+      });
+      list.appendChild(row);
     });
-    row.querySelector('.plan-exercise-remove').addEventListener('click', () => {
-      _editingExercises.splice(i, 1);
-      renderPlanEditorExercises();
-    });
-    container.appendChild(row);
+    container.appendChild(section);
   });
+  const target = document.getElementById('plan-days-list');
+  target.replaceChildren(...container.children);
 }
 
-export function addExerciseToPlan(name, type) {
-  if (_editingExercises.some(e => e.exercise === name)) return; // no duplicates
-  _editingExercises.push({ exercise: name, type: type ?? getExerciseType(name), targetSets: null, targetReps: null });
-  renderPlanEditorExercises();
+// Duplicate check is per-day: Squat on both Legs and Full Body is legitimate,
+// the same exercise twice within one day is not.
+export function addExerciseToPlan(name, type, dayIdx = 0) {
+  const day = _editingDays[dayIdx] ?? _editingDays[0];
+  if (!day) return;
+  if (!day.exercises.some(e => e.exercise === name)) {
+    day.exercises.push({ exercise: name, type: type ?? getExerciseType(name), targetSets: null, targetReps: null });
+  }
+  renderPlanEditorDays();
   showScreen('plan-editor');
+}
+
+export function addDayToPlan() {
+  _editingDays.push(_newDay());
+  renderPlanEditorDays();
 }
 
 export function savePlan() {
   const name     = document.getElementById('plan-name-input').value.trim();
   const errorEl  = document.getElementById('plan-save-error');
 
-  if (!name || !_editingExercises.length) {
+  // Empty day names default to their position; days with no exercises are
+  // dropped (an accidental "+ Add Day" shouldn't block saving).
+  const days = _editingDays
+    .map((d, i) => ({ dayId: d.dayId, name: d.name.trim() || `Day ${i + 1}`, exercises: d.exercises }))
+    .filter(d => d.exercises.length);
+
+  if (!name || !days.length) {
     errorEl.classList.remove('hidden');
     return;
   }
@@ -292,13 +369,13 @@ export function savePlan() {
 
   if (_editingPlanId) {
     dbUpdatePlan(_editingPlanId, name, durationWeeks, objectivesJson, targetSessions);
-    dbSavePlanExercises(_editingPlanId, _editingExercises);
+    dbSavePlanExercises(_editingPlanId, days);
   } else {
     // Archive any currently active plan before creating the new one
     const existing = dbGetActivePlan();
     if (existing) dbUpdatePlanStatus(existing.plan_id, 'archived');
     const planId = dbCreatePlan(name, localDateStr(), durationWeeks, objectivesJson, targetSessions);
-    dbSavePlanExercises(planId, _editingExercises);
+    dbSavePlanExercises(planId, days);
   }
 
   showScreen('plans');

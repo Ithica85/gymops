@@ -9,11 +9,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   initDB,
   dbGetAllSets, dbGetSession, dbGetSetCount, dbGetActiveSession,
+  dbCreatePlan, dbSavePlanExercises, dbGetPlanDays, dbFinishSession,
+  dbUpdateSessionDay,
 } from '../js/db.js';
 import { EXERCISES, localDateStr, state } from '../js/state.js';
 import {
   _doStartSession, startSession, logSet, quickLogSet, undoSet,
-  finishWorkout, resumeLastWorkout, setActiveExercise,
+  finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
   saveNotesNow, stopRestTimer, _restEndTime,
 } from '../js/workout.js';
 
@@ -245,5 +247,36 @@ describe('session notes', () => {
     el('session-notes').value = '';
     saveNotesNow();
     expect(dbGetSession(state.sessionId).notes).toBeNull();
+  });
+});
+
+describe('plan day rotation (5.2)', () => {
+  function makeSplit() {
+    const planId = dbCreatePlan('Split', localDateStr(), null, null, null);
+    dbSavePlanExercises(planId, [
+      { dayId: null, name: 'Push', exercises: [{ exercise: 'Chest Press' }, { exercise: 'Shoulder Press' }] },
+      { dayId: null, name: 'Pull', exercises: [{ exercise: 'Lat Pulldown' }, { exercise: 'Seated Row' }] },
+    ]);
+    return { planId, days: dbGetPlanDays(planId) };
+  }
+
+  it('starts on the rotated day: first session Push, next session Pull', () => {
+    makeSplit();
+    _doStartSession();
+    expect(state.exercise).toBe('Chest Press'); // Push day, first exercise
+    dbFinishSession(state.sessionId);
+    state.sessionId = null;
+
+    _doStartSession();
+    expect(state.exercise).toBe('Lat Pulldown'); // rotated to Pull
+  });
+
+  it('Up Next follows the session day, and re-scopes after a day switch', () => {
+    const { days } = makeSplit();
+    _doStartSession(); // lands on Push
+    expect(computeUpNext('Chest Press')).toBe('Shoulder Press');
+
+    dbUpdateSessionDay(state.sessionId, days[1].day_id); // chip switch → Pull
+    expect(computeUpNext('Lat Pulldown')).toBe('Seated Row');
   });
 });
