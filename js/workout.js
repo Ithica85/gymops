@@ -17,6 +17,7 @@ import {
   dbGetLastSetForExercise,
   dbGetNextPlanDay,
   dbGetPlanDays,
+  dbGetPlanExercises,
   dbGetRecentSets,
   dbGetSession,
   dbGetSessionBestForExercise,
@@ -47,7 +48,7 @@ import {
   renderProgressionSignal,
   renderSessionSignal,
 } from './signals.js';
-import { openPicker } from './picker.js';
+import { openPicker, openPickerForStart } from './picker.js';
 import { renderPlanAdherence } from './plans.js';
 import { getAnthropicKey } from './settings.js';
 
@@ -388,6 +389,31 @@ export function closeDaySwitch() {
   document.getElementById('day-switch-modal').classList.add('hidden');
 }
 
+// Pre-session day chooser (5.3): "Train a different day…" on the idle screen.
+// Reuses the day-switch modal; picking a day starts the session on it,
+// bypassing rotation. The rotated day is highlighted as the default. With an
+// unfinished session lying around, defers to startSession's discard guard.
+export function openDaySwitchForStart() {
+  if (dbGetActiveSession()) { startSession(); return; }
+  const plan = dbGetActivePlan();
+  if (!plan) return;
+  const days = dbGetPlanDays(plan.plan_id);
+  if (days.length <= 1) return;
+  const next = dbGetNextPlanDay(plan.plan_id);
+  const list = document.getElementById('day-switch-list');
+  list.replaceChildren(...days.map(d => {
+    const btn = document.createElement('button');
+    btn.className = 'day-switch-row' + (d.day_id === next?.day_id ? ' day-switch-row--current' : '');
+    btn.textContent = d.name; // user text — textContent, never innerHTML
+    btn.addEventListener('click', () => {
+      closeDaySwitch();
+      beginSessionFlow(d.day_id);
+    });
+    return btn;
+  }));
+  document.getElementById('day-switch-modal').classList.remove('hidden');
+}
+
 // Renders the full session log (all sets, newest first).
 // Formats reps sets as "Set N · weight × reps" and timed sets as "Set N · duration min · cal".
 export function renderRecentSets() {
@@ -535,40 +561,66 @@ function renderUpNext() {
 
 // Starts a fresh session with no prior active session check — called only after
 // the user has already confirmed any discard prompt.
-export function _doStartSession() {
+// Creates the session. Options (5.3):
+// - exercise/type: explicit starting exercise from the start picker (type for
+//   custom "Other" names, same contract as setActiveExercise).
+// - dayId: explicit plan day from the idle day chooser, overriding rotation.
+// With an active plan and no explicit exercise, starts on the plan day's
+// first exercise. The EXERCISES[0] fallback is a last resort only (empty plan
+// day) — plan-less sessions always arrive here WITH an exercise, chosen in
+// the start picker via beginSessionFlow().
+export function _doStartSession({ exercise = null, type = null, dayId = null } = {}) {
   document.getElementById('btn-resume-idle').classList.add('hidden');
   _resetQuickLogConfirm();
 
   state.sessionId = dbCreateSession(getWeightUnit());
 
-  // Link session to active plan if one exists, landing on the next day in
-  // rotation (day after the last one trained, cycling); the starting exercise
-  // is that day's first. dbGetSessionPlan day-scopes the exercises once linked.
-  let startExercise = EXERCISES[0].name;
+  // Link session to active plan if one exists, landing on the chosen day or
+  // the next in rotation (day after the last one trained, cycling).
+  // dbGetSessionPlan day-scopes the exercises once linked.
+  let startExercise = exercise;
   const activePlan  = dbGetActivePlan();
   if (activePlan) {
-    const day = dbGetNextPlanDay(activePlan.plan_id);
+    const day = (dayId != null
+      ? dbGetPlanDays(activePlan.plan_id).find(d => d.day_id === dayId)
+      : null) ?? dbGetNextPlanDay(activePlan.plan_id);
     dbLinkSessionToPlan(state.sessionId, activePlan.plan_id, day?.day_id ?? null);
-    const planExs = dbGetSessionPlan(state.sessionId)?.exercises ?? [];
-    if (planExs.length) startExercise = planExs[0].exercise;
+    if (!startExercise) {
+      const planExs = dbGetSessionPlan(state.sessionId)?.exercises ?? [];
+      if (planExs.length) startExercise = planExs[0].exercise;
+    }
   }
 
   document.getElementById('session-notes').value = '';
   showScreen('active');
-  setActiveExercise(startExercise);
+  setActiveExercise(startExercise ?? EXERCISES[0].name, type);
   const newSession = dbGetSession(state.sessionId);
   if (newSession) startSessionTimer(newSession.start_time);
 }
 
+// Entry decision for a NEW session (5.3). With an active plan that has
+// exercises, the session starts immediately (rotation, or an explicit dayId
+// from the idle day chooser). Otherwise the user picks the starting exercise
+// first — the session is only created once the picker choice lands in
+// _doStartSession, so cancelling the picker creates nothing.
+export function beginSessionFlow(dayId = null) {
+  const activePlan = dbGetActivePlan();
+  if (activePlan && dbGetPlanExercises(activePlan.plan_id).length) {
+    _doStartSession({ dayId });
+    return;
+  }
+  openPickerForStart();
+}
+
 // Entry point for "Start Workout". If an active session exists, shows a
-// discard-confirmation modal; otherwise starts immediately.
+// discard-confirmation modal; otherwise hands off to beginSessionFlow.
 export function startSession() {
   const existing = dbGetActiveSession();
   if (existing) {
     document.getElementById('confirm-discard').classList.remove('hidden');
     return;
   }
-  _doStartSession();
+  beginSessionFlow();
 }
 
 // Resumes an existing session (from idle screen or completed screen).
@@ -584,7 +636,11 @@ export function resumeSession(session) {
 
   const lastSet = dbGetRecentSets(session.session_id, 1)[0];
   showScreen('active');
-  setActiveExercise(lastSet ? lastSet.exercise : EXERCISES[0].name);
+  // Zero-set resume (5.3): prefer the session's plan-day first exercise over
+  // the EXERCISES[0] last resort — the chosen exercise isn't persisted, so a
+  // killed-tab resume can't restore it.
+  const planExs = lastSet ? [] : (dbGetSessionPlan(session.session_id)?.exercises ?? []);
+  setActiveExercise(lastSet?.exercise ?? planExs[0]?.exercise ?? EXERCISES[0].name);
   if (sessionData) startSessionTimer(sessionData.start_time);
 }
 

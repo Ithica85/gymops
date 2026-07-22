@@ -14,13 +14,13 @@ import {
 } from '../js/db.js';
 import { EXERCISES, localDateStr, state } from '../js/state.js';
 import {
-  _doStartSession, startSession, logSet, quickLogSet, undoSet,
+  _doStartSession, startSession, beginSessionFlow, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
   saveNotesNow, stopRestTimer, adjustRestTimer, renderWeightConversion,
   _restEndTime,
 } from '../js/workout.js';
 
-const DEFAULT_EXERCISE = EXERCISES[0].name; // plan-less starting exercise
+const DEFAULT_EXERCISE = EXERCISES[0].name; // last-resort fallback (5.3) — bare _doStartSession() lands here
 const OTHER_EXERCISE   = EXERCISES.find(e => e.type === 'reps' && e.name !== DEFAULT_EXERCISE).name;
 
 function el(id) { return document.getElementById(id); }
@@ -231,6 +231,48 @@ describe('cross-session behaviours', () => {
     vi.advanceTimersByTime(1200); // confirmation window expires → repaint
     expect(el('quick-log-label').textContent).not.toBe('✓ Logged');
     expect(el('btn-quick-log').classList.contains('quick-log-confirm')).toBe(false);
+  });
+});
+
+describe('session start chooser (5.3)', () => {
+  function makeSplit() {
+    const planId = dbCreatePlan('Split', localDateStr(), null, null, null);
+    dbSavePlanExercises(planId, [
+      { dayId: null, name: 'Push', exercises: [{ exercise: 'Chest Press' }] },
+      { dayId: null, name: 'Pull', exercises: [{ exercise: 'Lat Pulldown' }] },
+    ]);
+    return { planId, days: dbGetPlanDays(planId) };
+  }
+
+  it('plan-less Start opens the start picker and creates NO session', () => {
+    startSession();
+    expect(el('exercise-picker').classList.contains('hidden')).toBe(false);
+    expect(el('modal-title').textContent).toBe('First Exercise');
+    expect(dbGetActiveSession()).toBeNull();
+    expect(state.sessionId).toBeNull();
+  });
+
+  it('an explicit exercise from the picker creates the session on it', () => {
+    _doStartSession({ exercise: OTHER_EXERCISE, type: 'reps' });
+    expect(state.exercise).toBe(OTHER_EXERCISE);
+    expect(dbGetActiveSession()).not.toBeNull();
+    expect(state.setNumber).toBe(1);
+  });
+
+  it('with an active plan, beginSessionFlow starts immediately — no picker', () => {
+    makeSplit();
+    el('exercise-picker').classList.add('hidden'); // stub DOM classes persist across tests
+    beginSessionFlow();
+    expect(el('exercise-picker').classList.contains('hidden')).toBe(true);
+    expect(state.exercise).toBe('Chest Press'); // Push day, first exercise
+    expect(dbGetActiveSession()).not.toBeNull();
+  });
+
+  it('an explicit dayId overrides rotation', () => {
+    const { days } = makeSplit();
+    beginSessionFlow(days[1].day_id); // rotation would pick Push; ask for Pull
+    expect(state.exercise).toBe('Lat Pulldown');
+    expect(dbGetSession(state.sessionId).day_id).toBe(days[1].day_id);
   });
 });
 

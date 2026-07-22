@@ -4,6 +4,7 @@
 
 import {
   dbGetActivePlan,
+  dbGetActiveSession,
   dbGetCompletedSessionsSince,
   dbGetLastCompletedSession,
   dbGetNextPlanDay,
@@ -311,10 +312,25 @@ function renderIdlePlanLine() {
   el.classList.remove('hidden');
 }
 
+// Multi-day plans start on the rotated day (5.3) — say so on the Start button
+// and offer the pre-session day chooser for the off-rotation case. Both revert
+// to the plain flow while an unfinished session is waiting (resume decides).
+function renderStartControls() {
+  const btn  = document.getElementById('btn-start');
+  const link = document.getElementById('btn-start-other-day');
+  const plan = dbGetActivePlan();
+  const days = plan ? dbGetPlanDays(plan.plan_id) : [];
+  const next = days.length > 1 ? dbGetNextPlanDay(plan.plan_id) : null;
+  const showDay = !!next && !dbGetActiveSession();
+  btn.textContent = showDay ? `Start — ${next.name}` : 'Start Workout'; // day name is user text
+  link.classList.toggle('hidden', !showDay);
+}
+
 function renderIdleDashboard() {
   renderIdleHook();
   renderWeekStrip();
   renderIdlePlanLine();
+  renderStartControls();
 }
 
 // Re-render the dashboard and re-evaluate banners every time idle is shown

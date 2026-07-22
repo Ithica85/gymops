@@ -28,6 +28,7 @@ import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
 import { dismissReminderBanner, getReminderEnabled, setReminderEnabled } from './idle.js';
 import {
   _doStartSession,
+  beginSessionFlow,
   cancelFinishConfirm,
   clearError,
   closeDaySwitch,
@@ -38,6 +39,7 @@ import {
   initInactivityWatchdog,
   logSet,
   openDaySwitch,
+  openDaySwitchForStart,
   quickLogSet,
   renderActive,
   renderRecentSets,
@@ -115,8 +117,9 @@ async function boot() {
     const existing = dbGetActiveSession();
     if (existing) dbDeleteSession(existing.session_id);
     hideDiscardModal();
-    _doStartSession();
+    beginSessionFlow(); // re-enters the 5.3 chooser decision, not a bare start
   });
+  document.getElementById('btn-start-other-day').addEventListener('click', openDaySwitchForStart);
   document.getElementById('btn-cancel-discard').addEventListener('click', hideDiscardModal);
   document.getElementById('confirm-discard-backdrop').addEventListener('click', hideDiscardModal);
 

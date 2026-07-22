@@ -59,6 +59,8 @@
       </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
+      <!-- Pre-session day chooser link (5.3) — multi-day plans only -->
+      <button class="btn-text idle-start-day-link hidden" id="btn-start-other-day">Train a different day…</button>
       <div class="idle-links">
         <button class="btn-text idle-link" id="btn-history-idle">History</button>
         <button class="btn-text idle-link" id="btn-plans-idle">Plans</button>
@@ -591,6 +593,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 5 — Programs · July 2026</p>
           <ul class="release-notes-list">
+            <li>You choose where a workout starts — without a plan, Start opens the exercise picker instead of dropping you on Seated Shoulder Press; with a multi-day plan, the Start button names the day and "Train a different day…" skips the rotation</li>
             <li>Type a weight and see it in the other unit — "60 kg = 132.3 lbs" appears under the input, handy when plates and logging disagree</li>
             <li>Rest bar slimmed down and gained −30/+30 buttons — nudge the running countdown without leaving the workout, and see more of "This Session" while resting</li>
             <li>Chrome no longer offers to save the AI key as a password — the Settings field is masked without pretending to be a login</li>

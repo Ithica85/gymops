@@ -39,7 +39,7 @@ describe('exercise catalogue integrity', () => {
     }
   });
 
-  it('EXERCISES[0] is the default plan-less starting exercise', () => {
+  it('EXERCISES[0] stays stable (boot placeholder + last-resort fallback since 5.3)', () => {
     expect(EXERCISES[0].name).toBe('Seated Shoulder Press');
   });
 

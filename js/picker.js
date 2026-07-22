@@ -4,7 +4,7 @@
 
 import { dbGetExerciseRecency, dbGetSessionPlan, dbGetSetCountForExercise } from './db.js';
 import { CARDIO_KEYWORDS, EXERCISES, MUSCLE_GROUPS, getExerciseType, state } from './state.js';
-import { setActiveExercise } from './workout.js';
+import { _doStartSession, setActiveExercise } from './workout.js';
 import { addExerciseToPlan } from './plans.js';
 import { escapeHTML } from './ui.js';
 
@@ -15,7 +15,8 @@ let _pickerSort    = localStorage.getItem('gymops_picker_sort') || 'recent';
 // where rank 0 = most recently used. Populated by _refreshRecencyRanks().
 let _recencyRanks  = {};
 
-// 'session' (default) or 'plan' — controls what happens when an exercise is selected.
+// 'session' (default), 'plan', or 'start' (5.3: choosing the first exercise
+// BEFORE the session exists) — controls what happens on selection.
 let _pickerContext = 'session';
 
 // In plan mode: index of the _editingDays entry picks are added to (5.2).
@@ -81,7 +82,9 @@ function _renderExerciseList() {
     } else {
       li.textContent = ex.name;
     }
-    if (ex.name === state.exercise) li.classList.add('selected');
+    // In start mode nothing is selected yet — state.exercise is a leftover
+    // from the previous session (or the boot placeholder).
+    if (_pickerContext !== 'start' && ex.name === state.exercise) li.classList.add('selected');
     if (done) li.classList.add('exercise-done');
 
     li.addEventListener('click', () => {
@@ -100,6 +103,11 @@ function _renderExerciseList() {
         const dayIdx = _pickerDayIdx; // save before closePicker() resets it
         closePicker();
         addExerciseToPlan(ex.name, ex.type, dayIdx);
+        return;
+      }
+      if (_pickerContext === 'start') {
+        closePicker();
+        _doStartSession({ exercise: ex.name, type: ex.type });
         return;
       }
       closePicker();
@@ -201,6 +209,17 @@ export function openPicker() {
   document.getElementById('exercise-picker').classList.remove('hidden');
 }
 
+// Opens the picker in start mode (5.3): the session doesn't exist yet, and
+// selecting an exercise creates it via _doStartSession. Dismissing the sheet
+// creates nothing — closePicker() resets to session mode.
+export function openPickerForStart() {
+  _pickerContext = 'start';
+  _refreshRecencyRanks();
+  _renderExerciseList();
+  document.getElementById('modal-title').textContent = 'First Exercise';
+  document.getElementById('exercise-picker').classList.remove('hidden');
+}
+
 // Opens the picker in plan-editing mode: picks add exercises to the given
 // day of the plan draft instead of switching the active exercise.
 // closePicker() resets to session mode.
@@ -259,6 +278,8 @@ function applyOtherExercise(name, type) {
   closePicker();
   if (ctx === 'plan') {
     addExerciseToPlan(name, type, dayIdx);
+  } else if (ctx === 'start') {
+    _doStartSession({ exercise: name, type }); // custom name straight into a new session
   } else {
     setActiveExercise(name, type);
   }
