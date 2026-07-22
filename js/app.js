@@ -49,6 +49,7 @@ import {
   setActiveExercise,
   showFinishConfirm,
   startRestTimer,
+  adjustRestTimer,
   startSession,
   stopRestTimer,
   triggerExport,
@@ -130,6 +131,8 @@ async function boot() {
   document.getElementById('btn-undo').addEventListener('click', undoSet);
   document.getElementById('btn-rest').addEventListener('click', startRestTimer);
   document.getElementById('btn-rest-skip').addEventListener('click', stopRestTimer);
+  document.getElementById('btn-rest-plus').addEventListener('click', () => adjustRestTimer(30));
+  document.getElementById('btn-rest-minus').addEventListener('click', () => adjustRestTimer(-30));
 
   // Set deletion — delegated on the list so it covers dynamically rendered rows
   document.getElementById('sets-list').addEventListener('click', e => {

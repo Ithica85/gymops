@@ -590,12 +590,13 @@ body {
   padding: 24px 0;
 }
 
-/* — Rest timer bar — */
+/* — Rest timer bar — compact so it steals as little height as possible
+   from the This Session log below it (5.2.x #3) */
 .rest-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px;
+  gap: 8px;
+  padding: 5px 16px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -610,13 +611,28 @@ body {
 }
 
 .rest-countdown {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.02em;
-  flex: 1;
+  min-width: 52px;
   text-align: center;
 }
+
+/* One-off ±30s adjust on the running countdown (5.2.x #4) */
+.rest-adjust {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.rest-adjust:active { background: var(--border); }
 
 .rest-skip {
   flex: 1;

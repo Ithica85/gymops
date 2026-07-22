@@ -162,6 +162,17 @@ export function startRestTimer() {
   _restTimer = setInterval(_tickRest, 1000);
 }
 
+// One-off ±adjust to the RUNNING countdown (5.2.x #4). Deliberately does not
+// touch the stored preference — Settings owns the default; this is "I need a
+// bit more right now". Adjusting below zero completes the rest (beep) via the
+// normal _tickRest done path. Ignored during the 2s "Done!" linger
+// (_restTimer already null) and when no rest is running.
+export function adjustRestTimer(deltaSecs) {
+  if (!_restTimer) return;
+  _restEndTime += deltaSecs * 1000;
+  _tickRest();
+}
+
 // Formats milliseconds as MM:SS (or H:MM:SS for sessions over one hour).
 function formatElapsed(ms) {
   const totalSecs = Math.floor(ms / 1000);

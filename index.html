@@ -364,10 +364,13 @@
 
       </div>
 
-      <!-- Rest timer bar — shown between sets, hidden by default -->
+      <!-- Rest timer bar — shown between sets, hidden by default.
+           Compact single row (5.2.x #3) with one-off ±30s adjust (5.2.x #4). -->
       <div id="rest-bar" class="rest-bar hidden">
         <span class="rest-label">Rest</span>
+        <button class="rest-adjust" id="btn-rest-minus" aria-label="Shorten rest by 30 seconds">−30</button>
         <span id="rest-countdown" class="rest-countdown">1:30</span>
+        <button class="rest-adjust" id="btn-rest-plus" aria-label="Extend rest by 30 seconds">+30</button>
         <button class="btn-text rest-skip" id="btn-rest-skip">Skip</button>
       </div>
 
@@ -586,6 +589,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 5 — Programs · July 2026</p>
           <ul class="release-notes-list">
+            <li>Rest bar slimmed down and gained −30/+30 buttons — nudge the running countdown without leaving the workout, and see more of "This Session" while resting</li>
             <li>Chrome no longer offers to save the AI key as a password — the Settings field is masked without pretending to be a login</li>
             <li>Quick-log now confirms every tap — flash, buzz, and an inline "✓ Logged" so a set can't be logged twice by accident</li>
             <li>Multi-day plans — split a plan into training days (Push / Pull / Legs, Upper / Lower) with their own exercises and targets</li>

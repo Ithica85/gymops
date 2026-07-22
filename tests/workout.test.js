@@ -16,7 +16,7 @@ import { EXERCISES, localDateStr, state } from '../js/state.js';
 import {
   _doStartSession, startSession, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
-  saveNotesNow, stopRestTimer, _restEndTime,
+  saveNotesNow, stopRestTimer, adjustRestTimer, _restEndTime,
 } from '../js/workout.js';
 
 const DEFAULT_EXERCISE = EXERCISES[0].name; // plan-less starting exercise
@@ -242,6 +242,34 @@ describe('rest timer auto-start (4.6)', () => {
     stopRestTimer();
     setActiveExercise('Elliptical');
     typeAndLog('20', '150');
+    expect(_restEndTime).toBeNull();
+  });
+});
+
+describe('in-session rest adjust (5.2.x #4)', () => {
+  it('+30 extends the running countdown; the stored preference is untouched', () => {
+    _doStartSession();
+    typeAndLog('60', '8'); // auto-starts rest (90s default)
+    const before = _restEndTime;
+    adjustRestTimer(30);
+    expect(_restEndTime - before).toBe(30_000);
+    expect(localStorage.getItem('gymops_rest_secs')).toBeNull();
+  });
+
+  it('adjusting below zero completes the rest through the normal done path', () => {
+    _doStartSession();
+    typeAndLog('60', '8');
+    adjustRestTimer(-120); // 90s remaining − 120s → done
+    expect(el('rest-countdown').textContent).toBe('Done!');
+    vi.advanceTimersByTime(2000); // linger, then the bar hides
+    expect(_restEndTime).toBeNull();
+    expect(el('rest-bar').classList.contains('hidden')).toBe(true);
+  });
+
+  it('is a no-op when no rest is running', () => {
+    _doStartSession();
+    expect(_restEndTime).toBeNull();
+    adjustRestTimer(30);
     expect(_restEndTime).toBeNull();
   });
 });
