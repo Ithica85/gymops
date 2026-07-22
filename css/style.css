@@ -452,6 +452,14 @@ body {
   font-weight: 600;
 }
 
+/* Inline lbs↔kg converter under the weight input (5.2.x #5) */
+.weight-convert {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 2px 0;
+}
+
 .hidden { display: none !important; }
 
 /* ═══════════════════════════════════

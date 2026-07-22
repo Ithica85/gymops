@@ -16,7 +16,8 @@ import { EXERCISES, localDateStr, state } from '../js/state.js';
 import {
   _doStartSession, startSession, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
-  saveNotesNow, stopRestTimer, adjustRestTimer, _restEndTime,
+  saveNotesNow, stopRestTimer, adjustRestTimer, renderWeightConversion,
+  _restEndTime,
 } from '../js/workout.js';
 
 const DEFAULT_EXERCISE = EXERCISES[0].name; // plan-less starting exercise
@@ -271,6 +272,36 @@ describe('in-session rest adjust (5.2.x #4)', () => {
     expect(_restEndTime).toBeNull();
     adjustRestTimer(30);
     expect(_restEndTime).toBeNull();
+  });
+});
+
+describe('inline lbs↔kg converter (5.2.x #5)', () => {
+  beforeEach(() => _doStartSession()); // default unit: kg
+
+  it('shows the converted value while typing, comma decimals included', () => {
+    el('input-weight').value = '60';
+    renderWeightConversion();
+    expect(el('weight-convert').textContent).toBe('60 kg = 132.3 lbs');
+    expect(el('weight-convert').classList.contains('hidden')).toBe(false);
+
+    el('input-weight').value = '62,5'; // comma-locale keypad (4.5)
+    renderWeightConversion();
+    expect(el('weight-convert').textContent).toBe('62.5 kg = 137.8 lbs');
+  });
+
+  it('hides for empty, non-numeric, and zero values', () => {
+    for (const v of ['', 'abc', '0', '-5']) {
+      el('input-weight').value = v;
+      renderWeightConversion();
+      expect(el('weight-convert').classList.contains('hidden')).toBe(true);
+    }
+  });
+
+  it('never shows for timed exercises (the field is a duration)', () => {
+    setActiveExercise('Elliptical');
+    el('input-weight').value = '20';
+    renderWeightConversion();
+    expect(el('weight-convert').classList.contains('hidden')).toBe(true);
   });
 });
 

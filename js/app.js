@@ -50,6 +50,7 @@ import {
   showFinishConfirm,
   startRestTimer,
   adjustRestTimer,
+  renderWeightConversion,
   startSession,
   stopRestTimer,
   triggerExport,
@@ -165,7 +166,7 @@ async function boot() {
   const inputReps   = document.getElementById('input-reps');
   inputWeight.addEventListener('keydown', e => { if (e.key === 'Enter') inputReps.focus(); });
   inputReps.addEventListener('keydown',   e => { if (e.key === 'Enter') logSet(); });
-  inputWeight.addEventListener('input', () => { clearError(); renderProgressionSignal(null); });
+  inputWeight.addEventListener('input', () => { clearError(); renderProgressionSignal(null); renderWeightConversion(); });
   inputReps.addEventListener('input',   () => { clearError(); renderProgressionSignal(null); });
 
   // Session notes

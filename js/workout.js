@@ -306,6 +306,7 @@ export function updateInputFields() {
       repsEl.placeholder   = 'reps';
     }
   }
+  renderWeightConversion(); // hide/recompute on exercise change (timed hides it)
 }
 
 // ── Screen routing ────────────────────────────────────
@@ -454,6 +455,25 @@ function focusInput() {
 function clearInputs() {
   document.getElementById('input-weight').value = '';
   document.getElementById('input-reps').value = '';
+  renderWeightConversion(); // empty value → helper hides
+}
+
+// Inline lbs↔kg helper under the weight input (5.2.x #5): plates are labelled
+// in one unit, logging may be in the other. Display-only — the set is stored
+// exactly as typed in the current unit; the data layer is untouched. Re-run on
+// every input event (wired in app.js), input clear, and exercise change.
+export function renderWeightConversion() {
+  const el  = document.getElementById('weight-convert');
+  const raw = document.getElementById('input-weight').value.trim().replace(',', '.'); // comma-locale keypads (4.5)
+  const w   = parseFloat(raw);
+  if (state.exerciseType === 'timed' || raw === '' || isNaN(w) || w <= 0) {
+    el.classList.add('hidden');
+    return;
+  }
+  const unit  = getWeightUnit();
+  const other = unit === 'kg' ? 'lbs' : 'kg';
+  el.textContent = `${w} ${unit} = ${convertWeight(w, unit, other)} ${other}`;
+  el.classList.remove('hidden');
 }
 
 // ── Exercise navigation (F-05) ────────────────────────
