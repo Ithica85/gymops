@@ -133,13 +133,17 @@
       </div>
       <div class="settings-section">
         <span class="settings-label">AI</span>
+        <!-- Deliberately NOT type="password": Chrome ignores autocomplete="off"
+             on password fields and pops the Google Password Manager save prompt
+             (5.2.x #2). Masking comes from -webkit-text-security in CSS. -->
         <input
-          type="password"
+          type="text"
           id="input-anthropic-key"
           class="ai-key-input"
           placeholder="Anthropic API key (sk-ant-...)"
           autocomplete="off"
           autocorrect="off"
+          autocapitalize="off"
           spellcheck="false"
         >
         <p class="settings-hint">Enables AI session summaries on the completed screen. Key is stored only in this browser and sent only to Anthropic when you generate a summary. "Clear All Data" removes it.</p>
@@ -582,6 +586,7 @@
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 5 — Programs · July 2026</p>
           <ul class="release-notes-list">
+            <li>Chrome no longer offers to save the AI key as a password — the Settings field is masked without pretending to be a login</li>
             <li>Quick-log now confirms every tap — flash, buzz, and an inline "✓ Logged" so a set can't be logged twice by accident</li>
             <li>Multi-day plans — split a plan into training days (Push / Pull / Legs, Upper / Lower) with their own exercises and targets</li>
             <li>Sessions land on the right day automatically, rotating through your split; tap the day name during a workout to switch</li>

@@ -1192,6 +1192,9 @@ body {
   outline: none;
   box-sizing: border-box;
   -webkit-appearance: none;
+  /* Masks the key on a type="text" input so password managers stay out of it
+     (5.2.x #2). Supported in Chrome + Safari — the deploy targets. */
+  -webkit-text-security: disc;
 }
 
 .ai-key-input:focus {
