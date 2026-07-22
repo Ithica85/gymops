@@ -506,6 +506,7 @@ function renderUpNext() {
 // the user has already confirmed any discard prompt.
 export function _doStartSession() {
   document.getElementById('btn-resume-idle').classList.add('hidden');
+  _resetQuickLogConfirm();
 
   state.sessionId = dbCreateSession(getWeightUnit());
 
@@ -545,6 +546,7 @@ export function startSession() {
 // at the time Finish was tapped, which may differ from the last logged set.
 export function resumeSession(session) {
   state.sessionId = session.session_id;
+  _resetQuickLogConfirm();
 
   const sessionData = dbGetSession(session.session_id);
   document.getElementById('session-notes').value = sessionData?.notes ?? '';
@@ -832,6 +834,21 @@ export function dismissPRCelebration() {
 
 // ── Quick log (one-tap set) ───────────────────────────
 
+const QUICK_LOG_CONFIRM_MS = 1200; // inline ✓ confirmation stays up this long
+const QUICK_LOG_GUARD_MS   = 600;  // taps ignored this long after a log — absorbs "did that work?" re-taps
+
+let _quickLogLoggedAt = 0;
+let _quickLogConfirmTimer = null;
+
+// Clears any pending ✓ confirmation + tap guard. Called on session start and
+// resume so a stale window never carries into a new session.
+function _resetQuickLogConfirm() {
+  clearTimeout(_quickLogConfirmTimer);
+  _quickLogConfirmTimer = null;
+  _quickLogLoggedAt = 0;
+  document.getElementById('btn-quick-log').classList.remove('quick-log-confirm');
+}
+
 // Returns the reference set the quick-log button would insert, or null.
 // Preferred: the last completed session's set matching the current set number
 // ("Same as last time" — the same reference the ghost-text placeholders show).
@@ -850,7 +867,12 @@ function computeQuickLogRef() {
 // Updates the quick-log button's visibility and label for the current
 // exercise/set number. Weight is shown converted to the current display unit.
 function renderQuickLog() {
+  // Don't stomp the ✓ confirmation — _showQuickLogConfirm's timer repaints
+  // when the window expires.
+  if (Date.now() - _quickLogLoggedAt < QUICK_LOG_CONFIRM_MS) return;
+
   const btn = document.getElementById('btn-quick-log');
+  btn.classList.remove('quick-log-confirm');
   const ref = computeQuickLogRef();
   if (!ref) { btn.classList.add('hidden'); return; }
 
@@ -867,27 +889,55 @@ function renderQuickLog() {
   btn.classList.remove('hidden');
 }
 
+// Swaps the button to "✓ Logged — {value}" with a background flash, reverting
+// to the next reference after QUICK_LOG_CONFIRM_MS (renderQuickLog skips
+// repaints while the confirmation is up, so renderActive can't stomp it).
+function _showQuickLogConfirm(valueText) {
+  const btn = document.getElementById('btn-quick-log');
+  document.getElementById('quick-log-label').textContent = '✓ Logged';
+  document.getElementById('quick-log-value').textContent = valueText;
+  btn.classList.remove('quick-log-confirm');
+  void btn.offsetWidth; // restart the flash animation on back-to-back sets
+  btn.classList.add('quick-log-confirm');
+  clearTimeout(_quickLogConfirmTimer);
+  _quickLogConfirmTimer = setTimeout(() => {
+    _quickLogLoggedAt = 0;
+    renderQuickLog();
+  }, QUICK_LOG_CONFIRM_MS);
+}
+
 // Logs the reference set in one tap. Weight is stored converted to the current
 // unit (matching what the button displayed), so mixed-unit history stays exact.
 export function quickLogSet() {
+  // With no visible feedback users re-tapped thinking the first tap failed and
+  // logged duplicate sets (5.2.x #1) — absorb re-taps inside the guard window.
+  if (Date.now() - _quickLogLoggedAt < QUICK_LOG_GUARD_MS) return;
+
   const ref = computeQuickLogRef();
   if (!ref) return;
 
   const s = ref.set;
   clearError();
+  let valueText;
   try {
     if (s.duration_mins != null) {
       dbInsertSet(state.sessionId, state.exercise, state.setNumber,
         null, null, s.duration_mins, s.calories ?? null, getWeightUnit());
+      valueText = fmtTimedSet(s);
     } else {
       const unit = getWeightUnit();
+      const weight = setDisplayWeight(s, unit);
       dbInsertSet(state.sessionId, state.exercise, state.setNumber,
-        setDisplayWeight(s, unit), s.reps, null, null, unit);
+        weight, s.reps, null, null, unit);
+      valueText = `${weight} ${unit} × ${s.reps}`;
     }
   } catch (err) {
     showError('DB error: ' + err.message);
     return;
   }
+  _quickLogLoggedAt = Date.now(); // before _afterSetLogged so its re-render keeps the confirmation
+  _showQuickLogConfirm(valueText);
+  if (navigator.vibrate) navigator.vibrate(30);
   _afterSetLogged(false); // no refocus — keep the keyboard down
 }
 

@@ -1741,7 +1741,33 @@ body {
   min-width: 0;
 }
 
-.quick-log-btn:active { background: var(--border); }
+.quick-log-btn:active {
+  background: var(--border);
+  border-color: var(--accent);
+}
+
+/* ✓ Logged confirmation (5.2.x #1): accent ring + brief background flash,
+   button text swapped to "✓ Logged — {value}" for the confirmation window */
+.quick-log-btn.quick-log-confirm {
+  border-color: var(--accent);
+  animation: quick-log-flash 0.4s ease-out;
+}
+
+.quick-log-confirm .quick-log-label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.quick-log-confirm .quick-log-arrow { display: none; }
+
+@keyframes quick-log-flash {
+  0%   { background-color: rgba(200, 255, 87, 0.4); }
+  100% { background-color: var(--surface2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-log-btn.quick-log-confirm { animation: none; }
+}
 
 .quick-log-label {
   color: var(--muted);

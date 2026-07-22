@@ -202,6 +202,35 @@ describe('cross-session behaviours', () => {
     const sets = dbGetAllSets(state.sessionId);
     expect(sets.map(s => s.weight)).toEqual([65, 65]);
   });
+
+  it('quick-log re-taps inside the guard window log exactly one set (5.2.x #1)', () => {
+    completeFirstSession('60');
+    _doStartSession();
+    quickLogSet();
+    quickLogSet(); // frantic re-tap, same instant
+    vi.advanceTimersByTime(400);
+    quickLogSet(); // still inside the 600ms guard
+    expect(dbGetSetCount(state.sessionId)).toBe(1);
+    expect(state.setNumber).toBe(2);
+
+    vi.advanceTimersByTime(300); // past the guard — a deliberate next set logs
+    quickLogSet();
+    expect(dbGetSetCount(state.sessionId)).toBe(2);
+    expect(state.setNumber).toBe(3);
+  });
+
+  it('quick-log shows ✓ Logged inline, then reverts to the next reference', () => {
+    completeFirstSession('60');
+    _doStartSession();
+    quickLogSet();
+    expect(el('quick-log-label').textContent).toBe('✓ Logged');
+    expect(el('quick-log-value').textContent).toMatch(/^60 (kg|lbs) × 8$/);
+    expect(el('btn-quick-log').classList.contains('quick-log-confirm')).toBe(true);
+
+    vi.advanceTimersByTime(1200); // confirmation window expires → repaint
+    expect(el('quick-log-label').textContent).not.toBe('✓ Logged');
+    expect(el('btn-quick-log').classList.contains('quick-log-confirm')).toBe(false);
+  });
 });
 
 describe('rest timer auto-start (4.6)', () => {

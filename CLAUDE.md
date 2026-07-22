@@ -131,8 +131,8 @@ Theme: make the data model able to survive years and fit real training. Items: 5
 
 ## Phase 5 Status
 🚧 **IN PROGRESS**
-- [ ] **5.2.x User-feedback batch** — NEXT UP. Five small fixes from real-use feedback (July 15 + 18, 2026; quick-log feedback reported twice):
-  1. **Quick-log tap feedback** (top priority): the button gives no visual/haptic response and the log entry lands below the fold — user tapped repeatedly and logged duplicate sets ("hit deadlifts a lot"). Pressed-state flash + haptic + brief inline "✓ Logged — 60 kg × 8" confirmation.
+- [ ] **5.2.x User-feedback batch** — IN PROGRESS. Five small fixes from real-use feedback (July 15 + 18, 2026; quick-log feedback reported twice):
+  1. ✅ **Quick-log tap feedback** — SHIPPED (July 21, 2026, SW cache: `gymops-v79`, app: `v5.2`). `quickLogSet()`: 600ms tap guard (`QUICK_LOG_GUARD_MS` — absorbs "did that work?" re-taps, the duplicate-set killer), haptic (`navigator.vibrate(30)`), inline "✓ Logged — {value}" for 1200ms (`_showQuickLogConfirm`; `renderQuickLog` skips repaints while the window is live so `renderActive` can't stomp it; guard state reset on session start/resume). CSS `.quick-log-confirm` (accent ring + background flash keyframe, reduced-motion safe) + stronger `:active`. 3 new tests (118 total); CDP-verified at 375px (triple-tap → exactly one set). **CDP harness note: screens toggle via `.active` class, NOT `.hidden` — `#screen-X:not(.hidden)` waits are vacuously true.**
   2. **Kill Save-password prompt**: `#input-anthropic-key` is `type="password"`, and Chrome ignores `autocomplete="off"` on password fields → Google Password Manager prompt fires (screenshotted on idle screen). Switch to `autocomplete="new-password"` (or masked text input).
   3. **Rest bar vs session log**: with the rest timer running it's hard to scroll down and see "This Session" — make `#rest-bar` compact or sticky so it stops eating flow space.
   4. **In-session rest duration adjust**: 4.6 deferred configurable duration; 4.9 only added the Settings half. Put the presets (or ±30s) on the rest bar itself.
