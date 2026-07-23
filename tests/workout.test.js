@@ -17,7 +17,7 @@ import {
   _doStartSession, startSession, beginSessionFlow, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
   saveNotesNow, stopRestTimer, adjustRestTimer, renderWeightConversion,
-  _restEndTime,
+  updateLogEmphasis, _restEndTime,
 } from '../js/workout.js';
 
 const DEFAULT_EXERCISE = EXERCISES[0].name; // last-resort fallback (5.3) — bare _doStartSession() lands here
@@ -218,6 +218,34 @@ describe('cross-session behaviours', () => {
     quickLogSet();
     expect(dbGetSetCount(state.sessionId)).toBe(2);
     expect(state.setNumber).toBe(3);
+  });
+
+  it('quick-log hero: with a reference, quick-log leads and Log Set demotes (5.6)', () => {
+    completeFirstSession('60');
+    _doStartSession();
+    expect(el('btn-quick-log').classList.contains('hidden')).toBe(false);
+    expect(el('btn-quick-log').classList.contains('quick-log-quiet')).toBe(false);
+    expect(el('btn-log-set').classList.contains('btn-demoted')).toBe(true);
+  });
+
+  it('typing re-promotes Log Set; clearing restores the quick-log hero (5.6)', () => {
+    completeFirstSession('60');
+    _doStartSession();
+    el('input-weight').value = '70';
+    updateLogEmphasis(); // app.js fires this on the input event
+    expect(el('btn-quick-log').classList.contains('quick-log-quiet')).toBe(true);
+    expect(el('btn-log-set').classList.contains('btn-demoted')).toBe(false);
+
+    el('input-weight').value = '';
+    updateLogEmphasis();
+    expect(el('btn-quick-log').classList.contains('quick-log-quiet')).toBe(false);
+    expect(el('btn-log-set').classList.contains('btn-demoted')).toBe(true);
+  });
+
+  it('no reference → quick-log hidden and Log Set stays primary (5.6)', () => {
+    _doStartSession(); // first-ever session: no history, no reference
+    expect(el('btn-quick-log').classList.contains('hidden')).toBe(true);
+    expect(el('btn-log-set').classList.contains('btn-demoted')).toBe(false);
   });
 
   it('quick-log shows ✓ Logged inline, then reverts to the next reference', () => {

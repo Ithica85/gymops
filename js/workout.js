@@ -478,6 +478,14 @@ function focusInput() {
   document.getElementById('input-weight').focus();
 }
 
+// 5.6: entering an exercise (or undoing back into one) that has a quick-log
+// reference leaves the hero button as the default action — auto-focusing the
+// input would count as manual intent and demote it, and would pop the mobile
+// keyboard the quick path exists to avoid. No reference → focus as before.
+function focusInputUnlessHero() {
+  if (!computeQuickLogRef()) focusInput();
+}
+
 function clearInputs() {
   document.getElementById('input-weight').value = '';
   document.getElementById('input-reps').value = '';
@@ -518,7 +526,7 @@ export function setActiveExercise(name, type = null, { render = true } = {}) {
   state.setNumber    = dbGetSetCountForExercise(state.sessionId, name) + 1;
   if (render) {
     renderActive();
-    focusInput();
+    focusInputUnlessHero();
     resetInactivityTimer();
   }
 }
@@ -951,17 +959,43 @@ function computeQuickLogRef() {
   return null;
 }
 
+// 5.6 prominence pass: with a reference available, quick-log is the hero
+// (lime primary above the inputs) and Log Set demotes; the moment the user
+// shows manual intent — an input focused or holding text — Log Set
+// re-promotes and quick-log drops to its quiet state. Hierarchy follows
+// intent. Both swaps are colour-only (no size change), so buttons never
+// move under a finger mid-tap.
+function _manualIntent() {
+  const w  = document.getElementById('input-weight');
+  const r  = document.getElementById('input-reps');
+  const ae = document.activeElement;
+  return ae === w || ae === r ||
+    String(w.value).trim() !== '' || String(r.value).trim() !== '';
+}
+
+// Re-applies the hero/quiet + demoted classes from current state. Cheap and
+// idempotent — wired to input focus/blur/input events as well as every
+// renderQuickLog. Visibility (.hidden) is owned by renderQuickLog, not here.
+export function updateLogEmphasis() {
+  const quickBtn = document.getElementById('btn-quick-log');
+  const logBtn   = document.getElementById('btn-log-set');
+  const hero = !quickBtn.classList.contains('hidden') && !_manualIntent();
+  quickBtn.classList.toggle('quick-log-quiet', !hero);
+  logBtn.classList.toggle('btn-demoted', hero);
+}
+
 // Updates the quick-log button's visibility and label for the current
 // exercise/set number. Weight is shown converted to the current display unit.
 function renderQuickLog() {
   // Don't stomp the ✓ confirmation — _showQuickLogConfirm's timer repaints
-  // when the window expires.
-  if (Date.now() - _quickLogLoggedAt < QUICK_LOG_CONFIRM_MS) return;
+  // when the window expires. Emphasis still resyncs (inputs were cleared by
+  // _afterSetLogged, so the confirm window settles on the hero state).
+  if (Date.now() - _quickLogLoggedAt < QUICK_LOG_CONFIRM_MS) { updateLogEmphasis(); return; }
 
   const btn = document.getElementById('btn-quick-log');
   btn.classList.remove('quick-log-confirm');
   const ref = computeQuickLogRef();
-  if (!ref) { btn.classList.add('hidden'); return; }
+  if (!ref) { btn.classList.add('hidden'); updateLogEmphasis(); return; }
 
   const s = ref.set;
   let valueText;
@@ -974,6 +1008,7 @@ function renderQuickLog() {
   document.getElementById('quick-log-label').textContent = ref.label;
   document.getElementById('quick-log-value').textContent = valueText;
   btn.classList.remove('hidden');
+  updateLogEmphasis();
 }
 
 // Swaps the button to "✓ Logged — {value}" with a background flash, reverting
@@ -991,6 +1026,7 @@ function _showQuickLogConfirm(valueText) {
     _quickLogLoggedAt = 0;
     renderQuickLog();
   }, QUICK_LOG_CONFIRM_MS);
+  updateLogEmphasis();
 }
 
 // Logs the reference set in one tap. Weight is stored converted to the current
@@ -1050,7 +1086,7 @@ export function undoSet() {
   setActiveExercise(state.exercise, state.exerciseType, { render: false });
 
   renderActive();
-  focusInput();
+  focusInputUnlessHero();
   resetInactivityTimer();
 }
 

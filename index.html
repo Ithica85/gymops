@@ -314,6 +314,15 @@
 
         <p class="last-session" id="last-session">Last session: No history</p>
 
+        <!-- Quick-log (5.6 prominence pass): hero primary when a reference
+             exists, sits ABOVE the inputs; drops to a quiet state while the
+             user shows manual intent (typing) — see updateLogEmphasis() -->
+        <button class="quick-log-btn hidden" id="btn-quick-log">
+          <span class="quick-log-label" id="quick-log-label">Same as last time</span>
+          <span class="quick-log-value" id="quick-log-value"></span>
+          <span class="quick-log-arrow">→</span>
+        </button>
+
         <div class="input-section">
           <div class="input-row">
             <div class="input-col">
@@ -343,12 +352,6 @@
           <p class="weight-convert hidden" id="weight-convert"></p>
           <p class="input-error hidden" id="input-error">Enter weight and reps</p>
         </div>
-
-        <button class="quick-log-btn hidden" id="btn-quick-log">
-          <span class="quick-log-label" id="quick-log-label">Same as last time</span>
-          <span class="quick-log-value" id="quick-log-value"></span>
-          <span class="quick-log-arrow">→</span>
-        </button>
 
         <button class="btn-primary btn-large" id="btn-log-set">Log Set</button>
 

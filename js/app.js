@@ -57,6 +57,7 @@ import {
   stopRestTimer,
   triggerExport,
   undoSet,
+  updateLogEmphasis,
 } from './workout.js';
 import './history.js'; // side-effect import: registers the history screen hook
 import {
@@ -169,8 +170,14 @@ async function boot() {
   const inputReps   = document.getElementById('input-reps');
   inputWeight.addEventListener('keydown', e => { if (e.key === 'Enter') inputReps.focus(); });
   inputReps.addEventListener('keydown',   e => { if (e.key === 'Enter') logSet(); });
-  inputWeight.addEventListener('input', () => { clearError(); renderProgressionSignal(null); renderWeightConversion(); });
-  inputReps.addEventListener('input',   () => { clearError(); renderProgressionSignal(null); });
+  inputWeight.addEventListener('input', () => { clearError(); renderProgressionSignal(null); renderWeightConversion(); updateLogEmphasis(); });
+  inputReps.addEventListener('input',   () => { clearError(); renderProgressionSignal(null); updateLogEmphasis(); });
+  // 5.6 hierarchy-follows-intent: focusing an input promotes Log Set;
+  // leaving both inputs empty and unfocused restores the quick-log hero
+  for (const el of [inputWeight, inputReps]) {
+    el.addEventListener('focus', updateLogEmphasis);
+    el.addEventListener('blur', updateLogEmphasis);
+  }
 
   // Session notes
   const notesEl = document.getElementById('session-notes');

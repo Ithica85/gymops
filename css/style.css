@@ -1758,46 +1758,58 @@ body {
 }
 
 /* ════════════════════════════════════
-   QUICK LOG (one-tap set) */
+   QUICK LOG (one-tap set)
+   5.6 prominence pass: hero (lime primary) by default when a reference
+   exists; .quick-log-quiet while the user shows manual intent (typing).
+   Emphasis changes are COLOR-ONLY — same padding/size in both states so
+   the buttons never shift under a mid-tap finger. */
 .quick-log-btn {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: var(--accent);
+  border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 11px 14px;
-  color: var(--text);
+  padding: 18px 14px;
+  color: #000;
   font-family: var(--font);
-  font-size: 0.9rem;
+  font-size: 1rem;
+  font-weight: 800;
   cursor: pointer;
   min-width: 0;
+  transition: opacity 0.1s;
+  -webkit-appearance: none;
 }
 
-.quick-log-btn:active {
+.quick-log-btn:active { opacity: 0.75; }
+
+/* Quiet state: an input is focused or holds text — manual path leads */
+.quick-log-btn.quick-log-quiet {
+  background: var(--surface2);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.quick-log-btn.quick-log-quiet:active {
   background: var(--border);
   border-color: var(--accent);
+  opacity: 1;
 }
 
-/* ✓ Logged confirmation (5.2.x #1): accent ring + brief background flash,
-   button text swapped to "✓ Logged — {value}" for the confirmation window */
+/* ✓ Logged confirmation (5.2.x #1): brief white→lime flash, button text
+   swapped to "✓ Logged — {value}" for the confirmation window */
 .quick-log-btn.quick-log-confirm {
-  border-color: var(--accent);
   animation: quick-log-flash 0.4s ease-out;
-}
-
-.quick-log-confirm .quick-log-label {
-  color: var(--accent);
-  font-weight: 700;
 }
 
 .quick-log-confirm .quick-log-arrow { display: none; }
 
 @keyframes quick-log-flash {
-  0%   { background-color: rgba(200, 255, 87, 0.4); }
-  100% { background-color: var(--surface2); }
+  0%   { background-color: #ffffff; }
+  100% { background-color: var(--accent); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1805,20 +1817,40 @@ body {
 }
 
 .quick-log-label {
-  color: var(--muted);
+  color: rgba(0, 0, 0, 0.65);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.quick-log-quiet .quick-log-label { color: var(--muted); }
+
 .quick-log-value {
-  font-weight: 700;
+  font-weight: 800;
+  font-size: 1.05rem;
   white-space: nowrap;
 }
 
-.quick-log-arrow {
-  color: var(--accent);
+.quick-log-quiet .quick-log-value {
   font-weight: 700;
+  font-size: 1rem;
+}
+
+.quick-log-arrow { font-weight: 800; }
+
+.quick-log-quiet .quick-log-arrow { color: var(--accent); }
+
+/* Log Set demoted to secondary colours while quick-log is the hero */
+.btn-primary.btn-demoted {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.btn-primary.btn-demoted:active {
+  background: var(--border);
+  opacity: 1;
 }
 
 /* ════════════════════════════════════
