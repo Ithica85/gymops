@@ -317,11 +317,14 @@ body {
 }
 
 /* — Top section (above the fold) — */
+/* Vertical budget matters here: every px of padding/gap comes straight out
+   of .sets-log (the flex:1 internal scroller below). Keep gaps tight —
+   at 375×667 with the rest bar up the log was down to one visible row. */
 .top-section {
-  padding: 16px 20px;
+  padding: 12px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -356,11 +359,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 20px 10px 0;
+  padding: 4px 20px 4px 0;
 }
 
 .set-info-row .stat-block + .stat-block {
-  padding: 10px 0 10px 20px;
+  padding: 4px 0 4px 20px;
   border-left: 1px solid var(--border);
 }
 
@@ -554,8 +557,12 @@ body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 16px 20px 24px;
+  padding: 12px 20px 24px;
 }
+
+/* Log Set slimmed on the active screen only — btn-large's 20px padding is
+   fine in modals/idle but here it starves the sets log */
+#btn-log-set { padding: 16px; }
 
 .sets-log-title {
   font-size: 0.7rem;
@@ -1772,7 +1779,7 @@ body {
   background: var(--accent);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 18px 14px;
+  padding: 15px 14px;
   color: #000;
   font-family: var(--font);
   font-size: 1rem;
