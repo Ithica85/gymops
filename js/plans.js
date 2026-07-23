@@ -7,6 +7,7 @@ import {
   dbGetActivePlan,
   dbGetAllPlans,
   dbGetAllSets,
+  dbGetCompletedDayIdsSince,
   dbGetCompletedSessionsSince,
   dbGetLastCompletedSession,
   dbGetPlan,
@@ -22,22 +23,57 @@ import { SIGNAL_GAP_DAYS, getExerciseType, localDateStr } from './state.js';
 import { escapeHTML, onScreenShow, showScreen } from './ui.js';
 import { IDLE_BANNERS, _weekStart } from './idle.js';
 
-// Plan adherence: compares the session's plan-day exercises (whole plan for
-// day-less legacy sessions — dbGetSessionPlan scopes this) to what was logged.
-export function renderPlanAdherence(sessionId) {
-  const el   = document.getElementById('plan-adherence');
+// Plan adherence (reworked 5.5): measured against the day trained — the
+// session's plan-day exercises (whole plan for day-less legacy sessions;
+// dbGetSessionPlan scopes this) at BOTH zoom levels: exercises touched AND
+// planned sets completed. Pure compute, exported for tests.
+export function computeSessionAdherence(sessionId) {
   const plan = dbGetSessionPlan(sessionId);
-  if (!plan?.exercises?.length) { el.classList.add('hidden'); return; }
+  if (!plan?.exercises?.length) return null;
 
-  const loggedNames = new Set(dbGetAllSets(sessionId).map(s => s.exercise));
-  const total       = plan.exercises.length;
-  const done        = plan.exercises.filter(e => loggedNames.has(e.exercise)).length;
-  const skipped     = plan.exercises.filter(e => !loggedNames.has(e.exercise)).map(e => e.exercise);
+  const setCounts = {};
+  dbGetAllSets(sessionId).forEach(s => { setCounts[s.exercise] = (setCounts[s.exercise] || 0) + 1; });
 
-  const dayLabel = plan.day ? ` · ${plan.day.name}` : '';
-  let text = `${plan.name}${dayLabel}: ${done}/${total} exercises`;
-  if (skipped.length) text += ` · skipped ${skipped.join(', ')}`;
-  el.textContent = text;
+  const total   = plan.exercises.length;
+  const done    = plan.exercises.filter(e => setCounts[e.exercise]).length;
+  const skipped = plan.exercises.filter(e => !setCounts[e.exercise]).map(e => e.exercise);
+
+  // Planned-set completion, only over exercises that HAVE a sets target.
+  // Capped per exercise: overshooting Bench must not mask skipping Dips.
+  let setsPlanned = 0;
+  let setsDone    = 0;
+  plan.exercises.forEach(e => {
+    if (e.target_sets) {
+      setsPlanned += e.target_sets;
+      setsDone    += Math.min(setCounts[e.exercise] || 0, e.target_sets);
+    }
+  });
+
+  // Day name only when the plan actually has multiple days — a single-day
+  // plan's auto-created "Day 1" is an implementation detail, not a label.
+  const multiDay = dbGetPlanDays(plan.plan_id).length > 1;
+  const weekNum  = Math.floor((Date.now() - new Date(plan.start_date).getTime()) / (7 * 86400000)) + 1;
+  return {
+    planName: plan.name,
+    dayName: multiDay ? (plan.day?.name ?? null) : null,
+    weekNum,
+    weekTotal: plan.duration_weeks ?? null,
+    done, total, setsDone, setsPlanned, skipped,
+  };
+}
+
+export function renderPlanAdherence(sessionId) {
+  const el = document.getElementById('plan-adherence');
+  const a  = computeSessionAdherence(sessionId);
+  if (!a) { el.classList.add('hidden'); return; }
+
+  const header = a.dayName ? `${a.planName} · ${a.dayName}` : a.planName;
+  const lines  = [`${header} — Week ${a.weekNum}${a.weekTotal ? ` of ${a.weekTotal}` : ''}`];
+  let progress = `${a.done}/${a.total} exercises`;
+  if (a.setsPlanned) progress += ` · ${a.setsDone}/${a.setsPlanned} planned sets`;
+  lines.push(progress);
+  if (a.skipped.length) lines.push(`Skipped: ${a.skipped.join(', ')}`);
+  el.textContent = lines.join('\n'); // rendered as lines via white-space: pre-line
   el.classList.remove('hidden');
 }
 
@@ -130,6 +166,34 @@ export function computePlanNudgeBanner() {
 
 // ── Plans screen ──────────────────────────────────────
 
+// Week-coverage row on the active plan card (5.5): which plan days have been
+// trained this week (multi-day plans only — a single day's chip is noise) and
+// sessions vs the weekly target. Sessions count matches the nudge/week-strip
+// semantics: ALL completed sessions this week, on-plan or not — a workout is
+// a workout. Returns '' when there's nothing meaningful to show.
+function _renderWeekRow(active, days) {
+  const weekISO  = _weekStart(new Date()).toISOString();
+  const trained  = new Set(dbGetCompletedDayIdsSince(active.plan_id, weekISO));
+  const sessions = dbGetCompletedSessionsSince(weekISO).length;
+
+  const chips = days.length > 1
+    ? days.map(d => {
+        const hit = trained.has(d.day_id);
+        return `<span class="plan-week-chip${hit ? ' plan-week-chip--done' : ''}">${escapeHTML(d.name)}${hit ? ' ✓' : ''}</span>`;
+      }).join('')
+    : '';
+  const target = active.target_sessions_per_week;
+  const sessLine = target
+    ? `${sessions} of ${target} session${target !== 1 ? 's' : ''} this week`
+    : (sessions ? `${sessions} session${sessions !== 1 ? 's' : ''} this week` : '');
+  if (!chips && !sessLine) return '';
+
+  return `<div class="plan-week-row">
+    ${chips ? `<div class="plan-week-chips"><span class="plan-week-label">This week</span>${chips}</div>` : ''}
+    ${sessLine ? `<p class="plan-week-sessions">${sessLine}</p>` : ''}
+  </div>`;
+}
+
 function renderPlansScreen() {
   const active   = dbGetActivePlan();
   const cardEl   = document.getElementById('active-plan-card');
@@ -157,6 +221,7 @@ function renderPlansScreen() {
         <button class="btn-text plan-card-edit" data-plan-id="${active.plan_id}">Edit</button>
       </div>
       ${objectives.length ? `<ul class="plan-objectives-list">${objectives.map(o => `<li>${escapeHTML(o)}</li>`).join('')}</ul>` : ''}
+      ${_renderWeekRow(active, days)}
       ${_renderPlanPreview(days, exs)}
     `;
     cardEl.classList.remove('hidden');

@@ -1245,6 +1245,15 @@ export function dbGetSessionPlan(sessionId) {
   return { ...plan, day, exercises };
 }
 
+// Which of a plan's days have a completed session since `sinceISO` — the
+// plans-screen week-coverage row (5.5). Read-only.
+export function dbGetCompletedDayIdsSince(planId, sinceISO) {
+  return _all(
+    "SELECT DISTINCT day_id FROM sessions WHERE plan_id = ? AND day_id IS NOT NULL AND status = 'completed' AND start_time >= ?",
+    [planId, sinceISO]
+  ).map(r => r.day_id);
+}
+
 // The day a new session for this plan should land on: the day after the last
 // completed session's day, cycling (…Push → Pull → Legs → Push…). No trained
 // day on record → the first day. A day deleted since it was last trained

@@ -1294,6 +1294,8 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
   margin-top: 4px;
+  white-space: pre-line; /* 5.5: header / progress / skipped as separate lines */
+  line-height: 1.5;
 }
 
 /* Drive upload state on the completed screen */
@@ -1340,6 +1342,50 @@ body {
   font-size: 0.8rem;
   color: var(--muted);
   margin-top: 2px;
+}
+
+/* Week-coverage row on the active plan card (5.5) */
+.plan-week-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0 2px;
+}
+
+.plan-week-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-week-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.plan-week-chip {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.plan-week-chip--done {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(200, 255, 87, 0.08);
+}
+
+.plan-week-sessions {
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .plan-objectives-list {
