@@ -65,11 +65,37 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 | 5.4 | Storage backend migration (IndexedDB or OPFS) | sql.js stays as the query engine; the persisted blob moves out of localStorage (quota headroom, async writes, eviction resilience). localStorage keeps only prefs. Sequenced *after* 4.3 so a restore path exists before touching the storage home. |
 | 5.5 | Plan adherence rework | Adherence measured against the day trained, not the flat plan. |
 
+**Shipped (July 16–22, 2026):** 5.1–5.5 plus opportunistic **5.2.x** (user-feedback batch) and **5.6** (quick-log hero). Schema/identity layer, multi-day programs, IDB storage, day-scoped adherence, and start-chooser are live. Phase 5 is **not fully closed** against the success criteria below until the closeout items land.
+
 **Success criteria for Phase 5:**
-- [ ] A real PPL or upper/lower split is representable and the app lands on the right day without thought.
-- [ ] An exercise can be renamed without orphaning history.
-- [ ] The database no longer lives in localStorage; migration preserved all existing data.
-- [ ] No session ever starts on an arbitrary catalogue default.
+- [x] A real PPL or upper/lower split is representable and the app lands on the right day without thought. *(5.2 / 5.3 / 5.5)*
+- [ ] An exercise can be renamed without orphaning history. *(data path `dbRenameExercise` shipped in 5.1; **needs 5.7 rename UI** to be product-true)*
+- [x] The database no longer lives in localStorage; migration preserved all existing data. *(5.4 — IDB primary; LS fallback + frozen adoption snapshot)*
+- [ ] No session ever starts on an arbitrary catalogue default. *(plan-less path fixed in 5.3; **empty plan day / zero-set resume still fall through to `EXERCISES[0]` — needs 5.8**)*
+
+#### Phase 5 closeout backlog (fully complete the phase)
+
+*Added 2026-07-22 after Phase 5 retrospective. Core closeout = **5.7 + 5.8 + 5.9** (~1–1.5 days). Working order: 5.8 → 5.7 → 5.10 → 5.12 → 5.9 → optional 5.11.*
+
+| # | Item | Priority | Size | Notes / done when |
+|---|------|----------|------|-------------------|
+| **5.7** | Exercise rename UI | **Must** | S–M | Success criterion incomplete without it. Surface: **History → exercise detail** (pencil or equivalent). Confirm sheet old → new name; clash errors via toast. Call existing `dbRenameExercise(id, name)` — do not reimplement. After rename: history list, plans, charts, signals, picker Recent still correct after reload. 2–3 tests on rename path. |
+| **5.8** | No catalogue-default start (close last hatches) | **Must** | S | Kill remaining `EXERCISES[0]` fallthroughs in `js/workout.js`: (1) `_doStartSession` when plan day has no exercises; (2) zero-set `resumeSession` when no last set and no plan exercises. Empty / unresolvable start → same as plan-less 5.3: **picker before session create** (or picker before setting active exercise on resume). Regression tests for both paths. |
+| **5.9** | Docs closeout | **Must** | XS | When 5.7 + 5.8 ship: tick remaining success criteria above; mark Phase 5 fully complete in this doc + `CLAUDE.md`; note **aliases deferred to 6.2** (not a Phase 5 reopen). |
+| **5.10** | Empty-day guard in plan editor | Should | XS | Prevention at source for 5.8. Day section with 0 exercises: muted “Add at least one exercise” and/or block Save while any day is empty (pick one rule). |
+| **5.11** | Rename from active-session exercise (second entry) | Optional | S | Only if history-only rename (5.7) feels buried. Long-press / ⋯ on active exercise → same confirm + `dbRenameExercise`. Skip if 5.7 alone is enough. |
+| **5.12** | Post-rename UI refresh sanity | Should | XS | After rename, picker Recent / MRU, history list, and plan rows show the new name immediately (no full reboot). Audit any name caches; fix if stale. |
+
+**Explicitly not Phase 5 closeout** (do not pull into this backlog):
+
+| Item | Belongs |
+|------|---------|
+| Exercise **aliases** / Strong·Hevy name map | **6.2** design (depends on 5.1; not required for Phase 5 criteria) |
+| Parallel plan templates / multi-active programs | Later / refuse for now |
+| Rewrite queries to always join on `exercise_id` | Not needed while denormalised names stay in sync via rename |
+| OPFS instead of IDB | Closed by 5.4 |
+
+**Phase 5 fully complete when:** (1) user can rename any exercise with history and nothing orphans; (2) no start/resume path lands on `EXERCISES[0]` under normal or empty-plan-day data; (3) multi-day + IDB still green (no rework expected); (4) success criteria above all `[x]`; aliases noted under 6.2.
 
 ### Phase 6 — Consumer Readiness
 
