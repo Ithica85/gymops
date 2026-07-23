@@ -39,7 +39,7 @@ describe('exercise catalogue integrity', () => {
     }
   });
 
-  it('EXERCISES[0] stays stable (boot placeholder + last-resort fallback since 5.3)', () => {
+  it('EXERCISES[0] stays stable (boot placeholder only — 5.8 closed the last auto-land hatches)', () => {
     expect(EXERCISES[0].name).toBe('Seated Shoulder Press');
   });
 

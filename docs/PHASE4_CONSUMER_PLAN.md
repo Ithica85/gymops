@@ -71,20 +71,25 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 - [x] A real PPL or upper/lower split is representable and the app lands on the right day without thought. *(5.2 / 5.3 / 5.5)*
 - [ ] An exercise can be renamed without orphaning history. *(data path `dbRenameExercise` shipped in 5.1; **needs 5.7 rename UI** to be product-true)*
 - [x] The database no longer lives in localStorage; migration preserved all existing data. *(5.4 — IDB primary; LS fallback + frozen adoption snapshot)*
-- [ ] No session ever starts on an arbitrary catalogue default. *(plan-less path fixed in 5.3; **empty plan day / zero-set resume still fall through to `EXERCISES[0]` — needs 5.8**)*
+- [x] No session ever starts on an arbitrary catalogue default. *(5.3 plan-less start picker + **5.8**: zero-set plan-less resume opens picker; empty plan day opens start picker before create; bare `_doStartSession` never invents `EXERCISES[0]`)*
 
 #### Phase 5 closeout backlog (fully complete the phase)
 
-*Added 2026-07-22 after Phase 5 retrospective. Core closeout = **5.7 + 5.8 + 5.9** (~1–1.5 days). Working order: 5.8 → 5.7 → 5.10 → 5.12 → 5.9 → optional 5.11.*
+*Added 2026-07-22 after Phase 5 retrospective. Core closeout was **5.7 + 5.8 + 5.9**. **5.8 SHIPPED** July 22, 2026 (v6.1 / gymops-v89). Remaining: **5.7 → 5.10 → 5.12 → 5.9** → optional 5.11.*
+
+*Codebase audit 2026-07-22 (confirms the items against `js/db.js` / `js/workout.js` / `js/picker.js`):*
+- *`dbRenameExercise(id, name)` (db.js:597) works as described — updates `exercises` + denormalised `sets`/`plan_exercises` names atomically, `_persist()`, returns true/false. **Clash and empty-name are `throw`s, not return values** — the 5.7 UI must `try/catch` → toast.*
+- *~~Both `EXERCISES[0]` fallthroughs~~ **closed in 5.8** — resume + empty-day + bare start all open a picker; plan zero-set resume still uses plan-day first exercise.*
+- *`_recencyRanks` (picker.js:31) rebuilds from the DB on every picker open; history/plans/charts re-query from the DB. **No persistent name cache survives a rename** — so 5.12 is near-zero risk (see revised note).*
 
 | # | Item | Priority | Size | Notes / done when |
 |---|------|----------|------|-------------------|
-| **5.7** | Exercise rename UI | **Must** | S–M | Success criterion incomplete without it. Surface: **History → exercise detail** (pencil or equivalent). Confirm sheet old → new name; clash errors via toast. Call existing `dbRenameExercise(id, name)` — do not reimplement. After rename: history list, plans, charts, signals, picker Recent still correct after reload. 2–3 tests on rename path. |
-| **5.8** | No catalogue-default start (close last hatches) | **Must** | S | Kill remaining `EXERCISES[0]` fallthroughs in `js/workout.js`: (1) `_doStartSession` when plan day has no exercises; (2) zero-set `resumeSession` when no last set and no plan exercises. Empty / unresolvable start → same as plan-less 5.3: **picker before session create** (or picker before setting active exercise on resume). Regression tests for both paths. |
-| **5.9** | Docs closeout | **Must** | XS | When 5.7 + 5.8 ship: tick remaining success criteria above; mark Phase 5 fully complete in this doc + `CLAUDE.md`; note **aliases deferred to 6.2** (not a Phase 5 reopen). |
-| **5.10** | Empty-day guard in plan editor | Should | XS | Prevention at source for 5.8. Day section with 0 exercises: muted “Add at least one exercise” and/or block Save while any day is empty (pick one rule). |
-| **5.11** | Rename from active-session exercise (second entry) | Optional | S | Only if history-only rename (5.7) feels buried. Long-press / ⋯ on active exercise → same confirm + `dbRenameExercise`. Skip if 5.7 alone is enough. |
-| **5.12** | Post-rename UI refresh sanity | Should | XS | After rename, picker Recent / MRU, history list, and plan rows show the new name immediately (no full reboot). Audit any name caches; fix if stale. |
+| **5.7** | Exercise rename UI | **Must** | S–M | Success criterion incomplete without it. Surface: **History → exercise detail** (pencil or equivalent). Confirm sheet old → new name; clash/empty errors surface by **catching the `throw`** from `dbRenameExercise(id, name)` → toast (do not reimplement the DB path). After rename: history list, plans, charts, signals, picker Recent still correct after reload. 2–3 tests on rename path. **Decide the catalogue-rename rule (blocker for this item):** renaming a catalogue exercise (`is_custom=0`) leaves `is_custom` unchanged, so on next boot `_syncExercises` step 1 re-seeds the **original name** as a fresh empty catalogue row (seeding keys on name) — history follows the new name, old name reappears blank. Pick one: **(a)** restrict rename to custom exercises only; **(b)** on rename set `is_custom=1` so the row stops being catalogue-managed (recommended — cleanest, one-line change in `dbRenameExercise`); **(c)** accept the re-seed as intended (old name returns as a reusable blank). |
+| **5.8** | No catalogue-default start (close last hatches) | **Must** | S | ✅ **SHIPPED** July 22, 2026 (app `v6.1`, SW `gymops-v89`). `resumeSession`: last set → plan-day first → open First Exercise picker (never `EXERCISES[0]`). `beginSessionFlow`: empty resolved day → `openPickerForStart(dayId)` before create. `_doStartSession` with no resolvable exercise → session picker. 5 regression tests in `tests/workout.test.js`. |
+| **5.9** | Docs closeout | **Must** | XS | When 5.7 ships: tick remaining success criteria above; mark Phase 5 fully complete in this doc + `CLAUDE.md`; record the **5.7 catalogue-rename rule chosen**; note **aliases deferred to 6.2** (not a Phase 5 reopen). *(5.8 criterion already ticked.)* |
+| **5.10** | Empty-day guard in plan editor | Should | XS | **Reframe (current behavior confirmed):** `savePlan` *already* silently drops empty days (`.filter(d => d.exercises.length)`), so saving an empty day is already prevented — but silently, which can surprise a user who added a day and finds it gone. 5.10 = **surface the rule** instead of silently dropping: muted “Add at least one exercise” on an empty day section and/or block Save with a message while any day is empty (pick one). Makes item-(1) source-prevention explicit. |
+| **5.11** | Rename from active-session exercise (second entry) | Optional | S | Only if history-only rename (5.7) feels buried. Long-press / ⋯ on active exercise → same confirm + `dbRenameExercise`. **Must also update `state.exercise` in place** (the active-session name is held in memory) or the active screen shows the stale name until the next `setActiveExercise` — this is the one genuine post-rename cache (see 5.12). Skip if 5.7 alone is enough. |
+| **5.12** | Post-rename UI refresh sanity | Should | XS | **De-risked by audit:** `_recencyRanks` rebuilds on every picker open and history/plans/charts re-query the DB, so a History-triggered rename (5.7) is already correct on the next screen visit with no reboot — verify, don't pre-engineer. The **only** stale-name cache is `state.exercise` during an active session, which is reachable **only via 5.11**; fold that fix into 5.11. If 5.11 is skipped, 5.12 is a no-op verification. |
 
 **Explicitly not Phase 5 closeout** (do not pull into this backlog):
 
@@ -95,7 +100,7 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 | Rewrite queries to always join on `exercise_id` | Not needed while denormalised names stay in sync via rename |
 | OPFS instead of IDB | Closed by 5.4 |
 
-**Phase 5 fully complete when:** (1) user can rename any exercise with history and nothing orphans; (2) no start/resume path lands on `EXERCISES[0]` under normal or empty-plan-day data; (3) multi-day + IDB still green (no rework expected); (4) success criteria above all `[x]`; aliases noted under 6.2.
+**Phase 5 fully complete when:** (1) user can rename any exercise with history and nothing orphans (and the catalogue-rename rule from 5.7 is chosen + implemented); (2) no start/resume path lands on `EXERCISES[0]` under normal or empty-plan-day data — specifically the plan-less zero-set resume papercut is fixed; (3) multi-day + IDB still green (no rework expected); (4) success criteria above all `[x]`; aliases noted under 6.2.
 
 ### Phase 6 — Consumer Readiness
 

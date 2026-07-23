@@ -32,7 +32,6 @@ import {
 } from './db.js';
 import { gdriveUpload } from './gdrive.js';
 import {
-  EXERCISES,
   WEIGHT_EPSILON_KG,
   convertWeight,
   getExerciseType,
@@ -569,14 +568,15 @@ function renderUpNext() {
 
 // Starts a fresh session with no prior active session check — called only after
 // the user has already confirmed any discard prompt.
-// Creates the session. Options (5.3):
+// Creates the session. Options (5.3 / 5.8):
 // - exercise/type: explicit starting exercise from the start picker (type for
 //   custom "Other" names, same contract as setActiveExercise).
 // - dayId: explicit plan day from the idle day chooser, overriding rotation.
 // With an active plan and no explicit exercise, starts on the plan day's
-// first exercise. The EXERCISES[0] fallback is a last resort only (empty plan
-// day) — plan-less sessions always arrive here WITH an exercise, chosen in
-// the start picker via beginSessionFlow().
+// first exercise. Plan-less sessions always arrive WITH an exercise (start
+// picker). Empty plan day is routed by beginSessionFlow → openPickerForStart
+// before create. If we still have no exercise (legacy/direct call), open the
+// session picker rather than landing on EXERCISES[0].
 export function _doStartSession({ exercise = null, type = null, dayId = null } = {}) {
   document.getElementById('btn-resume-idle').classList.add('hidden');
   _resetQuickLogConfirm();
@@ -601,21 +601,42 @@ export function _doStartSession({ exercise = null, type = null, dayId = null } =
 
   document.getElementById('session-notes').value = '';
   showScreen('active');
-  setActiveExercise(startExercise ?? EXERCISES[0].name, type);
   const newSession = dbGetSession(state.sessionId);
   if (newSession) startSessionTimer(newSession.start_time);
+
+  if (startExercise) {
+    setActiveExercise(startExercise, type);
+  } else {
+    // 5.8: never invent EXERCISES[0] — force an explicit pick (session exists)
+    openPicker();
+    document.getElementById('modal-title').textContent = 'First Exercise';
+  }
 }
 
-// Entry decision for a NEW session (5.3). With an active plan that has
-// exercises, the session starts immediately (rotation, or an explicit dayId
-// from the idle day chooser). Otherwise the user picks the starting exercise
-// first — the session is only created once the picker choice lands in
-// _doStartSession, so cancelling the picker creates nothing.
+// Entry decision for a NEW session (5.3 / 5.8). With an active plan whose
+// resolved day has exercises, the session starts immediately. Empty plan day
+// (legacy / hand-edited) and plan-less both open the start picker first —
+// session is only created once the picker choice lands in _doStartSession.
 export function beginSessionFlow(dayId = null) {
   const activePlan = dbGetActivePlan();
-  if (activePlan && dbGetPlanExercises(activePlan.plan_id).length) {
-    _doStartSession({ dayId });
-    return;
+  if (activePlan) {
+    const allExs = dbGetPlanExercises(activePlan.plan_id);
+    if (allExs.length) {
+      const day = (dayId != null
+        ? dbGetPlanDays(activePlan.plan_id).find(d => d.day_id === dayId)
+        : null) ?? dbGetNextPlanDay(activePlan.plan_id);
+      const resolvedDayId = day?.day_id ?? null;
+      const dayExs = resolvedDayId != null
+        ? allExs.filter(e => e.day_id === resolvedDayId)
+        : allExs;
+      if (dayExs.length) {
+        _doStartSession({ dayId: resolvedDayId ?? dayId });
+        return;
+      }
+      // Empty day — pick exercise first, then create linked to that day
+      openPickerForStart(resolvedDayId);
+      return;
+    }
   }
   openPickerForStart();
 }
@@ -632,9 +653,11 @@ export function startSession() {
 }
 
 // Resumes an existing session (from idle screen or completed screen).
-// Determines which exercise to land on by looking at the most recently logged set.
-// Note: resumeLastWorkout() overrides this with the exercise that was active
-// at the time Finish was tapped, which may differ from the last logged set.
+// Lands on the most recently logged set, else the plan-day first exercise.
+// Zero-set plan-less resume (5.8): the chosen exercise was never persisted, so
+// open the picker rather than inventing EXERCISES[0].
+// Note: resumeLastWorkout() overrides with the exercise active at Finish time,
+// which may differ from the last logged set.
 export function resumeSession(session) {
   state.sessionId = session.session_id;
   _resetQuickLogConfirm();
@@ -644,12 +667,20 @@ export function resumeSession(session) {
 
   const lastSet = dbGetRecentSets(session.session_id, 1)[0];
   showScreen('active');
-  // Zero-set resume (5.3): prefer the session's plan-day first exercise over
-  // the EXERCISES[0] last resort — the chosen exercise isn't persisted, so a
-  // killed-tab resume can't restore it.
-  const planExs = lastSet ? [] : (dbGetSessionPlan(session.session_id)?.exercises ?? []);
-  setActiveExercise(lastSet?.exercise ?? planExs[0]?.exercise ?? EXERCISES[0].name);
   if (sessionData) startSessionTimer(sessionData.start_time);
+
+  let exercise = lastSet?.exercise ?? null;
+  if (!exercise) {
+    const planExs = dbGetSessionPlan(session.session_id)?.exercises ?? [];
+    exercise = planExs[0]?.exercise ?? null;
+  }
+  if (exercise) {
+    setActiveExercise(exercise);
+  } else {
+    // 5.8: no sets, no plan day — force an explicit pick
+    openPicker();
+    document.getElementById('modal-title').textContent = 'First Exercise';
+  }
 }
 
 export function showFinishConfirm() {

@@ -2,7 +2,7 @@
 // GymOps — Shared app state, constants, and the exercise catalogue
 // ═══════════════════════════════════════════════════════
 
-export const APP_VERSION = 'v6.0';
+export const APP_VERSION = 'v6.1';
 
 // ── Weight unit preference ────────────────────────────
 // Stored in localStorage as 'kg' or 'lbs'. Each set also stores its unit at log time
@@ -55,9 +55,9 @@ export const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Cor
 // RULES:
 // - Names of pre-v3.6 entries must NEVER change — logged sets reference exercises
 //   by name, so a rename orphans history. (Pre-v3.6 entries are marked ◂.)
-// - EXERCISES[0] must stay 'Seated Shoulder Press' — no longer the plan-less
-//   default (5.3: the start picker owns that choice) but still the boot-state
-//   placeholder and last-resort fallback (empty plan day, zero-set resume).
+// - EXERCISES[0] must stay 'Seated Shoulder Press' — boot-state placeholder
+//   only (HTML default + state init). 5.3 / 5.8: no start or resume path
+//   auto-lands here — start picker / plan day / last set own the choice.
 //   Array order is NOT display order; the picker renders sections in
 //   MUSCLE_GROUPS order.
 // - 'Other' stays last and untagged (muscleGroup: null) — custom exercises are

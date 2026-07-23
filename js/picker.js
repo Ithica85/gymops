@@ -22,6 +22,10 @@ let _pickerContext = 'session';
 // In plan mode: index of the _editingDays entry picks are added to (5.2).
 let _pickerDayIdx = 0;
 
+// In start mode: optional plan day to link when the session is created (5.8
+// empty-day path — pick exercise first, then _doStartSession with this dayId).
+let _startDayId = null;
+
 // Live filters (v3.6): search query and active muscle-group chip.
 // Both reset when the picker closes so it always reopens in the default view.
 let _pickerQuery = '';
@@ -106,8 +110,9 @@ function _renderExerciseList() {
         return;
       }
       if (_pickerContext === 'start') {
+        const dayId = _startDayId;
         closePicker();
-        _doStartSession({ exercise: ex.name, type: ex.type });
+        _doStartSession({ exercise: ex.name, type: ex.type, dayId });
         return;
       }
       closePicker();
@@ -212,8 +217,11 @@ export function openPicker() {
 // Opens the picker in start mode (5.3): the session doesn't exist yet, and
 // selecting an exercise creates it via _doStartSession. Dismissing the sheet
 // creates nothing — closePicker() resets to session mode.
-export function openPickerForStart() {
+// dayId (5.8): when starting into an empty plan day, pass the day so the
+// eventual _doStartSession links it after the user picks an exercise.
+export function openPickerForStart(dayId = null) {
   _pickerContext = 'start';
+  _startDayId    = dayId ?? null;
   _refreshRecencyRanks();
   _renderExerciseList();
   document.getElementById('modal-title').textContent = 'First Exercise';
@@ -242,6 +250,7 @@ export function setPickerSort(mode) {
 // filters cleared so it always reopens in the default Recent view).
 export function closePicker() {
   _pickerContext = 'session';
+  _startDayId    = null;
   _pickerQuery   = '';
   _pickerGroup   = 'All';
   document.getElementById('picker-search').value = '';
@@ -275,11 +284,12 @@ export function backFromOtherType() {
 function applyOtherExercise(name, type) {
   const ctx    = _pickerContext; // save before closePicker() resets it
   const dayIdx = _pickerDayIdx;
+  const dayId  = _startDayId;
   closePicker();
   if (ctx === 'plan') {
     addExerciseToPlan(name, type, dayIdx);
   } else if (ctx === 'start') {
-    _doStartSession({ exercise: name, type }); // custom name straight into a new session
+    _doStartSession({ exercise: name, type, dayId }); // custom name straight into a new session
   } else {
     setActiveExercise(name, type);
   }
