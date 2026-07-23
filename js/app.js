@@ -239,8 +239,8 @@ async function boot() {
   document.getElementById('confirm-clear-backdrop').addEventListener('click', () => {
     document.getElementById('confirm-clear').classList.add('hidden');
   });
-  document.getElementById('btn-confirm-clear').addEventListener('click', () => {
-    dbClearAll();
+  document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
+    await dbClearAll(); // async since 5.4 — must finish wiping IDB before the reboot
     location.reload(); // Reload to reinitialise the in-memory DB from scratch
   });
 
@@ -360,8 +360,8 @@ function bootRecovery({ blob }) {
   document.getElementById('btn-recovery-fresh').addEventListener('click', () => modal.classList.remove('hidden'));
   document.getElementById('btn-cancel-recovery-fresh').addEventListener('click', hideModal);
   document.getElementById('confirm-recovery-fresh-backdrop').addEventListener('click', hideModal);
-  document.getElementById('btn-confirm-recovery-fresh').addEventListener('click', () => {
-    dbDiscardCorrupt();
+  document.getElementById('btn-confirm-recovery-fresh').addEventListener('click', async () => {
+    await dbDiscardCorrupt(); // async since 5.4 — the IDB delete must land before reboot
     location.reload();
   });
 

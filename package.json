@@ -6,6 +6,7 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
     "vitest": "^4.1.10"
   }
 }

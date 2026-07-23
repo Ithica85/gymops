@@ -94,9 +94,16 @@ export function cancelRestore() {
   document.getElementById('confirm-restore').classList.add('hidden');
 }
 
-export function confirmRestore() {
+export async function confirmRestore() {
   if (!_pendingRestoreBlob) return;
-  dbRestoreBackup(_pendingRestoreBlob);
+  try {
+    await dbRestoreBackup(_pendingRestoreBlob); // async since 5.4 (IDB write)
+  } catch (err) {
+    // Reloading here would boot the OLD database while looking like a
+    // successful restore — surface the failure instead.
+    alert('Restore failed: ' + err.message);
+    return;
+  }
   location.reload(); // Reboot onto the restored database
 }
 

@@ -1,15 +1,31 @@
 // ═══════════════════════════════════════════════════════
-// GymOps — Database layer (sql.js + localStorage)
+// GymOps — Database layer (sql.js + IndexedDB, localStorage fallback)
 // ═══════════════════════════════════════════════════════
+// 5.4: the DB blob lives in IndexedDB (raw bytes via js/storage.js). When IDB
+// is unavailable (old browser, some private modes, the Node test environment)
+// every path below falls back to the pre-5.4 localStorage persistence
+// unchanged — the fallback doubles as the tested legacy path.
 
 import { EXERCISES, getExerciseType } from './state.js';
+import { storageInit, blobGet, blobPut, blobDelete, blobKeys } from './storage.js';
 
 const DB_KEY = 'gymops_db';
 const CORRUPT_KEY_PREFIX = DB_KEY + '_corrupt_';
 const PRERESTORE_KEY = DB_KEY + '_prerestore';
 
+// IndexedDB keys (inside storage.js's single object store)
+const IDB_DB_KEY = 'db';
+const IDB_PRERESTORE_KEY = 'prerestore';
+const IDB_CORRUPT_PREFIX = 'corrupt_';
+// localStorage marker set once the DB has landed in IDB. Its job: after
+// migration the old gymops_db blob stays in localStorage as a frozen rollback
+// snapshot, and this marker stops a later empty-IDB boot (e.g. after the
+// recovery screen's Start Fresh) from silently resurrecting that stale copy.
+const MIGRATED_KEY = 'gymops_idb_migrated';
+
 let _db = null;
 let _SQL = null; // sql.js module — kept for opening throwaway DBs (backup validation)
+let _useIDB = false;
 
 // Persist-failure state (4.4). When localStorage.setItem fails (quota), the
 // in-memory DB still holds every logged set — writes keep working and each
@@ -38,7 +54,78 @@ export async function initDB() {
   const SQL = await initSqlJs({ locateFile: f => `lib/${f}` });
   _SQL = SQL;
   _persistFailed = false; // fresh boot starts with a clean persist state
+  await _idbSettle(); // re-init (tests, future callers) must not strand an in-flight persist
+  _useIDB = await storageInit();
 
+  if (_useIDB) {
+    // If the stored blob can't even be READ, drop to localStorage mode for
+    // this boot rather than treating IDB as empty — a blind fresh-schema
+    // persist could overwrite a database we simply failed to read.
+    let bytes;
+    try {
+      bytes = await blobGet(IDB_DB_KEY);
+    } catch (_) {
+      _useIDB = false;
+    }
+    if (_useIDB) return await _initFromIDB(SQL, bytes);
+  }
+
+  return _initFromLS(SQL);
+}
+
+// Boot in IDB mode. `bytes` is the stored DB (Uint8Array) or null.
+async function _initFromIDB(SQL, bytes) {
+  if (bytes) {
+    try {
+      _db = new SQL.Database(bytes instanceof Uint8Array ? bytes : _decodeDB(bytes));
+      _migrate();
+      _syncExercises();
+      return null;
+    } catch (_) {
+      // Same contract as the LS path: never silently replace. The blob stays
+      // in IDB so every reload returns to the recovery screen; the download
+      // blob is base64 so dbValidateBackup can round-trip it.
+      _db = null;
+      const b64 = typeof bytes === 'string' ? bytes : _encodeDB(bytes);
+      return { blob: b64, quarantineKey: await _quarantineIDB(bytes) };
+    }
+  }
+
+  // Empty IDB: one-time adoption of the localStorage DB, unless the marker
+  // says it already happened (then the LS copy is a stale frozen snapshot).
+  const saved = localStorage.getItem(MIGRATED_KEY) ? null : localStorage.getItem(DB_KEY);
+  if (saved) {
+    try {
+      _db = new SQL.Database(_decodeDB(saved));
+      _migrate();
+      _syncExercises();
+    } catch (_) {
+      // The legacy blob itself is corrupt — quarantine stays in localStorage
+      // (it never reached IDB).
+      _db = null;
+      return { blob: saved, quarantineKey: _quarantine(saved) };
+    }
+    try {
+      await blobPut(IDB_DB_KEY, _db.export());
+      localStorage.setItem(MIGRATED_KEY, String(Date.now()));
+      // gymops_db deliberately stays in localStorage, frozen: it's the
+      // rollback path if 5.4 has to be reverted. Removed only by Clear All.
+    } catch (_) {
+      // Adoption put failed — every subsequent write retries via _persist();
+      // the marker is also set on the first successful persist.
+    }
+    return null;
+  }
+
+  _db = new SQL.Database();
+  _createSchema();
+  _syncExercises();
+  _persist(); // make sure a fresh install lands in IDB even if _syncExercises had nothing to write
+  return null;
+}
+
+// Boot in legacy localStorage mode (pre-5.4 behaviour, also the test path).
+function _initFromLS(SQL) {
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
     try {
@@ -79,10 +166,42 @@ function _quarantine(blob) {
   return key;
 }
 
-// Recovery-screen "Start Fresh": drops the unreadable gymops_db blob. The
-// quarantine copy is kept (only "Clear All Data" removes it). The page must
-// be reloaded afterwards — initDB() then creates a fresh schema.
-export function dbDiscardCorrupt() {
+// IDB flavour of _quarantine: copies the corrupt value to corrupt_<ts> inside
+// the blob store. Same dedupe-on-reload and tolerate-failure contract.
+async function _quarantineIDB(value) {
+  try {
+    const keys = (await blobKeys()).filter(k => String(k).startsWith(IDB_CORRUPT_PREFIX));
+    for (const k of keys) {
+      if (_blobEq(await blobGet(k), value)) return k;
+    }
+    const key = IDB_CORRUPT_PREFIX + Date.now();
+    await blobPut(key, value);
+    return key;
+  } catch (_) {
+    return null; // the blob still exists under IDB_DB_KEY and in memory
+  }
+}
+
+function _blobEq(a, b) {
+  if (typeof a === 'string' || typeof b === 'string') return a === b;
+  if (!(a instanceof Uint8Array) || !(b instanceof Uint8Array) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+// Recovery-screen "Start Fresh": drops the unreadable DB blob. The quarantine
+// copy is kept (only "Clear All Data" removes it). The page must be reloaded
+// afterwards — initDB() then creates a fresh schema. In IDB mode the migration
+// marker is also set: the corrupt blob may have been the never-adopted
+// localStorage copy, and without the marker the next boot would re-adopt it
+// and loop straight back to the recovery screen.
+export async function dbDiscardCorrupt() {
+  if (_useIDB) {
+    await _idbSettle();
+    try { await blobDelete(IDB_DB_KEY); } catch (_) { /* reload will retry */ }
+    try { localStorage.setItem(MIGRATED_KEY, String(Date.now())); } catch (_) { /* quota */ }
+    return;
+  }
   localStorage.removeItem(DB_KEY);
 }
 
@@ -149,11 +268,23 @@ export function dbValidateBackup(text) {
   }
 }
 
-// Replaces the stored database with a validated backup blob. The current DB
-// is stashed under gymops_db_prerestore first (one slot, quota-tolerant) as a
-// last-ditch recovery layer under an already-confirmed destructive action.
-// The page must be reloaded afterwards — initDB() migrates old-schema backups.
-export function dbRestoreBackup(blob) {
+// Replaces the stored database with a validated backup blob (base64/legacy
+// string from the backup file). The current DB is stashed first (one slot,
+// failure-tolerant) as a last-ditch recovery layer under an already-confirmed
+// destructive action. The page must be reloaded afterwards — initDB()
+// migrates old-schema backups. Throws if the final write fails (the caller
+// must not reload onto an unchanged database believing it restored).
+export async function dbRestoreBackup(blob) {
+  if (_useIDB) {
+    await _idbSettle();
+    try {
+      const current = await blobGet(IDB_DB_KEY);
+      if (current) await blobPut(IDB_PRERESTORE_KEY, current);
+    } catch (_) { /* proceed; the restore was explicitly confirmed */ }
+    await blobPut(IDB_DB_KEY, _decodeDB(blob));
+    try { localStorage.setItem(MIGRATED_KEY, String(Date.now())); } catch (_) { /* quota */ }
+    return;
+  }
   const current = localStorage.getItem(DB_KEY);
   if (current) {
     try {
@@ -495,6 +626,7 @@ export function dbGetAllExercises() {
 // working; the listener puts up the storage-full banner, and the next write's
 // persist is the retry. State-change notifications only — not one per write.
 function _persist() {
+  if (_useIDB) { _persistIDB(); return; }
   try {
     localStorage.setItem(DB_KEY, _encodeDB(_db.export()));
     if (_persistFailed) {
@@ -507,6 +639,56 @@ function _persist() {
       _persistListener?.(true);
     }
   }
+}
+
+// Async IDB persist with coalescing: the export snapshot is taken
+// synchronously at call time (same guarantee as the LS path — safe relative
+// to _runInsert's rowid read), the put runs in the background. If a put is
+// already in flight the write is marked dirty and re-exported after it lands,
+// so back-to-back logs collapse into at most one trailing write. Failures and
+// recovery drive the same 4.4 listener as the LS path.
+let _idbWriting = false;
+let _idbDirty = false;
+let _idbPersistPromise = null;
+
+// Waits until no persist is in flight (including coalesced re-runs). Called
+// before anything that reopens or rewrites the store underneath the persist
+// chain — initDB, Clear All, discard, restore — so a trailing write can't
+// race the operation (e.g. re-creating the DB right after Clear All wiped it).
+async function _idbSettle() {
+  while (_idbWriting) {
+    try { await _idbPersistPromise; } catch (_) { /* failure already recorded */ }
+  }
+}
+
+function _persistIDB() {
+  if (_idbWriting) { _idbDirty = true; return; }
+  _idbWriting = true;
+  _idbPersistPromise = blobPut(IDB_DB_KEY, _db.export())
+    .then(() => {
+      if (!localStorage.getItem(MIGRATED_KEY)) {
+        // Covers the edge where the initial adoption put failed: the first
+        // successful persist confirms IDB as the DB's home.
+        try { localStorage.setItem(MIGRATED_KEY, String(Date.now())); } catch (_) { /* quota */ }
+      }
+      if (_persistFailed) {
+        _persistFailed = false;
+        _persistListener?.(false);
+      }
+    })
+    .catch(() => {
+      if (!_persistFailed) {
+        _persistFailed = true;
+        _persistListener?.(true);
+      }
+    })
+    .finally(() => {
+      _idbWriting = false;
+      if (_idbDirty) {
+        _idbDirty = false;
+        _persistIDB();
+      }
+    });
 }
 
 // Base64-encodes the exported DB bytes (~1.33× the raw size). The previous
@@ -1087,10 +1269,21 @@ export function dbGetNextPlanDay(planId) {
 // Removes the database AND every other gymops_* localStorage key — credentials
 // (Anthropic API key, Drive OAuth token) and preferences included. "Clear All
 // Data" must leave nothing readable behind on a shared or handed-over device.
-export function dbClearAll() {
+export async function dbClearAll() {
+  // Settle BEFORE the key sweep: a trailing persist's success callback
+  // re-sets the migration marker (and re-writes the DB blob) — it must have
+  // finished before anything is deleted.
+  if (_useIDB) await _idbSettle();
   Object.keys(localStorage)
     .filter(k => k.startsWith('gymops_'))
     .forEach(k => localStorage.removeItem(k));
+  if (_useIDB) {
+    // Everything goes — DB, prerestore stash, quarantine copies — matching
+    // the "wipes ALL gymops data" contract of the pre-5.4 key sweep.
+    try {
+      for (const k of await blobKeys()) await blobDelete(k);
+    } catch (_) { /* localStorage keys (incl. the migration marker) are already gone */ }
+  }
 }
 
 // ── CSV Export ────────────────────────────────────────
