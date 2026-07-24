@@ -145,4 +145,31 @@ describe('rename (the point of 5.1)', () => {
   it('returns false for an unknown exercise_id', () => {
     expect(dbRenameExercise(99999, 'Ghost')).toBe(false);
   });
+
+  it('renaming a catalogue exercise flips is_custom (5.7 blocker decision)', () => {
+    expect(dbGetExercise('Chest Press').is_custom).toBe(0);
+    const id = dbGetExercise('Chest Press').exercise_id;
+
+    expect(dbRenameExercise(id, 'Chest Press')).toBe(true); // no-op save: flag untouched
+    expect(dbGetExercise('Chest Press').is_custom).toBe(0);
+
+    expect(dbRenameExercise(id, 'Chest Press Mk2')).toBe(true); // real rename: flag flips
+    expect(dbGetExercise('Chest Press Mk2').is_custom).toBe(1);
+    expect(dbGetExercise('Chest Press Mk2').exercise_id).toBe(id);
+  });
+
+  it('a re-synced boot re-seeds the vacated catalogue name as a fresh, historyless row', async () => {
+    const id = dbGetExercise('Chest Press').exercise_id;
+    dbInsertSet(dbCreateSession('kg'), 'Chest Press', 1, 60, 8, null, null, 'kg');
+    dbRenameExercise(id, 'Chest Press Mk2');
+
+    await initDB(); // re-reads the persisted DB and re-runs _syncExercises
+
+    const reseeded = dbGetExercise('Chest Press');
+    expect(reseeded).not.toBeNull();
+    expect(reseeded.exercise_id).not.toBe(id);
+    expect(reseeded.is_custom).toBe(0);
+    // History stayed with the renamed identity, not the reseeded slot
+    expect(dbGetExercise('Chest Press Mk2').exercise_id).toBe(id);
+  });
 });

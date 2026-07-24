@@ -11,7 +11,7 @@
 // with a repo-level upgrade (bump CACHE then) and re-downloading ~1.2MB of
 // wasm on every open would be waste.
 
-const CACHE = 'gymops-v89';
+const CACHE = 'gymops-v90';
 
 const ASSETS = [
   '/',

@@ -256,6 +256,7 @@
       <div class="settings-header">
         <button class="btn-text" id="btn-exercise-history-back">← Back</button>
         <span class="settings-title" id="exercise-history-title">Exercise</span>
+        <button class="btn-text" id="btn-rename-exercise">Rename</button>
       </div>
       <div class="history-stats-row">
         <div class="history-stat">
@@ -579,6 +580,31 @@
       <div class="modal-actions">
         <button class="btn-primary btn-large" id="btn-do-export">Export CSV</button>
         <button class="btn-text modal-cancel" id="btn-cancel-export">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       RENAME EXERCISE (5.7)
+  ════════════════════════════════════ -->
+  <div id="rename-exercise-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="rename-exercise-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Rename exercise</p>
+      <input
+        type="text"
+        id="rename-exercise-input"
+        class="set-input other-name-input"
+        placeholder="Exercise name"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <p class="input-error hidden" id="rename-exercise-error"></p>
+      <div class="modal-actions">
+        <button class="btn-primary" id="btn-rename-exercise-save">Save</button>
+        <button class="btn-text modal-cancel" id="btn-rename-exercise-cancel">Cancel</button>
       </div>
     </div>
   </div>

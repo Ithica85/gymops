@@ -2,9 +2,9 @@
 // GymOps — Exercise history: list screen, per-exercise detail, inline SVG chart
 // ═══════════════════════════════════════════════════════
 
-import { dbGetExerciseSessionHistory, dbGetExercisesWithHistory } from './db.js';
+import { dbGetExercise, dbGetExerciseSessionHistory, dbGetExercisesWithHistory, dbRenameExercise } from './db.js';
 import { convertWeight, getWeightUnit, state } from './state.js';
-import { onScreenShow, showScreen } from './ui.js';
+import { onScreenShow, showScreen, showToast } from './ui.js';
 
 // Formats a date for history displays: "2 Jul", with the year appended
 // only when it differs from the current year ("2 Jul 2025").
@@ -234,10 +234,15 @@ function renderHistorySessions(rows, weighted, unit) {
   });
 }
 
+// Name of the exercise currently shown on the detail screen — the rename
+// modal's only source of truth for which identity it's editing (5.7).
+let _currentExercise = null;
+
 // Opens the detail screen for one exercise: stat tiles, chart, session list.
 // An exercise charts weight when any session has weight data, otherwise duration —
 // data presence decides, so custom "Other" cardio names chart correctly too.
 function openExerciseHistory(exercise) {
+  _currentExercise = exercise;
   document.getElementById('exercise-history-title').textContent = exercise;
 
   const rows     = dbGetExerciseSessionHistory(exercise);
@@ -284,6 +289,45 @@ function openExerciseHistory(exercise) {
   renderHistoryChart(points, unitLabel);
   renderHistorySessions(rows, weighted, unit);
   showScreen('exercise-history');
+}
+
+// ── Rename (5.7) ──────────────────────────────────────
+// `dbRenameExercise` throws on a name clash or empty input; both are shown
+// inline in the modal rather than as a toast, since the user is actively
+// mid-edit. Success re-runs openExerciseHistory under the new name — history
+// follows through the denormalised exercise column dbRenameExercise updated,
+// so the detail screen and its chart are already correct.
+
+export function openRenameExercise() {
+  if (!_currentExercise) return;
+  document.getElementById('rename-exercise-input').value = _currentExercise;
+  document.getElementById('rename-exercise-error').classList.add('hidden');
+  document.getElementById('rename-exercise-modal').classList.remove('hidden');
+}
+
+export function closeRenameExercise() {
+  document.getElementById('rename-exercise-modal').classList.add('hidden');
+}
+
+export function confirmRenameExercise() {
+  const input   = document.getElementById('rename-exercise-input');
+  const errorEl = document.getElementById('rename-exercise-error');
+  const current = dbGetExercise(_currentExercise);
+  if (!current) { closeRenameExercise(); return; }
+
+  let newName;
+  try {
+    newName = String(input.value ?? '').trim();
+    dbRenameExercise(current.exercise_id, newName);
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  closeRenameExercise();
+  showToast(`Renamed to "${newName}"`);
+  openExerciseHistory(newName);
 }
 
 // ── AI Session Summary ────────────────────────────────

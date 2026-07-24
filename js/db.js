@@ -594,6 +594,16 @@ function _exerciseId(name, type) {
 // identity row plus the denormalised name copies on sets and plan_exercises.
 // History cannot orphan — exercise_id never changes. Throws on a name that
 // already belongs to a different exercise.
+//
+// 5.7 blocker decision: an actual rename (name changes) always sets
+// is_custom = 1, even for a catalogue exercise. Reason — _syncExercises seeds
+// any EXERCISES entry whose name has no row; renaming "Bench Press" away
+// leaves that name unclaimed, so next boot re-seeds it as a fresh, historyless
+// catalogue row. is_custom marks the renamed row as no longer literally the
+// catalogue entry (the vacated name simply becomes available again — a
+// deliberate fork, not a bug). Renaming to the current name (no-op save) must
+// NOT flip the flag, so a stock catalogue exercise stays is_custom = 0 when
+// its name doesn't actually change.
 export function dbRenameExercise(exerciseId, newName) {
   const name = String(newName ?? '').trim();
   if (!name) throw new Error('Enter a name.');
@@ -601,9 +611,13 @@ export function dbRenameExercise(exerciseId, newName) {
   if (clash && clash.exercise_id !== exerciseId) {
     throw new Error('An exercise with that name already exists.');
   }
-  const row = _one('SELECT exercise_id FROM exercises WHERE exercise_id = ?', [exerciseId]);
+  const row = _one('SELECT exercise_id, name FROM exercises WHERE exercise_id = ?', [exerciseId]);
   if (!row) return false;
-  _db.run('UPDATE exercises SET name = ? WHERE exercise_id = ?', [name, exerciseId]);
+  if (row.name !== name) {
+    _db.run('UPDATE exercises SET name = ?, is_custom = 1 WHERE exercise_id = ?', [name, exerciseId]);
+  } else {
+    _db.run('UPDATE exercises SET name = ? WHERE exercise_id = ?', [name, exerciseId]);
+  }
   _db.run('UPDATE sets SET exercise = ? WHERE exercise_id = ?', [name, exerciseId]);
   _db.run('UPDATE plan_exercises SET exercise = ? WHERE exercise_id = ?', [name, exerciseId]);
   _persist();

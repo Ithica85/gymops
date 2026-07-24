@@ -59,7 +59,7 @@ import {
   undoSet,
   updateLogEmphasis,
 } from './workout.js';
-import './history.js'; // side-effect import: registers the history screen hook
+import { closeRenameExercise, confirmRenameExercise, openRenameExercise } from './history.js';
 import {
   applyOtherPending,
   backFromOtherType,
@@ -314,6 +314,16 @@ async function boot() {
   document.getElementById('btn-history-idle').addEventListener('click', () => showScreen('history'));
   document.getElementById('btn-history-back').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-exercise-history-back').addEventListener('click', () => showScreen('history'));
+  document.getElementById('btn-rename-exercise').addEventListener('click', openRenameExercise);
+  document.getElementById('btn-rename-exercise-save').addEventListener('click', confirmRenameExercise);
+  document.getElementById('btn-rename-exercise-cancel').addEventListener('click', closeRenameExercise);
+  document.getElementById('rename-exercise-backdrop').addEventListener('click', closeRenameExercise);
+  document.getElementById('rename-exercise-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmRenameExercise();
+  });
+  document.getElementById('rename-exercise-input').addEventListener('input', () => {
+    document.getElementById('rename-exercise-error').classList.add('hidden');
+  });
 
   // Plans
   document.getElementById('btn-plans-idle').addEventListener('click', () => showScreen('plans'));
