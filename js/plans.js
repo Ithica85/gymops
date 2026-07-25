@@ -296,6 +296,25 @@ export function openNewPlan() {
   showScreen('plan-editor');
 }
 
+// Opens the editor pre-filled from an AI-generated draft (js/plan-import.js)
+// for the user to review, edit, and Save. A new-plan flow titled "Review Plan"
+// — it never auto-saves. draft.days are already in the _editingDays shape.
+export function openPlanFromDraft(draft) {
+  _editingPlanId = null;
+  _editingDays   = draft.days.length ? draft.days : [_newDay()];
+  document.getElementById('plan-editor-title').textContent    = 'Review Plan';
+  document.getElementById('plan-name-input').value            = draft.name ?? '';
+  document.getElementById('plan-duration-input').value        = draft.durationWeeks ?? '';
+  document.getElementById('plan-target-sessions-input').value = '';
+  document.getElementById('plan-obj-1').value                 = draft.objectives?.[0] ?? '';
+  document.getElementById('plan-obj-2').value                 = draft.objectives?.[1] ?? '';
+  document.getElementById('plan-obj-3').value                 = draft.objectives?.[2] ?? '';
+  document.getElementById('plan-save-error').classList.add('hidden');
+  document.getElementById('btn-archive-plan').classList.add('hidden');
+  renderPlanEditorDays();
+  showScreen('plan-editor');
+}
+
 function openEditPlan(planId) {
   const plan = dbGetPlan(planId);
   if (!plan) return;

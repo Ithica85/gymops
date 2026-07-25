@@ -1455,6 +1455,30 @@ body {
   color: var(--muted);
 }
 
+/* AI routine import sheet */
+.plan-import-hint {
+  margin: -4px 0 12px;
+}
+
+.plan-import-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: var(--font);
+  outline: none;
+  resize: vertical;
+  -webkit-appearance: none;
+}
+
+.plan-import-input:focus { border-color: var(--accent); }
+.plan-import-input::placeholder { color: var(--muted); }
+
+#btn-plan-import-generate[disabled] { opacity: 0.6; }
+
 .plan-duration-row {
   display: flex;
   align-items: center;

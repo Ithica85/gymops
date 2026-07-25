@@ -86,6 +86,7 @@ import {
   setWeightUnit,
 } from './settings.js';
 import { generateAISummary, hideAISummaryModal } from './ai.js';
+import { openPlanImport, closePlanImport, importPlanFromPrompt } from './plan-import.js';
 
 // Closes the frontmost open overlay for the Back-button handler (js/ui.js).
 // Returns true if it closed one. The PR overlay and the picker route through
@@ -349,6 +350,10 @@ async function boot() {
   document.getElementById('btn-plans-idle').addEventListener('click', () => showScreen('plans'));
   document.getElementById('btn-plans-back').addEventListener('click', () => showScreen('idle'));
   document.getElementById('btn-new-plan').addEventListener('click', openNewPlan);
+  document.getElementById('btn-import-plan').addEventListener('click', openPlanImport);
+  document.getElementById('btn-plan-import-generate').addEventListener('click', importPlanFromPrompt);
+  document.getElementById('btn-plan-import-cancel').addEventListener('click', closePlanImport);
+  document.getElementById('plan-import-backdrop').addEventListener('click', closePlanImport);
   document.getElementById('btn-plan-editor-back').addEventListener('click', () => showScreen('plans'));
   document.getElementById('btn-save-plan').addEventListener('click', savePlan);
   document.getElementById('btn-archive-plan').addEventListener('click', archiveCurrentPlan);

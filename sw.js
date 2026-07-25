@@ -11,7 +11,7 @@
 // with a repo-level upgrade (bump CACHE then) and re-downloading ~1.2MB of
 // wasm on every open would be waste.
 
-const CACHE = 'gymops-v91';
+const CACHE = 'gymops-v92';
 
 const ASSETS = [
   '/',
@@ -29,6 +29,7 @@ const ASSETS = [
   '/js/history.js',
   '/js/settings.js',
   '/js/ai.js',
+  '/js/plan-import.js',
   '/js/db.js',
   '/js/gdrive.js',
   '/lib/sql-wasm.js',

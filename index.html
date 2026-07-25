@@ -172,6 +172,7 @@
         <!-- populated by JS -->
       </div>
       <button class="btn-primary btn-large" id="btn-new-plan">New Plan</button>
+      <button class="btn-secondary btn-large" id="btn-import-plan">✨ Import with AI</button>
       <div id="past-plans-list">
         <!-- populated by JS -->
       </div>
@@ -754,6 +755,24 @@
       <p class="modal-title">AI Summary</p>
       <p id="ai-summary-text" class="ai-summary-text"></p>
       <button class="btn-primary btn-large" id="btn-ai-summary-done">Done</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       IMPORT A ROUTINE WITH AI (bottom sheet)
+  ════════════════════════════════════ -->
+  <div id="plan-import-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="plan-import-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Import a routine with AI</p>
+      <p class="settings-hint plan-import-hint">Name a known routine or describe what you want. You'll review and edit it before saving.</p>
+      <textarea id="plan-import-input" class="plan-import-input" rows="3" placeholder="e.g. Matt Damon's Odyssey routine — or: 4-day upper/lower for hypertrophy"></textarea>
+      <p class="input-error hidden" id="plan-import-error"></p>
+      <div class="modal-actions">
+        <button class="btn-primary btn-large" id="btn-plan-import-generate">Generate</button>
+        <button class="btn-secondary" id="btn-plan-import-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 
