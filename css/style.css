@@ -346,6 +346,10 @@ body {
   font-size: 1.25rem;
   font-weight: 700;
   flex: 1;
+  min-width: 0; /* allow shrink so the Plan/Day chips + Change never overflow the row */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.2;
 }
 
@@ -1599,6 +1603,74 @@ body {
   padding: 4px 12px;
   cursor: pointer;
 }
+
+/* View-plan chip (active screen) — muted sibling of the accent day-chip */
+.plan-chip {
+  flex: 0 0 auto;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-family: var(--font);
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Current-plan viewer bottom sheet */
+.plan-view-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: -6px 0 12px;
+  flex-shrink: 0;
+}
+
+.plan-view-list {
+  list-style: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  margin: 0 0 8px;
+}
+
+.plan-view-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 1rem;
+}
+
+.plan-view-item:last-child { border-bottom: none; }
+
+.plan-view-status {
+  flex: 0 0 16px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.plan-view-ex {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-view-target {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.plan-view-item--current { color: var(--accent); font-weight: 600; }
+.plan-view-item--current .plan-view-status,
+.plan-view-item--current .plan-view-target { color: var(--accent); }
+
+.plan-view-item--done .plan-view-ex { color: var(--muted); }
+.plan-view-item--done .plan-view-status { color: var(--accent); }
 
 /* Day switcher bottom sheet */
 .day-switch-list {

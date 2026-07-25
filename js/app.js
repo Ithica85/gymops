@@ -23,7 +23,7 @@ import {
   initDB,
 } from './db.js';
 import { APP_VERSION, getRestSecs, getWeightUnit, localDateStr, state } from './state.js';
-import { downloadCSV, downloadFile, showScreen, showToast } from './ui.js';
+import { downloadCSV, downloadFile, initBackButton, showScreen, showToast } from './ui.js';
 import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
 import { dismissReminderBanner, getReminderEnabled, setReminderEnabled } from './idle.js';
 import {
@@ -40,6 +40,8 @@ import {
   logSet,
   openDaySwitch,
   openDaySwitchForStart,
+  openPlanView,
+  closePlanView,
   quickLogSet,
   renderActive,
   renderRecentSets,
@@ -85,6 +87,20 @@ import {
 } from './settings.js';
 import { generateAISummary, hideAISummaryModal } from './ai.js';
 
+// Closes the frontmost open overlay for the Back-button handler (js/ui.js).
+// Returns true if it closed one. The PR overlay and the picker route through
+// their own dismissers (timer cleanup / state reset); every other bottom sheet
+// is safely dismissed by hiding it — for the confirm modals that IS the cancel.
+function closeTopModal() {
+  const pr = document.getElementById('pr-celebration');
+  if (pr && !pr.classList.contains('hidden')) { dismissPRCelebration(); return true; }
+  const picker = document.getElementById('exercise-picker');
+  if (picker && !picker.classList.contains('hidden')) { closePicker(); return true; }
+  const open = [...document.querySelectorAll('.modal:not(.hidden)')];
+  if (open.length) { open[open.length - 1].classList.add('hidden'); return true; }
+  return false;
+}
+
 // Entry point. Initialises the DB, then wires up all event listeners.
 // Always shows the idle screen on load, even if an active session exists —
 // the user must explicitly tap "Resume" rather than being dropped into a session.
@@ -96,6 +112,10 @@ async function boot() {
     bootRecovery(corrupt);
     return;
   }
+
+  // Hardware/browser Back-button integration (set the history root before any
+  // navigation happens). closeTopModal dismisses the frontmost overlay.
+  initBackButton(closeTopModal);
 
   // Always show idle screen on boot
   const active = dbGetActiveSession();
@@ -346,6 +366,10 @@ async function boot() {
   document.getElementById('active-day-chip').addEventListener('click', openDaySwitch);
   document.getElementById('btn-day-switch-cancel').addEventListener('click', closeDaySwitch);
   document.getElementById('day-switch-backdrop').addEventListener('click', closeDaySwitch);
+
+  document.getElementById('btn-view-plan').addEventListener('click', openPlanView);
+  document.getElementById('btn-plan-view-close').addEventListener('click', closePlanView);
+  document.getElementById('plan-view-backdrop').addEventListener('click', closePlanView);
 
   // Completed screen
   document.getElementById('btn-resume').addEventListener('click', resumeLastWorkout);

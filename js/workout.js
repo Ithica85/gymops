@@ -278,16 +278,17 @@ function fmtTimedSet(set) {
     : `${set.duration_mins} min`;
 }
 
-// Updates the two input field placeholders to show last-session values as ghost text.
-// Matches by set_number so Set 1 shows Set 1's previous values, Set 2 shows Set 2's, etc.
-// Falls back to generic labels ('Weight', 'Reps') when no history exists for this set number.
+// Updates the two input field placeholders to show a suggested set as ghost text.
+// Reads the SAME reference as the quick-log button (computeQuickLogRef): last
+// session's top working set for the opener, then your carried-forward working
+// set — so the ghost placeholders and the quick-log button always agree.
+// Falls back to generic labels ('Weight', 'Reps') when there is no reference.
 export function updateInputFields() {
   const weightEl  = document.getElementById('input-weight');
   const repsEl    = document.getElementById('input-reps');
   const label1    = document.getElementById('label-field1');
   const label2    = document.getElementById('label-field2');
-  const lastSets  = dbGetLastSessionSetsForExercise(state.exercise);
-  const reference = lastSets.find(s => s.set_number === state.setNumber) ?? null;
+  const reference = computeQuickLogRef()?.set ?? null;
 
   if (state.exerciseType === 'timed') {
     label1.textContent   = 'Duration (mins)';
@@ -343,6 +344,7 @@ export function renderActive() {
   renderProgressionSignal(null); // clear any stale signal on exercise change / undo
   renderUpNext();
   renderDayChip();
+  renderPlanChip();
   // Show Rest button only after at least one set has been logged
   const hasSet = dbGetSetCount(state.sessionId) > 0;
   document.getElementById('btn-rest').classList.toggle('hidden', !hasSet);
@@ -411,6 +413,68 @@ export function openDaySwitchForStart() {
     return btn;
   }));
   document.getElementById('day-switch-modal').classList.remove('hidden');
+}
+
+// ── Current-plan viewer (active screen) ───────────────
+
+// Show the "Plan" chip (opens the read-only plan viewer) whenever this session
+// is linked to a plan — single- or multi-day.
+function renderPlanChip() {
+  const btn  = document.getElementById('btn-view-plan');
+  const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
+  btn.classList.toggle('hidden', !plan);
+}
+
+// Read-only bottom sheet listing the plan (day) you're training right now, with
+// targets, which exercises are already done this session, and the one you're on.
+// Backdrop tap closes; the sheet itself scrolls without dismissing (user
+// feedback 2026-07-25). Plan/exercise names are user text → textContent only.
+export function openPlanView() {
+  const plan = state.sessionId ? dbGetSessionPlan(state.sessionId) : null;
+  if (!plan) return;
+  renderPlanView(plan);
+  document.getElementById('plan-view-modal').classList.remove('hidden');
+}
+
+function renderPlanView(plan) {
+  document.getElementById('plan-view-title').textContent =
+    plan.day ? `${plan.name} · ${plan.day.name}` : plan.name;
+
+  const start = new Date(plan.start_date);
+  const week  = Math.floor((Date.now() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  document.getElementById('plan-view-sub').textContent =
+    plan.duration_weeks ? `Week ${week} of ${plan.duration_weeks}` : `Week ${week}`;
+
+  const list = document.getElementById('plan-view-list');
+  list.replaceChildren(...plan.exercises.map(ex => {
+    const done    = dbGetSetCountForExercise(state.sessionId, ex.exercise) > 0;
+    const current = ex.exercise === state.exercise;
+
+    const li = document.createElement('li');
+    li.className = 'plan-view-item'
+      + (current ? ' plan-view-item--current' : '')
+      + (done && !current ? ' plan-view-item--done' : '');
+
+    const status = document.createElement('span');
+    status.className = 'plan-view-status';
+    status.textContent = current ? '▸' : (done ? '✓' : '');
+
+    const name = document.createElement('span');
+    name.className = 'plan-view-ex';
+    name.textContent = ex.exercise;
+
+    const target = document.createElement('span');
+    target.className = 'plan-view-target';
+    if (ex.target_sets && ex.target_reps) target.textContent = `${ex.target_sets}×${ex.target_reps}`;
+    else if (ex.target_sets)              target.textContent = `${ex.target_sets} sets`;
+
+    li.append(status, name, target);
+    return li;
+  }));
+}
+
+export function closePlanView() {
+  document.getElementById('plan-view-modal').classList.add('hidden');
 }
 
 // Renders the full session log (all sets, newest first).
@@ -887,26 +951,40 @@ function _afterSetLogged(focus = true) {
 
 // ── PR celebration ────────────────────────────────────
 
-const PR_DISMISS_MS = 2600; // overlay auto-dismisses; tap dismisses sooner
+const PR_DISMISS_MS = 5000; // overlay auto-dismisses; tap dismisses sooner (was 2600 — felt too fleeting, user feedback 2026-07-25)
 
 let _prDismissTimer = null;
 
-// Short rising three-note fanfare (C5–E5–G5) via Web Audio — same pattern as
-// the rest timer's beepAlert, so sound is already an established app behaviour.
+// Rising fanfare via Web Audio — same pattern as the rest timer's beepAlert, so
+// sound is already an established app behaviour. Lengthened 2026-07-25 (user
+// feedback the moment was over too fast): a six-note ascending run (C5→G6) with
+// the final note held, ~1.4s total. Each note gets its own gain node so their
+// envelopes don't stomp each other.
 function _prFanfare() {
   try {
-    const ctx  = _getAudioCtx();
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    [[523.25, 0], [659.25, 0.12], [783.99, 0.24]].forEach(([freq, offset]) => {
+    const ctx = _getAudioCtx();
+    // [freq, startOffset, duration] — C5 E5 G5 C6 E6, then a held G6
+    const notes = [
+      [523.25, 0.00, 0.22],
+      [659.25, 0.14, 0.22],
+      [783.99, 0.28, 0.22],
+      [1046.50, 0.42, 0.24],
+      [1318.51, 0.56, 0.26],
+      [1567.98, 0.72, 0.60], // final note rings out
+    ];
+    for (const [freq, offset, dur] of notes) {
+      const gain = ctx.createGain();
+      gain.connect(ctx.destination);
       const osc = ctx.createOscillator();
       osc.connect(gain);
+      osc.type = 'triangle'; // softer, fuller than a plain sine for a celebratory tone
       osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.25, ctx.currentTime + offset);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.25);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + offset);
+      gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + dur);
       osc.start(ctx.currentTime + offset);
-      osc.stop(ctx.currentTime + offset + 0.25);
-    });
+      osc.stop(ctx.currentTime + offset + dur);
+    }
   } catch (e) { /* audio unavailable */ }
 }
 
@@ -946,7 +1024,7 @@ function celebratePR(displayWeight, unit, exercise) {
   }
 
   document.getElementById('pr-celebration').classList.remove('hidden');
-  if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+  if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 120, 60, 200]);
   _prFanfare();
   clearTimeout(_prDismissTimer);
   _prDismissTimer = setTimeout(dismissPRCelebration, PR_DISMISS_MS);
@@ -975,18 +1053,40 @@ function _resetQuickLogConfirm() {
   document.getElementById('btn-quick-log').classList.remove('quick-log-confirm');
 }
 
+// The "top" set of a list — the one to anchor a new session's opener to.
+// Reps exercises: the heaviest set (kg-normalised so mixed-unit history sorts
+// right); ties break toward more reps. Timed exercises (no weight): the longest
+// set. Returns null for an empty list.
+function _topSet(sets) {
+  if (!sets.length) return null;
+  if (sets[0].duration_mins != null) {
+    return sets.reduce((best, s) => ((s.duration_mins ?? 0) > (best.duration_mins ?? 0) ? s : best));
+  }
+  const kg = s => (s.unit === 'lbs' ? s.weight / 2.2046 : s.weight);
+  return sets.reduce((best, s) => {
+    const a = kg(s), b = kg(best);
+    if (a > b + 1e-9) return s;
+    if (a < b - 1e-9) return best;
+    return (s.reps ?? 0) > (best.reps ?? 0) ? s : best; // equal weight → heavier-feeling (more reps)
+  });
+}
+
 // Returns the reference set the quick-log button would insert, or null.
-// Preferred: the last completed session's set matching the current set number
-// ("Same as last time" — the same reference the ghost-text placeholders show).
-// Fallback: the most recent set logged for this exercise in the current session
-// ("Repeat last set" — covers doing more sets than last session, and first-ever
-// exercises from set 2 onward).
+// Order changed 2026-07-25 from strict set-number matching (user feedback):
+//   1. If a set is already logged for this exercise THIS session, carry that
+//      working weight forward ("Repeat last set") — so going heavier mid-session
+//      sticks (130 stays 130) instead of the button snapping back to last
+//      session's set N.
+//   2. Otherwise anchor the opening set to last session's TOP working set, not
+//      its opening set — "same as last time" means the weight you worked up to,
+//      so a new session starts where you left off, not at the light first set.
+// The ghost-text placeholders (updateInputFields) read the same reference, so
+// the two always agree.
 function computeQuickLogRef() {
-  const lastSets = dbGetLastSessionSetsForExercise(state.exercise);
-  const match    = lastSets.find(s => s.set_number === state.setNumber);
-  if (match) return { set: match, label: 'Same as last time' };
   const current = dbGetLastSetForExercise(state.sessionId, state.exercise);
   if (current) return { set: current, label: 'Repeat last set' };
+  const top = _topSet(dbGetLastSessionSetsForExercise(state.exercise));
+  if (top) return { set: top, label: 'Same as last time' };
   return null;
 }
 

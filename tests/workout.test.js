@@ -266,6 +266,40 @@ describe('cross-session behaviours', () => {
     expect(el('quick-log-label').textContent).not.toBe('✓ Logged');
     expect(el('btn-quick-log').classList.contains('quick-log-confirm')).toBe(false);
   });
+
+  it('opening quick-log anchors to last session\'s TOP set, not its opener (2026-07-25)', () => {
+    // Last session ramped 120 → 120 → 125: the opener was light, the top set 125.
+    startOnDefault();
+    typeAndLog('120', '10');
+    typeAndLog('120', '10');
+    typeAndLog('125', '8');
+    finishWorkout();
+    // New session, first set of the exercise → offer where you left off (125×8),
+    // not last session's set-1 (120). Old set-number matching would give 120.
+    startOnDefault();
+    setActiveExercise(DEFAULT_EXERCISE);
+    quickLogSet();
+    const [row] = dbGetAllSets(state.sessionId);
+    expect([row.weight, row.reps, row.set_number]).toEqual([125, 8, 1]);
+  });
+
+  it('quick-log carries a heavier mid-session working weight forward (2026-07-25)', () => {
+    // Last session: three flat sets at 100.
+    startOnDefault();
+    typeAndLog('100', '10');
+    typeAndLog('100', '10');
+    typeAndLog('100', '10');
+    finishWorkout();
+    // New session: user goes heavier on set 1, then quick-logs set 2. It must
+    // repeat the 110 they're actually lifting, not snap back to last session's
+    // set-2 (100), which was the bug.
+    startOnDefault();
+    setActiveExercise(DEFAULT_EXERCISE);
+    typeAndLog('110', '8');
+    quickLogSet();
+    const sets = dbGetAllSets(state.sessionId); // newest first
+    expect(sets.map(s => s.weight)).toEqual([110, 110]);
+  });
 });
 
 describe('session start chooser (5.3)', () => {
