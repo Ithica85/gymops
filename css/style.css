@@ -977,6 +977,11 @@ body {
   scrollbar-width: none;
   margin-bottom: 8px;
   padding-bottom: 2px;
+  /* A horizontal scroll container resolves its flex min-height to 0, so without
+     this the row is what gives when .modal-sheet hits max-height:72vh — at
+     375x667 with the full catalogue it collapsed to ~6px and the group filters
+     became untappable. Same guard .modal-handle / .modal-title already carry. */
+  flex-shrink: 0;
 }
 
 .picker-chips::-webkit-scrollbar { display: none; }
@@ -1700,20 +1705,30 @@ body {
 }
 
 /* Picker plan section */
-.picker-section-header {
+/* Compound selector: must outrank .exercise-list li's padding + border-bottom,
+   which would otherwise put section labels in list-row gutters and underline
+   them, making a non-interactive label read as a tappable row */
+.exercise-list li.picker-section-header {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 10px 16px 6px;
+  border-bottom: none;
   list-style: none;
   pointer-events: none;
 }
 
-.picker-divider {
+/* Compound selector: must outrank .exercise-list li's padding + border-bottom,
+   which would otherwise inflate this 1px hairline to a 29px filled slab
+   (height:1px can't shrink below the 14px/14px padding, and the background
+   fills the whole padding box) */
+.exercise-list li.picker-divider {
   list-style: none;
   height: 1px;
+  padding: 0;
+  border-bottom: none;
   background: var(--border);
   margin: 8px 0;
   pointer-events: none;
