@@ -1,0 +1,10 @@
+{
+  "projectId": "03b15266-52d5-4196-9649-c6567c844e31",
+  "projectName": "GymOps UI Reference",
+  "shape": "hand-authored",
+  "readmeHeader": ".design-sync/conventions.md",
+  "note": "GymOps has no compiled component library (vanilla HTML/CSS/JS, no build step, no runtime deps), so the design-sync converter path does not apply. This project is a hand-authored CARD CATALOGUE: preview HTML with @dsCard markers, plus a verbatim mirror of css/style.css. There is deliberately no _ds_bundle.js, no .d.ts and no .jsx — a design agent can read the conventions and styles here but cannot compose GymOps components, because none exist. Do not generate React wrappers to fill the gap: that would be a reimplementation and a second source of truth that drifts from css/style.css.",
+  "sourceOfTruth": "css/style.css",
+  "bundleLayout": "components/<Group>/<Name>/<Name>.html",
+  "syncAnchor": "none — _ds_sync.json is deliberately omitted; its hash recipe needs build facts this shape has no equivalent of, so every re-sync re-verifies from scratch"
+}
