@@ -1,6 +1,6 @@
 # GymOps — Agentic Product Vision
 
-*Written 2026-07-26. Companion: [PHASE4_CONSUMER_PLAN.md](PHASE4_CONSUMER_PLAN.md) (standing product frame, Phases 4–7). This document does not replace that plan; it proposes a post–Phase-6 optional track for agentic AI that must stay coherent with it.*
+*Written 2026-07-26. Companions: [PHASE4_CONSUMER_PLAN.md](PHASE4_CONSUMER_PLAN.md) (standing product frame, Phases 4–7) and [AGENTIC_REVIEW_REQUEST.md](AGENTIC_REVIEW_REQUEST.md) (the external-review brief sent against this document). This document does not replace that plan; it proposes a post–Phase-6 optional track for agentic AI that must stay coherent with it.*
 
 **Status:** Draft, revised 2026-07-26 after review. Not scheduled work. No implementation commitment until this document is accepted (or revised) and Phase 6 success criteria remain on track.
 
