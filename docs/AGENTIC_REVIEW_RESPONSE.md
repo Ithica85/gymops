@@ -178,4 +178,23 @@ Those are exactly the defects this revision criticised in the first draft — *s
 
 **The practical consequence is small right now**, and worth saying plainly: 6.1 shipped today, so the gate reduces to **6.2**. Nothing on this ladder was going to be built before import anyway. The patches cost a document pass and buy a spine that won't quietly authorise the wrong work in three weeks.
 
-**Recommended change set, in one commit:** patch the vision (P1–P11), patch `PHASE4_CONSUMER_PLAN.md` §2 (P12), merge `docs/agentic-vision` to `main`, add the pointer from CLAUDE.md, and delete the CLAUDE.md "Agentic AI ideas" block. The branch existed to preserve a review diff; that review has happened.
+**Recommended change set, in one commit:** patch the vision (P1–P11), patch `PHASE4_CONSUMER_PLAN.md` §2 (P12), merge `docs/agentic-vision` to `main`, add the pointer from CLAUDE.md, and delete the CLAUDE.md "Agentic AI ideas" block. The branch existed to preserve a review diff; that review has happened. — **Done 2026-07-26, commit `273675d`.**
+
+---
+
+## Round 2 — confirmation pass (2026-07-26)
+
+The reviewer's close position: *"The document is good enough to be the spine. The triage was accurate; promotions of A8 and A14 were right; your four pushbacks are mostly right."* Two findings survived.
+
+| ID | Verdict | Disposition |
+|----|---------|-------------|
+| **B1** | ✅ **Accepted, structurally — citation pending.** The reviewer hardened the voice question with a WebKit source and a cheaper canary path. The canary is obviously right and is applied: a feature-detection check on an installed iOS instance costs minutes, and running the 20-trial protocol before it is how a platform question becomes a wasted sprint. **The WebKit citation itself has not been recorded** — it is not written into the doc unverified; §5 carries a marked pending-citation block instead. If the source is firm, voice is dropped without running even the canary. | `PATCHED` §5 (two-stage gate) · `OPEN` — record the citation, then close |
+| **B2** | ✅ **Accepted — a real leftover, and our error.** The A8 patch removed "the deterministic half is Agent 1 *inside* 6.2" from §5 but left the identical claim standing in §8 Q2. A finding closed in one place and left open in another — exactly the failure mode the round-2 brief asked them to look for. | `PATCHED` §8 Q2 — ownership now stated unambiguously |
+
+**Also corrected (self-caught alongside B2):** CLAUDE.md's docs map described the vision as *"accepted 2026-07-26"* while §9 was unticked. Now reads as a proposal with the §9 checklist outstanding, and notes that the §4 gate binds regardless of acceptance.
+
+**Owner actions outstanding:**
+
+1. ~~Patch §8 Q2 (B2)~~ — done.
+2. **Tick §9 when you mean it.** Deliberately left unticked; acceptance is an owner act, not a reviewer's or an author's.
+3. **Build 6.2**, with the import snapshot + tested undo required by A6. Everything else on this ladder waits on it.

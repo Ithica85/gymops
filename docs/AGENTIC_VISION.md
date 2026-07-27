@@ -181,7 +181,14 @@ Conversely, history Q&A chat was the first user-visible rung and is now the last
 
 **Hard dependency:** voice name-resolution goes through the **6.2 alias layer**. No v0 that mints a custom exercise on a near-miss — that fragments history, which is the opposite of the brand.
 
-**Spike protocol (pass/fail, before any voice commitment):** installed A2HS on current iOS, gym-like ambient noise, push-to-talk *"bench one hundred for eight"*, 20 trials. **Pass = correct fields ≥80% and zero Layer 1 blockage when permission is denied.** Fail → voice drops from this rung. (Installed-iOS standalone speech support is *unresolved*, not known-broken — which is why this is a spike and not a deletion.)
+**Spike gate — two stages, cheapest first** *(restructured after round-2 review, B1)*:
+
+1. **Canary — minutes, not a build.** On an installed A2HS instance of current iOS: does `SpeechRecognition` / `webkitSpeechRecognition` exist, start, and return a single result at all in standalone display mode? If it does not, **voice is dropped here** — no protocol, no build, no further cost.
+2. **Full protocol — only if the canary passes.** Gym-like ambient noise, push-to-talk *"bench one hundred for eight"*, 20 trials. **Pass = correct fields ≥80% and zero Layer 1 blockage when permission is denied.**
+
+Running stage 2 before stage 1 is how a platform question becomes a wasted sprint.
+
+> **Pending citation.** The round-2 review reports a WebKit statement that `SpeechRecognition` is unavailable in home-screen web apps. That source has not yet been recorded here. **If it is firm, stage 1 is a formality and voice can be dropped without running it** — cite it in this block and close the item.
 
 **Exit:**
 
@@ -320,7 +327,7 @@ Resolved below against the consumer bar (§1) and the BYOK sunset (§4.1). Owner
 
 **1. Chat vs single-shot UI → one-shot cards.** Not close. Cards match the existing bottom-sheet language, bound cost per action (now *your* cost), and give each surface a testable grounding bar. A persistent thread invites open-ended training questions — precisely the coaching positioning §2 refuses — and is the surface most likely to contradict F-03/F-06. Chat lives at Agent 3 behind the cost gate, if ever.
 
-**2. Agent 2 vs 6.2 sequencing → deterministic first, model as fallback.** 6.2 ships hard-coded parsers for the known Strong/Hevy formats (stable, documented, the majority of real imports); the model mapper sits behind them for unrecognised formats only. This keeps the stranger test passing at zero cost, makes the common path fixture-testable, and resolves the §4-vs-§8 sequencing tension in the first draft: the deterministic half is Agent 1 *inside* 6.2, the fallback is Agent 2 *after* it.
+**2. Agent 2 vs 6.2 sequencing → deterministic first, model as fallback.** 6.2 ships hard-coded parsers for the known Strong/Hevy formats (stable, documented, the majority of real imports); the model mapper sits behind them for unrecognised formats only. This keeps the stranger test passing at zero cost and makes the common path fixture-testable. **Ownership is unambiguous: the deterministic parsers are 6.2, wholly and only — they are not a rung of this ladder.** The model fallback is Agent 2, and it starts after 6.2 ships. *(An earlier revision described the deterministic half as "Agent 1 inside 6.2" — the exact dual-ownership §5 was patched to remove. The patch closed it in §5 and missed it here; caught in the round-2 review as B2.)*
 
 **3. Memory → strictly post–Agent 3, with one carve-out.** Accepted/rejected *proposal outcomes* may be stored from Agent 2 as plain local data, so a rejected merge isn't re-suggested. Preference memory (“I hate machine rows”) is coaching-by-accumulation on an instalment plan — hold it. The proposal-outcome store declares its schema and **which reset path clears it** (`dbClearAll` vs `dbResetWorkoutData` — 6.8 made these different contracts) **at Agent 2 build time**, not as a footnote here.
 

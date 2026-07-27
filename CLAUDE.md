@@ -37,7 +37,7 @@ GymOps is a mobile-first gym workout logger deployed as a PWA on Vercel (gymops-
 - `sw.js` — Service worker for PWA caching.
 - `manifest.json` — PWA manifest.
 - `lib/` — Vendored sql.js (sql-wasm.js + sql-wasm.wasm).
-- `docs/` — Planning documents (not app assets, not SW-cached): `PHASE4_CONSUMER_PLAN.md` (phase structure + success criteria for the consumer-product turn), `REVIEW_RESPONSE.md` (verdict + disposition for every external-review finding, IDs C1–P11), `AGENTIC_VISION.md` (**the single source for the agentic track** — ladder, refusals, exit bars, cost model; accepted 2026-07-26), and its review trail: `AGENTIC_REVIEW_REQUEST.md` (the brief sent out), `AGENTIC_VISION_REVIEW_GROK.md` (raw second-pass review, A1–A20), `AGENTIC_REVIEW_RESPONSE.md` (dispositions).
+- `docs/` — Planning documents (not app assets, not SW-cached): `PHASE4_CONSUMER_PLAN.md` (phase structure + success criteria for the consumer-product turn), `REVIEW_RESPONSE.md` (verdict + disposition for every external-review finding, IDs C1–P11), `AGENTIC_VISION.md` (**the single source for the agentic track** — ladder, refusals, exit bars, cost model. Patched against external review A1–A20 on 2026-07-26; **the §9 acceptance checklist is not yet ticked**, so treat it as a proposal, not the scheduled backlog. Its §4 gate binds regardless: no user-visible agent surface before 6.2 ships), and its review trail: `AGENTIC_REVIEW_REQUEST.md` (the brief sent out), `AGENTIC_VISION_REVIEW_GROK.md` (raw second-pass review, A1–A20), `AGENTIC_REVIEW_RESPONSE.md` (dispositions).
 
 ## Database Schema
 
