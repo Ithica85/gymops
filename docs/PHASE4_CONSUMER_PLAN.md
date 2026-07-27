@@ -134,7 +134,7 @@ Explicitly parked. Each item has a reopen trigger, not a date:
 - **Cloud sync / accounts** — trigger: multi-device becomes a personal need or user demand exists. Naive version acceptable: account + encrypted blob.
 - **Store-wrapped native (Capacitor or similar)** — trigger: watch app desired, or iOS eviction bites despite backups.
 - **Watch app** — trigger: native decision made. Standing rule from competitor data: none until it can be *correct* — a half-built watch app is Hevy's biggest 1-star generator.
-- **Server-side AI (non-BYOK)** — trigger: monetization. Requires auth + rate limiting on `/api/ai-summary` first (see REVIEW_RESPONSE.md #H1).
+- **Server-side AI (non-BYOK)** — trigger: monetization, **or the BYOK sunset decision of 2026-07-26** (see AGENTIC_VISION.md §4.1 — retiring BYOK pulls this trigger on its own). Requires auth + rate limiting on `/api/ai-summary` first (see REVIEW_RESPONSE.md **#C4** — citation corrected 2026-07-26; #H1 is the exercise-identity finding, closed by 5.1).
 - **Push notifications** — trigger: backend exists for other reasons.
 
 ## 4. What success looks like overall
