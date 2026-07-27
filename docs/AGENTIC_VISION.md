@@ -188,7 +188,9 @@ Conversely, history Q&A chat was the first user-visible rung and is now the last
 
 Running stage 2 before stage 1 is how a platform question becomes a wasted sprint.
 
-> **Pending citation.** The round-2 review reports a WebKit statement that `SpeechRecognition` is unavailable in home-screen web apps. That source has not yet been recorded here. **If it is firm, stage 1 is a formality and voice can be dropped without running it** — cite it in this block and close the item.
+> **Platform statement of record.** WebKit bug **225298** (comment 3) carries a WebKit engineer's statement that `SpeechRecognition` is unavailable in Home Screen web apps. The bug is still **RESOLVED LATER**, with pings as recently as 2025 — deferred, not fixed.
+>
+> Treat that as a **strongly negative prior, not a guarantee**: it is a statement of platform intent, not a live capability test on current iOS. That gap is the entire reason stage 1 exists and the entire reason it stays cheap. If the canary confirms the bug, voice drops from this rung and its row in the table above is deleted rather than left as aspiration.
 
 **Exit:**
 
