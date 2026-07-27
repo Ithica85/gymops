@@ -57,6 +57,23 @@
         <span id="plan-nudge-text" class="plan-nudge-text"></span>
         <button class="btn-text reminder-dismiss" id="btn-plan-nudge-dismiss">✕</button>
       </div>
+      <!-- First-run orientation (6.1). Shown only with zero completed sessions,
+           until dismissed. Routed through IDLE_BANNERS so it can never stack
+           with a plan/reminder banner. -->
+      <div id="first-run-card" class="first-run-card hidden">
+        <p class="first-run-title">Welcome to GymOps</p>
+        <p class="first-run-body">The fastest way to log a lift — and your history never leaves this phone. No account, nothing uploaded.</p>
+        <p class="first-run-hint">Tap Start Workout, pick an exercise, log your first set. Everything else can wait.</p>
+        <button class="btn-text first-run-dismiss" id="btn-first-run-dismiss">Got it</button>
+      </div>
+      <!-- Install prompt (6.1). Deliberately withheld until the user has
+           finished a session — asking for a home-screen commitment before the
+           app has proved anything is how install prompts get dismissed. -->
+      <div id="install-card" class="install-card hidden">
+        <span id="install-text" class="install-text"></span>
+        <button class="btn-text install-action hidden" id="btn-install-app">Add</button>
+        <button class="btn-text reminder-dismiss" id="btn-install-dismiss">✕</button>
+      </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
       <!-- Pre-session day chooser link (5.3) — multi-day plans only -->

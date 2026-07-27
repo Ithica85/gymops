@@ -25,7 +25,15 @@ import {
 import { APP_VERSION, getRestSecs, getWeightUnit, localDateStr, state } from './state.js';
 import { downloadCSV, downloadFile, initBackButton, showScreen, showToast } from './ui.js';
 import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
-import { dismissReminderBanner, getReminderEnabled, setReminderEnabled } from './idle.js';
+import {
+  dismissFirstRunCard,
+  dismissInstallCard,
+  dismissReminderBanner,
+  getReminderEnabled,
+  initInstallPrompt,
+  setReminderEnabled,
+  triggerInstall,
+} from './idle.js';
 import {
   _doStartSession,
   beginSessionFlow,
@@ -236,6 +244,12 @@ async function boot() {
 
   // Plan nudge banner
   document.getElementById('btn-plan-nudge-dismiss').addEventListener('click', dismissPlanNudge);
+
+  // First-run orientation + install prompt (6.1)
+  document.getElementById('btn-first-run-dismiss').addEventListener('click', dismissFirstRunCard);
+  document.getElementById('btn-install-dismiss').addEventListener('click', dismissInstallCard);
+  document.getElementById('btn-install-app').addEventListener('click', triggerInstall);
+  initInstallPrompt(); // must be early — beforeinstallprompt fires once and isn't replayed
 
   // Settings
   document.getElementById('settings-version').textContent = 'GymOps ' + APP_VERSION;

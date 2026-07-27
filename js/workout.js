@@ -319,7 +319,9 @@ function renderLastSession() {
   const sets = dbGetLastSessionSetsForExercise(state.exercise);
 
   if (!sets.length) {
-    el.textContent = 'Last session: No history';
+    // 6.1: "No history" read as an error to a first-time user. State the
+    // situation instead — this is the normal case for every new exercise.
+    el.textContent = 'First time logging this exercise';
     return;
   }
 

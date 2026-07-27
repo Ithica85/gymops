@@ -2154,3 +2154,73 @@ body {
   color: var(--text);
   text-align: left;
 }
+
+/* ═══════════════════════════════════
+   FIRST RUN + INSTALL (6.1)
+════════════════════════════════════ */
+
+/* Orientation card. Deliberately quieter than the plan-nudge banner (no accent
+   border): it is context, not a call to action — the lime Start button below
+   it must stay the loudest thing on a first-run screen. */
+.first-run-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.first-run-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.first-run-body {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.first-run-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* Compound selector: must outrank .btn-text's accent colour, declared earlier */
+.btn-text.first-run-dismiss {
+  align-self: flex-end;
+  padding: 4px 0 0;
+  font-size: 0.85rem;
+}
+
+/* Install ask — same shape as the plan-nudge banner so it reads as the same
+   class of object, with the accent border since it does carry an action. */
+.install-card {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.install-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
+
+.btn-text.install-action {
+  flex-shrink: 0;
+  font-weight: 800;
+}

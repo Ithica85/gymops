@@ -110,6 +110,98 @@ export function computeReminderBanner() {
   };
 }
 
+// ── First-run orientation + install prompt (6.1) ──────
+//
+// Both are IDLE_BANNERS entries rather than standalone cards, so the "one
+// banner at a time, never stacked" rule holds for them too. They sit at
+// opposite ends of the priority list on purpose: orientation outranks
+// everything (a stranger with no history can't be shown a plan nudge anyway),
+// while the install ask is the lowest-value thing on the screen on any day a
+// time-sensitive banner has something to say.
+
+const FIRST_RUN_DISMISSED = 'gymops_first_run_dismissed';
+
+const INSTALL_DISMISSED   = 'gymops_install_dismissed';
+
+// Captured from `beforeinstallprompt` so the browser's own mini-infobar is
+// replaced by an ask we control the timing of. Null when the browser hasn't
+// offered one (iOS never does) or after the prompt has been spent.
+let _installPrompt = null;
+
+// Wired from app.js boot. The listener must be attached early — the event
+// fires once, shortly after load, and is not replayed.
+export function initInstallPrompt() {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // suppress Chrome's own infobar; we ask later, on our terms
+    _installPrompt = e;
+    checkIdleBanners(); // the card may have just become eligible
+  });
+  window.addEventListener('appinstalled', () => {
+    _installPrompt = null;
+    document.getElementById('install-card').classList.add('hidden');
+  });
+}
+
+function _isInstalled() {
+  return window.matchMedia?.('(display-mode: standalone)')?.matches === true ||
+    navigator.standalone === true; // iOS Safari's non-standard flag
+}
+
+function _isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent ?? '');
+}
+
+// Orientation card: shown until the user dismisses it or logs their first
+// session. Copy is static in the markup, so the render thunk is a no-op.
+export function computeFirstRunCard() {
+  if (localStorage.getItem(FIRST_RUN_DISMISSED)) return null;
+  if (dbGetLastCompletedSession()) return null; // they've trained — orientation is over
+  return () => {};
+}
+
+export function dismissFirstRunCard() {
+  document.getElementById('first-run-card').classList.add('hidden');
+  localStorage.setItem(FIRST_RUN_DISMISSED, Date.now().toString());
+}
+
+// Install card: only after a completed session (ask once the app has proved
+// something), only when not already installed, and only when we can actually
+// guide the user — a real prompt on Chromium, the Share-sheet instruction on
+// iOS. Any other browser gets nothing rather than advice we can't verify.
+export function computeInstallCard() {
+  if (localStorage.getItem(INSTALL_DISMISSED)) return null;
+  if (_isInstalled()) return null;
+  if (!dbGetLastCompletedSession()) return null;
+
+  const canPrompt = !!_installPrompt;
+  if (!canPrompt && !_isIOS()) return null;
+
+  return () => {
+    document.getElementById('install-text').textContent = canPrompt
+      ? 'Add GymOps to your home screen — opens like an app, works with no signal.'
+      : 'Add to your home screen: tap Share, then “Add to Home Screen”.';
+    document.getElementById('btn-install-app').classList.toggle('hidden', !canPrompt);
+  };
+}
+
+// A deferred prompt can only be used once, so the card is retired either way —
+// accepting installs, declining means they've answered the question.
+export async function triggerInstall() {
+  if (!_installPrompt) return;
+  const prompt = _installPrompt;
+  _installPrompt = null;
+  document.getElementById('install-card').classList.add('hidden');
+  try {
+    prompt.prompt();
+    await prompt.userChoice;
+  } catch (_) { /* prompt already consumed or dismissed by the browser */ }
+}
+
+export function dismissInstallCard() {
+  document.getElementById('install-card').classList.add('hidden');
+  localStorage.setItem(INSTALL_DISMISSED, Date.now().toString());
+}
+
 // ── Idle banners (mediator) ───────────────────────────
 
 // The idle screen shows at most ONE banner at a time. Entries are in priority
@@ -117,9 +209,11 @@ export function computeReminderBanner() {
 // banner is hidden. To add a banner, add an entry at the right priority —
 // no cross-banner visibility checks needed.
 export const IDLE_BANNERS = [
+  { id: 'first-run-card',     compute: computeFirstRunCard     },
   { id: 'plan-expiry-banner', compute: computePlanExpiryBanner },
   { id: 'plan-nudge-banner',  compute: computePlanNudgeBanner  },
   { id: 'reminder-banner',    compute: computeReminderBanner   },
+  { id: 'install-card',       compute: computeInstallCard      },
 ];
 
 // Evaluates all idle banners in priority order. Called on every idle screen
