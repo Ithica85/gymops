@@ -24,6 +24,9 @@ function renderHistoryScreen() {
 
   list.innerHTML = '';
   empty.classList.toggle('hidden', rows.length > 0);
+  // 6.2: the import offer rides with the empty state — someone with no
+  // history here may well have years of it in another app.
+  document.getElementById('btn-history-import').classList.toggle('hidden', rows.length > 0);
 
   rows.forEach(r => {
     const row = document.createElement('div');

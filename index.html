@@ -64,6 +64,10 @@
         <p class="first-run-title">Welcome to GymOps</p>
         <p class="first-run-body">The fastest way to log a lift — and your history never leaves this phone. No account, nothing uploaded.</p>
         <p class="first-run-hint">Tap Start Workout, pick an exercise, log your first set. Everything else can wait.</p>
+        <!-- The switcher's entry point. This is the moment someone arriving
+             from Strong or Hevy needs it — burying import in Settings is how
+             the stranger test fails. -->
+        <button class="btn-text first-run-import" id="btn-first-run-import">Coming from Strong or Hevy? Import your history →</button>
         <button class="btn-text first-run-dismiss" id="btn-first-run-dismiss">Got it</button>
       </div>
       <!-- Install prompt (6.1). Deliberately withheld until the user has
@@ -280,6 +284,9 @@
         <!-- populated by JS -->
       </div>
       <p class="history-empty hidden" id="history-empty">No completed sessions yet — finish a workout and your exercise history will appear here.</p>
+      <!-- Second discovery point: someone looking for history they already
+           have, in the place they'd look for it. -->
+      <button class="btn-text history-empty-import hidden" id="btn-history-import">Import from Strong or Hevy →</button>
     </div>
   </div>
 

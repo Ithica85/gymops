@@ -279,7 +279,12 @@ async function boot() {
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
   // Import from Strong / Hevy (6.2). Every stage lives in one sheet; the
   // hidden file input is triggered from the visible button.
+  // Three entry points, all the same flow: Settings (deliberate), the
+  // first-run card (a switcher's first minute), and the empty History screen
+  // (where someone goes looking for history they already have elsewhere).
   document.getElementById('btn-import-open').addEventListener('click', openImport);
+  document.getElementById('btn-first-run-import').addEventListener('click', openImport);
+  document.getElementById('btn-history-import').addEventListener('click', openImport);
   document.getElementById('btn-import-choose').addEventListener('click', () => {
     document.getElementById('import-file-input').click();
   });

@@ -2298,3 +2298,18 @@ body {
   border-color: var(--accent);
   color: #000;
 }
+
+/* Import entry points outside Settings (6.2). Compound selectors: both must
+   outrank .btn-text's accent colour and padding, declared earlier. */
+.btn-text.first-run-import {
+  align-self: flex-start;
+  padding: 2px 0;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.btn-text.history-empty-import {
+  display: block;
+  margin: 4px auto 0;
+  font-size: 0.85rem;
+}
