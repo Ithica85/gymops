@@ -12,10 +12,16 @@ import { storageInit, blobGet, blobPut, blobDelete, blobKeys } from './storage.j
 const DB_KEY = 'gymops_db';
 const CORRUPT_KEY_PREFIX = DB_KEY + '_corrupt_';
 const PRERESTORE_KEY = DB_KEY + '_prerestore';
+// 6.2: separate slot from prerestore. A bulk import is the largest
+// irreversible write in the app, and it must not consume the stash that the
+// restore flow depends on — a user who imports, then restores a backup, then
+// wants to undo the import would otherwise find one of the two snapshots gone.
+const PREIMPORT_KEY = DB_KEY + '_preimport';
 
 // IndexedDB keys (inside storage.js's single object store)
 const IDB_DB_KEY = 'db';
 const IDB_PRERESTORE_KEY = 'prerestore';
+const IDB_PREIMPORT_KEY = 'preimport';
 const IDB_CORRUPT_PREFIX = 'corrupt_';
 // localStorage marker set once the DB has landed in IDB. Its job: after
 // migration the old gymops_db blob stays in localStorage as a frozen rollback
@@ -292,6 +298,144 @@ export async function dbRestoreBackup(blob) {
     } catch (_) { /* quota — proceed; the restore was explicitly confirmed */ }
   }
   localStorage.setItem(DB_KEY, blob);
+}
+
+// ── CSV import (6.2) ──────────────────────────────────
+//
+// A bulk import writes years of sets and mints exercise identities. It is the
+// largest irreversible action in the app, so it is bracketed by a snapshot the
+// same way a restore is — taken BEFORE the first write, never after.
+
+// Stashes the current database so the whole import can be undone in one step.
+// Must be awaited before any import write begins.
+export async function dbSnapshotBeforeImport() {
+  if (_useIDB) {
+    await _idbSettle();
+    const current = await blobGet(IDB_DB_KEY);
+    if (current) await blobPut(IDB_PREIMPORT_KEY, current);
+    return;
+  }
+  const current = localStorage.getItem(DB_KEY);
+  // Unlike the restore path, a failed snapshot is FATAL here: restore is a
+  // deliberate swap the user already confirmed, but an import that cannot be
+  // undone is exactly what A6 forbids. Better to refuse the import.
+  if (current) localStorage.setItem(PREIMPORT_KEY, current);
+}
+
+export async function dbHasImportSnapshot() {
+  if (_useIDB) {
+    try { return (await blobGet(IDB_PREIMPORT_KEY)) != null; } catch (_) { return false; }
+  }
+  return localStorage.getItem(PREIMPORT_KEY) != null;
+}
+
+// Rolls the database back to the snapshot taken before the last import.
+// The caller reloads afterwards, exactly as restore does.
+export async function dbUndoImport() {
+  if (_useIDB) {
+    await _idbSettle();
+    const snap = await blobGet(IDB_PREIMPORT_KEY);
+    if (!snap) return false;
+    await blobPut(IDB_DB_KEY, snap);
+    await blobDelete(IDB_PREIMPORT_KEY);
+    return true;
+  }
+  const snap = localStorage.getItem(PREIMPORT_KEY);
+  if (!snap) return false;
+  localStorage.setItem(DB_KEY, snap);
+  localStorage.removeItem(PREIMPORT_KEY);
+  return true;
+}
+
+export async function dbDiscardImportSnapshot() {
+  if (_useIDB) {
+    try { await blobDelete(IDB_PREIMPORT_KEY); } catch (_) { /* nothing to drop */ }
+    return;
+  }
+  localStorage.removeItem(PREIMPORT_KEY);
+}
+
+// Insert that deliberately skips _persist. A single import can be thousands of
+// sets, and _runInsert's persist-per-row would mean thousands of full database
+// exports — minutes of work and a real chance of a quota failure mid-import.
+// Everything is written in memory and persisted once at the end.
+// Safe with last_insert_rowid() precisely BECAUSE it doesn't persist: it's
+// _db.export() inside _persist that resets the rowid.
+function _runInsertBulk(sql, params) {
+  _db.run(sql, params);
+  return _one('SELECT last_insert_rowid() AS id').id;
+}
+
+/**
+ * Writes parsed sessions (from js/import.js, with names already resolved) into
+ * the database. Call `dbSnapshotBeforeImport()` first — this function does not
+ * take the snapshot itself, so the caller cannot accidentally write without one.
+ *
+ * `sessions` is the parser's shape with each set's `exercise` already resolved
+ * to a final catalogue-or-custom name.
+ *
+ * Sessions whose start_time already exists are skipped, so re-importing the
+ * same file is a no-op rather than a doubling of history — the single most
+ * likely user error with a file-based import.
+ *
+ * Returns { sessions, sets, duplicateSessions }.
+ */
+export function dbImportSessions(sessions, { unit = 'kg' } = {}) {
+  const existing = new Set(_all('SELECT start_time FROM sessions').map(r => r.start_time));
+
+  // Local identity cache: avoids a SELECT per set, and creates custom rows
+  // without persisting. Resolved catalogue names already have rows (seeded by
+  // _syncExercises at boot), so only genuinely new names insert here.
+  const idCache = new Map();
+  const exerciseId = (name, type) => {
+    if (idCache.has(name)) return idCache.get(name);
+    const row = _one('SELECT exercise_id FROM exercises WHERE name = ?', [name]);
+    const id = row
+      ? row.exercise_id
+      : _runInsertBulk('INSERT INTO exercises (name, type, is_custom) VALUES (?, ?, 1)', [name, type]);
+    idCache.set(name, id);
+    return id;
+  };
+
+  let importedSessions = 0, importedSets = 0, duplicateSessions = 0;
+
+  for (const s of sessions) {
+    const startISO = s.startTime.toISOString();
+    if (existing.has(startISO)) { duplicateSessions++; continue; }
+    existing.add(startISO);
+
+    const sessionId = _runInsertBulk(
+      `INSERT INTO sessions (start_time, end_time, status, notes, default_unit)
+       VALUES (?, ?, 'completed', ?, ?)`,
+      [startISO, s.endTime ? s.endTime.toISOString() : null, s.notes || null, unit]
+    );
+
+    for (const set of s.sets) {
+      const type = set.durationMins != null ? 'timed' : 'reps';
+      const exId = exerciseId(set.exercise, type);
+      // Set timestamps use the SESSION's time, not now(). Stamping imported
+      // history with the import moment would collapse years of training onto
+      // one date and break every chart and progression query.
+      if (type === 'timed') {
+        _runInsertBulk(
+          `INSERT INTO sets (session_id, timestamp, exercise, exercise_id, set_number, duration_mins, unit)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [sessionId, startISO, set.exercise, exId, set.setNumber, set.durationMins, set.unit ?? unit]
+        );
+      } else {
+        _runInsertBulk(
+          `INSERT INTO sets (session_id, timestamp, exercise, exercise_id, set_number, weight, reps, unit)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [sessionId, startISO, set.exercise, exId, set.setNumber, set.weight, set.reps, set.unit ?? unit]
+        );
+      }
+      importedSets++;
+    }
+    importedSessions++;
+  }
+
+  _persist(); // the one and only write for the whole import
+  return { sessions: importedSessions, sets: importedSets, duplicateSessions };
 }
 
 // Creates the full schema on a brand-new database.
@@ -1308,6 +1452,11 @@ export async function dbResetWorkoutData() {
   _db.run('DELETE FROM exercises');
   _persist();
   _syncExercises(); // reseeds catalogue identity rows (persists again if it wrote)
+  // The import snapshot must not survive a reset: "Undo import" afterwards
+  // would restore the pre-reset database, silently undoing the reset itself.
+  // (6.8 made dbClearAll and this function different contracts — a new stash
+  // has to declare which one it obeys, and this one obeys both.)
+  await dbDiscardImportSnapshot();
   if (_useIDB) await _idbSettle(); // caller reloads — the wipe must have landed first
 }
 
