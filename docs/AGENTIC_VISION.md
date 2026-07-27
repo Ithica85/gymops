@@ -346,16 +346,20 @@ Resolved below against the consumer bar (§1) and the BYOK sunset (§4.1). Owner
 
 ## 9. Acceptance criteria for *this document*
 
-This vision is **accepted** when:
+✅ **ACCEPTED 2026-07-26** (owner sign-off, after two external review passes: A1–A20 and B1–B2).
 
-- [ ] Positioning and refusals are agreed (or explicitly amended in-place), including the five refusals added in this revision.
-- [ ] Agent 0–3 scope and exit bars are agreed as the ladder (not a commitment to build all four immediately).
-- [ ] Phase 6 priority is affirmed: **6.1 and 6.2 ship before any user-visible agent surface, Agent 1 included.** (6.1 shipped 2026-07-26; the live gate is 6.2.)
-- [ ] §8 answers accepted or amended; the provisional numbers in §6 are accepted as entry-gate values.
-- [ ] The BYOK sunset in §4.1 is accepted as a Phase 7 trigger, with the interim posture agreed (bounded free tier, no monetization yet).
-- [ ] CLAUDE.md / consumer plan gain a single pointer to this file — **and the CLAUDE.md “Agentic AI ideas” backlog block from 2026-07-23 is deleted**, not left alongside it. Two idea lists is how roadmaps drift.
+- [x] Positioning and refusals are agreed (or explicitly amended in-place), including the five refusals added in this revision. *No refusal was challenged in either review pass; all were reconfirmed.*
+- [x] Agent 0–3 scope and exit bars are agreed as the ladder (not a commitment to build all four immediately).
+- [x] Phase 6 priority is affirmed: **6.1 and 6.2 ship before any user-visible agent surface, Agent 1 included.** *(6.1 shipped 2026-07-26; the live gate is 6.2.)*
+- [x] §8 answers accepted; the provisional numbers in §6 are accepted as entry-gate values — **5 free model calls per install per month, $25/month global cap.**
+- [x] The BYOK sunset in §4.1 is accepted as a Phase 7 trigger, with the interim posture agreed (bounded free tier, no monetization yet).
+- [x] CLAUDE.md / consumer plan gain a single pointer to this file — **and the CLAUDE.md “Agentic AI ideas” backlog block from 2026-07-23 is deleted**, not left alongside it. *(Done, commit `273675d`.)*
 
-Until then: **draft only** — safe to review, not safe to treat as the backlog spine.
+**This document is now the spine for the agentic track.** What that does and does not mean:
+
+- It **does** mean this file is the single place agentic scope is decided. New ideas amend it; they do not accumulate elsewhere.
+- It **does not** authorise any build. The §4 gate is unchanged and binding: **no user-visible agent surface before 6.2 ships.** Agent 0 is the only thing buildable today, and even it is not scheduled.
+- The first real decision this document forces is not on the ladder at all — it is **6.2's import snapshot + tested undo** (A6), which binds regardless.
 
 ---
 
