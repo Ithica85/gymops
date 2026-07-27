@@ -7,7 +7,7 @@ Verdicts were established by checking each claim against the actual text of [AGE
 **Verdict key:** ✅ Accepted · 🟡 Partially accepted / overstated · ❌ Rejected · 📋 Confirmation only (no action)
 **Disposition key:** `PATCH-VISION` (must land before the doc is accepted) · `PATCH-PHASE4` · `SPIKE` · `BACKLOG` (post-accept) · `REFUSE`
 
-**Note on document location.** The vision lives on branch `docs/agentic-vision`; this response and the raw review are on `main`. That split existed so the reviewer could read the draft→revision diff. **That purpose is now served** — the patched vision should merge to `main` in the same change set, which also resolves the dangling cross-links and lands the `#H1 → #C4` citation fix.
+**Note on document location.** The vision previously lived on branch `docs/agentic-vision` so the reviewer could read the draft→revision diff. That purpose is served, so the branch was **merged to `main`** in the same change set as these patches — which also resolved the dangling cross-links and landed the `#H1 → #C4` citation fix. All five agentic documents now sit together in `docs/`.
 
 ---
 

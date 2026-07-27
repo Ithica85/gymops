@@ -2,7 +2,7 @@
 
 *Written 2026-07-26. The brief sent to the external reviewer (Grok) for a second-pass review of [AGENTIC_VISION.md](AGENTIC_VISION.md).*
 
-**Pinned to:** `AGENTIC_VISION.md` as of commit `101f90b` on branch `docs/agentic-vision`; branch head `34ae89a` at time of sending. Versioned alongside the document it reviews so a later reader can tell *what* was reviewed, not just what came back.
+**Pinned to:** `AGENTIC_VISION.md` as of commit `101f90b` on branch `docs/agentic-vision`; branch head `34ae89a` at time of sending. Versioned alongside the document it reviews so a later reader can tell *what* was reviewed, not just what came back. *(That branch was merged to `main` on 2026-07-26 once the review completed — the round-1 URLs below are historical and no longer resolve; the round-2 prompt further down uses `main`.)*
 
 **Prior context:** the same reviewer's first-pass deep review of the app produced [REVIEW_RESPONSE.md](REVIEW_RESPONSE.md) (findings C1–P11), which drove [PHASE4_CONSUMER_PLAN.md](PHASE4_CONSUMER_PLAN.md). This request is deliberately continuous with that: same output format, explicit list of already-closed findings, new IDs prefixed `A`.
 
@@ -116,6 +116,95 @@ recommendation. Separate "must fix before accepting the doc" from "worth
 doing later." Be blunt — I'd rather hear the strongest objection than a
 validated plan. If your view is that the whole agentic track is premature
 against Phase 6, say that plainly and make the case.
+```
+
+---
+
+## Round 2 — confirmation pass after the A1–A20 patches (2026-07-26)
+
+*Sent after triaging the second-pass review. Everything now lives on `main`; the `docs/agentic-vision` branch was merged once the review it existed to support had happened.*
+
+```
+Follow-up to your second-pass review of GymOps' AGENTIC_VISION.md (findings
+A1–A20). Your findings were triaged and the document has been patched. I want
+a confirmation pass, not a fresh review.
+
+## What to read
+
+Repo (public, all on main now): https://github.com/Ithica85/gymops
+
+- Patched vision: docs/AGENTIC_VISION.md — see the §11 revision log, second
+  table, which maps every change to the finding that caused it.
+- Our dispositions: docs/AGENTIC_REVIEW_RESPONSE.md — verdict + destination
+  for A1–A20, plus a section on where we think your review overstated.
+- Your raw review, for reference: docs/AGENTIC_VISION_REVIEW_GROK.md
+- Standing frame, now amended: docs/PHASE4_CONSUMER_PLAN.md §2
+
+## Outcome of the triage
+
+16 accepted, 3 partial, 0 rejected, 1 confirmation-only. We promoted two of
+your non-must-fix findings to must-fix: A8 (A1's gate is incoherent without
+it — Agent 1 cannot be gated behind 6.2 while containing 6.2) and A14
+(retiring BYOK before its replacement exists would brick the owner's own
+usage).
+
+Key changes:
+- A1: gate made absolute — no user-visible agent surface before 6.1 + 6.2,
+  Agent 1 included. (6.1 shipped 2026-07-26, so the live gate is 6.2 alone.)
+- A8: deterministic import re-homed to 6.2 only; the rung is now "Desk v0"
+  and explicitly declared non-agentic by construction.
+- A2/A7/A15: voice demoted from flagship to spike-gated stretch, your 20-trial
+  protocol adopted verbatim, economics corrected to "zero Anthropic spend"
+  rather than "free/offline", alias dependency made hard.
+- A3: identity model specified — opaque install credential (not an account:
+  no email, password or recovery), rate-limited per credential and per
+  IP/ASN, under a hard global monthly cap with a kill switch. Reinstall
+  leakage is accepted in writing; the global cap is named as the real bound.
+- A4/A13: provisional numbers written down — 15s timeout, 5 free model calls
+  per install per month, $25/month global cap, ≤1 session + 6 prior bests of
+  context. Agent 2 has a three-part entry gate.
+- A5: resolved as "consent gates egress, not features" — deterministic local
+  capabilities are on by default; model-backed ones are opt-in behind the 6.6
+  Settings-card pattern. Stranger test now explicitly requires only
+  deterministic help.
+- A6: import named as the larger irreversible action; prerestore-class
+  snapshot + tested undo required before any import ships, deterministic or
+  not. This binds 6.2 regardless of the vision.
+- A9: PHASE4 §2.1 and §2.2 amended in the same change set.
+- A10/A11/A12/A16/A17/A18/A19: exit bars, pre-send context disclosure, the
+  contradiction mechanism (signals as inputs), the weakened un-archive bar,
+  mic-denial bar, a "what this does not buy you" section, and the
+  generate-plan and memory-store notes.
+
+## Where we pushed back — please challenge if you still disagree
+
+1. A2 evidence: we accepted your recommendation but not the certainty. The
+   doc says installed-iOS speech is *unresolved*, not known-broken, and
+   spikes it. If you have a hard source that WebKit does not support
+   SpeechRecognition in home-screen web apps, we will drop voice outright
+   rather than spend a spike on it.
+2. A5 framing: we think the durable rule is narrower than "desk surfaces on
+   for first-run" — consent gates egress, not features. Does that hold?
+3. A8: we went further than your floor and re-homed deterministic import
+   entirely rather than just relabelling.
+4. A12: we took your weaker option and explicitly refused to build un-archive
+   UX until a user story asks for it.
+
+## What I want back
+
+1. Do the patches actually close A1–A6, A8, A9, A10, A14 — or did any patch
+   close a finding on paper while leaving the hole? Be specific about which.
+2. Did any patch introduce a new contradiction? The identity model (A3) and
+   the consent rule (A5) are the newest text and the least reviewed.
+3. Are the provisional numbers (5 calls/install/month, $25/month cap)
+   defensible, or wrong by an order of magnitude in either direction?
+4. Close call: is the document now acceptable as the backlog spine, given the
+   gate reduces to 6.2? If not, name the specific blocker.
+
+Same output format: numbered findings (use B1, B2, … for this pass),
+severity, claim, recommendation, split into "blocks acceptance" vs "later".
+If your answer to (4) is yes, say so plainly — I do not need findings
+manufactured to justify a third pass.
 ```
 
 ---
