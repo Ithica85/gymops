@@ -97,6 +97,16 @@ import {
   setWeightUnit,
 } from './settings.js';
 import { generateAISummary, hideAISummaryModal } from './ai.js';
+import {
+  closeImport,
+  confirmImport,
+  confirmImportUnit,
+  finishImport,
+  handleImportFile,
+  openImport,
+  setImportUnit,
+  undoImportNow,
+} from './import-ui.js';
 
 // Closes the frontmost open overlay for the Back-button handler (js/ui.js).
 // Returns true if it closed one. The PR overlay and the picker route through
@@ -267,6 +277,25 @@ async function boot() {
   });
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
+  // Import from Strong / Hevy (6.2). Every stage lives in one sheet; the
+  // hidden file input is triggered from the visible button.
+  document.getElementById('btn-import-open').addEventListener('click', openImport);
+  document.getElementById('btn-import-choose').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+  });
+  document.getElementById('import-file-input').addEventListener('change', e => {
+    handleImportFile(e.target.files?.[0]);
+  });
+  document.getElementById('import-modal').addEventListener('click', e => {
+    if (e.target.closest('.import-cancel')) closeImport();
+    const unitBtn = e.target.closest('[data-import-unit]');
+    if (unitBtn) setImportUnit(unitBtn.dataset.importUnit);
+  });
+  document.getElementById('btn-import-unit-next').addEventListener('click', confirmImportUnit);
+  document.getElementById('btn-import-confirm').addEventListener('click', confirmImport);
+  document.getElementById('btn-import-done').addEventListener('click', finishImport);
+  document.getElementById('btn-import-undo').addEventListener('click', undoImportNow);
+
   // Google Drive connect / disconnect (6.6). The Settings screen is the only
   // place that may trigger Google's consent flow — never session finish.
   document.getElementById('btn-gdrive-connect').addEventListener('click', connectGDrive);

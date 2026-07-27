@@ -2224,3 +2224,77 @@ body {
   flex-shrink: 0;
   font-weight: 800;
 }
+
+/* ═══════════════════════════════════
+   IMPORT FLOW (6.2)
+════════════════════════════════════ */
+
+/* Stage container — sheet content swaps in place rather than the sheet
+   resizing between four separate modals. */
+.import-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Multi-line stats block. pre-line so the summary reads as a short list
+   without an extra element per line (same trick as plan adherence). */
+.import-summary {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-line;
+  text-align: left;
+}
+
+/* The unresolved-name list. Capped and scrollable: a messy export can produce
+   a lot of these, and the Import button must stay reachable without scrolling
+   the whole sheet past it. */
+.import-decisions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 34vh;
+  overflow-y: auto;
+}
+
+.import-decision {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.import-decision-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.import-decision-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.import-choice {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.import-choice--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}

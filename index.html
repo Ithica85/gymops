@@ -151,6 +151,11 @@
         <p class="settings-hint">Backup saves your complete workout database to a file. Restore replaces this device's data with a backup — for a new phone or recovering from data loss.</p>
       </div>
       <div class="settings-section">
+        <span class="settings-label">Import</span>
+        <button class="btn-secondary" id="btn-import-open">Import from Strong or Hevy</button>
+        <p class="settings-hint">Bring your history across from another app. Export a CSV there, then choose it here — nothing is written until you confirm, and the whole import can be undone.</p>
+      </div>
+      <div class="settings-section">
         <span class="settings-label">Google Drive</span>
         <p class="settings-status" id="gdrive-status">Not connected</p>
         <button class="btn-secondary" id="btn-gdrive-connect">Connect Google Drive</button>
@@ -813,6 +818,60 @@
         <button class="btn-primary btn-large" id="btn-inactivity-continue">Yes, continue</button>
         <button class="btn-danger" id="btn-inactivity-end">End workout</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       IMPORT FROM STRONG / HEVY (bottom sheet) — 6.2
+       One sheet, four stages. Nothing is written before the Import tap on
+       the preview stage, and a snapshot is taken even then.
+  ════════════════════════════════════ -->
+  <div id="import-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop import-cancel"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title" id="import-title">Import workouts</p>
+
+      <div id="import-stage-choose" class="import-stage">
+        <p class="modal-body">Export a CSV from Strong or Hevy, then choose it here. Nothing is written until you confirm.</p>
+        <div class="modal-actions">
+          <button class="btn-primary btn-large" id="btn-import-choose">Choose CSV file…</button>
+          <button class="btn-secondary import-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div id="import-stage-unit" class="import-stage hidden">
+        <p class="modal-body">Strong exports don't record whether weights are kg or lbs. Which were you using?</p>
+        <div class="unit-toggle">
+          <button class="unit-btn" data-import-unit="kg">kg</button>
+          <button class="unit-btn" data-import-unit="lbs">lbs</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-primary btn-large" id="btn-import-unit-next">Continue</button>
+          <button class="btn-secondary import-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div id="import-stage-preview" class="import-stage hidden">
+        <p class="import-summary" id="import-summary"></p>
+        <div id="import-decisions" class="import-decisions"></div>
+        <div class="modal-actions">
+          <button class="btn-primary btn-large" id="btn-import-confirm">Import</button>
+          <button class="btn-secondary import-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div id="import-stage-done" class="import-stage hidden">
+        <p class="import-summary" id="import-result"></p>
+        <p class="settings-hint">Changed your mind? Undo puts everything back exactly as it was.</p>
+        <div class="modal-actions">
+          <button class="btn-primary btn-large" id="btn-import-done">Done</button>
+          <button class="btn-secondary" id="btn-import-undo">Undo import</button>
+        </div>
+      </div>
+
+      <p class="settings-error hidden" id="import-error"></p>
+      <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="hidden">
     </div>
   </div>
 
