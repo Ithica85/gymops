@@ -77,10 +77,13 @@ import { addDayToPlan, archiveCurrentPlan, dismissPlanNudge, openNewPlan, savePl
 import {
   cancelRestore,
   confirmRestore,
+  connectGDrive,
+  disconnectGDrive,
   downloadBackup,
   getAnthropicKey,
   handleRestoreFile,
   openExportRangeModal,
+  resetWorkoutData,
   setAnthropicKey,
   setRestSecs,
   setWeightUnit,
@@ -250,6 +253,23 @@ async function boot() {
   });
   document.getElementById('btn-settings').addEventListener('click', () => showScreen('settings'));
   document.getElementById('btn-settings-back').addEventListener('click', () => showScreen('idle'));
+  // Google Drive connect / disconnect (6.6). The Settings screen is the only
+  // place that may trigger Google's consent flow — never session finish.
+  document.getElementById('btn-gdrive-connect').addEventListener('click', connectGDrive);
+  document.getElementById('btn-gdrive-disconnect').addEventListener('click', disconnectGDrive);
+
+  // Reset workout data (6.8) — history only; settings and credentials survive
+  const hideResetModal = () =>
+    document.getElementById('confirm-reset-workouts').classList.add('hidden');
+  document.getElementById('btn-reset-workouts').addEventListener('click', () => {
+    document.getElementById('confirm-reset-workouts').classList.remove('hidden');
+  });
+  document.getElementById('btn-cancel-reset-workouts').addEventListener('click', hideResetModal);
+  document.getElementById('confirm-reset-workouts-backdrop').addEventListener('click', hideResetModal);
+  document.getElementById('btn-reset-backup-first').addEventListener('click', downloadBackup);
+  document.getElementById('btn-confirm-reset-workouts').addEventListener('click', resetWorkoutData);
+
+  // Clear everything (6.8) — the above plus preferences and credentials
   document.getElementById('btn-clear-data').addEventListener('click', () => {
     document.getElementById('confirm-clear').classList.remove('hidden');
   });
@@ -259,6 +279,7 @@ async function boot() {
   document.getElementById('confirm-clear-backdrop').addEventListener('click', () => {
     document.getElementById('confirm-clear').classList.add('hidden');
   });
+  document.getElementById('btn-clear-backup-first').addEventListener('click', downloadBackup);
   document.getElementById('btn-confirm-clear').addEventListener('click', async () => {
     await dbClearAll(); // async since 5.4 — must finish wiping IDB before the reboot
     location.reload(); // Reload to reinitialise the in-memory DB from scratch

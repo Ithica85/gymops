@@ -1038,6 +1038,29 @@ body {
   text-align: center;
 }
 
+/* Connection state for the Google Drive card (6.6). Reads as a status line,
+   not a tappable row — the buttons below it own the interaction. */
+.settings-status {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.settings-status--on {
+  color: var(--accent);
+}
+
+/* Inline failure under a Settings action (e.g. a declined Drive consent).
+   Inline rather than a toast: the user is looking right at the control that
+   failed and needs the instruction to still be there when they retry. */
+.settings-error {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--danger);
+  text-align: center;
+}
+
 .settings-version {
   margin-top: auto;
   font-size: 0.75rem;

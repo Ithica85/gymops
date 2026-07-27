@@ -134,6 +134,14 @@
         <p class="settings-hint">Backup saves your complete workout database to a file. Restore replaces this device's data with a backup — for a new phone or recovering from data loss.</p>
       </div>
       <div class="settings-section">
+        <span class="settings-label">Google Drive</span>
+        <p class="settings-status" id="gdrive-status">Not connected</p>
+        <button class="btn-secondary" id="btn-gdrive-connect">Connect Google Drive</button>
+        <button class="btn-secondary hidden" id="btn-gdrive-disconnect">Disconnect</button>
+        <p class="settings-error hidden" id="gdrive-error"></p>
+        <p class="settings-hint">Optional. When connected, each finished session is also saved to your Drive as a spreadsheet (GymOps → Gym Session Data). Your workouts are always saved on this device first — Drive is a copy, never the original.</p>
+      </div>
+      <div class="settings-section">
         <span class="settings-label">AI</span>
         <!-- Deliberately NOT type="password": Chrome ignores autocomplete="off"
              on password fields and pops the Google Password Manager save prompt
@@ -148,14 +156,19 @@
           autocapitalize="off"
           spellcheck="false"
         >
-        <p class="settings-hint">Enables AI session summaries on the completed screen. Key is stored only in this browser and sent only to Anthropic when you generate a summary. "Clear All Data" removes it.</p>
+        <p class="settings-hint">Enables AI session summaries on the completed screen. Key is stored only in this browser and sent only to Anthropic when you generate a summary. "Clear Everything" removes it.</p>
       </div>
       <div class="settings-section">
         <span class="settings-label">About</span>
         <button class="btn-secondary" id="btn-release-notes">What's New</button>
       </div>
+      <div class="settings-section">
+        <span class="settings-label">Reset</span>
+        <button class="btn-secondary" id="btn-reset-workouts">Reset Workout Data</button>
+        <p class="settings-hint">Deletes every session, set and plan but keeps your settings, API key and Drive connection — a clean slate to start over on. Back up first: this can't be undone.</p>
+      </div>
       <p class="settings-version" id="settings-version"></p>
-      <button class="settings-danger-link" id="btn-clear-data">Clear All Data</button>
+      <button class="settings-danger-link" id="btn-clear-data">Clear Everything</button>
     </div>
   </div>
 
@@ -637,6 +650,20 @@
       <div class="release-notes-scroll">
 
         <div class="release-notes-entry">
+          <p class="release-notes-version">Phase 6 — Ready for Anyone · July 2026</p>
+          <ul class="release-notes-list">
+            <li>Google Drive is now opt-in and lives in Settings — finishing a workout never interrupts you with a Google sign-in, and Drive is a copy of your data, never the original</li>
+            <li>Two separate reset options — "Reset Workout Data" clears history but keeps your settings, API key and Drive connection; "Clear Everything" removes all of it</li>
+            <li>Both reset options offer a one-tap backup before they delete anything</li>
+            <li>Updates arrive on their own — a new version is picked up the next time you open the app, with no hard refresh</li>
+            <li>The Android back button now works inside the app — it closes the open sheet or steps back a screen instead of leaving GymOps</li>
+            <li>Tap "Plan" during a workout to see the day's exercises, what you've finished and what's left</li>
+            <li>"Same as last time" follows your working weight — it carries forward a weight you increased mid-session, and opens from last session's top set instead of its warm-up</li>
+            <li>Personal-best celebration lasts long enough to actually enjoy</li>
+          </ul>
+        </div>
+
+        <div class="release-notes-entry">
           <p class="release-notes-version">Phase 5 — Programs · July 2026</p>
           <ul class="release-notes-list">
             <li>You choose where a workout starts — without a plan, Start opens the exercise picker instead of dropping you on Seated Shoulder Press; with a multi-day plan, the Start button names the day and "Train a different day…" skips the rotation</li>
@@ -773,16 +800,36 @@
   </div>
 
   <!-- ═══════════════════════════════════
-       CONFIRM CLEAR DATA (bottom sheet)
+       CONFIRM RESET WORKOUT DATA (bottom sheet) — 6.8
+       The narrow reset. Kept separate from Clear Everything below so the
+       common intent ("start over") doesn't require the nuclear option.
+  ════════════════════════════════════ -->
+  <div id="confirm-reset-workouts" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="confirm-reset-workouts-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <p class="modal-title">Reset workout data?</p>
+      <p class="modal-body">Every session, set and plan will be permanently deleted. Your settings, API key and Drive connection are kept.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="btn-reset-backup-first">Back Up First</button>
+        <button class="btn-danger btn-large" id="btn-confirm-reset-workouts">Reset</button>
+        <button class="btn-secondary" id="btn-cancel-reset-workouts">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       CONFIRM CLEAR EVERYTHING (bottom sheet)
   ════════════════════════════════════ -->
   <div id="confirm-clear" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="confirm-clear-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Delete all data?</p>
-      <p class="modal-body">This will permanently delete all workout history.</p>
+      <p class="modal-title">Clear everything?</p>
+      <p class="modal-body">This permanently deletes all workout history <em>and</em> everything else stored on this device — settings, your Anthropic API key, and the Google Drive connection. Files already in Drive are not touched.</p>
       <div class="modal-actions">
-        <button class="btn-danger btn-large" id="btn-confirm-clear">Delete</button>
+        <button class="btn-secondary" id="btn-clear-backup-first">Back Up First</button>
+        <button class="btn-danger btn-large" id="btn-confirm-clear">Delete Everything</button>
         <button class="btn-secondary" id="btn-cancel-clear">Cancel</button>
       </div>
     </div>

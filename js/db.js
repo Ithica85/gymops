@@ -1285,7 +1285,31 @@ export function dbGetNextPlanDay(planId) {
   return days[(idx + 1) % days.length];
 }
 
-// ── Clear all data ────────────────────────────────────
+// ── Reset / clear (6.8) ───────────────────────────────
+
+// The narrow reset: empties every workout-data table but leaves the database
+// file, its schema, and every gymops_* localStorage key in place — preferences
+// (unit, rest duration, reminder) and credentials (Anthropic key, Drive token)
+// all survive. This is the "I want to start over" option; dbClearAll below is
+// the "this device is being handed to someone else" option.
+//
+// Deletion order follows the FK direction (children first) even though sql.js
+// doesn't enforce constraints by default — the row sets must never be able to
+// exist in a half-deleted state that a reader could observe.
+// exercises is wiped too (custom identities are user data and their history is
+// gone) and immediately reseeded by _syncExercises, so the catalogue is back to
+// a fresh-install state rather than empty.
+export async function dbResetWorkoutData() {
+  _db.run('DELETE FROM sets');
+  _db.run('DELETE FROM sessions');
+  _db.run('DELETE FROM plan_exercises');
+  _db.run('DELETE FROM plan_days');
+  _db.run('DELETE FROM plans');
+  _db.run('DELETE FROM exercises');
+  _persist();
+  _syncExercises(); // reseeds catalogue identity rows (persists again if it wrote)
+  if (_useIDB) await _idbSettle(); // caller reloads — the wipe must have landed first
+}
 
 // Wipes the entire database from localStorage. The page must be reloaded after this
 // to reinitialise the in-memory DB.

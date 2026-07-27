@@ -122,7 +122,7 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 
 **Success criteria for Phase 6:**
 - [ ] A stranger can install the PWA, import their Strong/Hevy history, and complete a logged session with zero guidance.
-- [ ] No flow ever presents an OAuth consent screen mid-workout or at finish.
+- [x] No flow ever presents an OAuth consent screen mid-workout or at finish. *(6.6, July 26 2026 — Drive is opt-in from Settings, and the finish-time token request is `prompt: 'none'`, which cannot render UI by contract.)*
 - [ ] A screen-reader user can log a set.
 - [ ] A deploy reaches every client within one app open, without manual hard-refresh.
 

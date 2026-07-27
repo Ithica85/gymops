@@ -30,7 +30,7 @@ import {
   dbUpdateSessionDay,
   dbUpdateSessionNotes,
 } from './db.js';
-import { gdriveUpload } from './gdrive.js';
+import { gdriveIsConnected, gdriveUpload } from './gdrive.js';
 import {
   WEIGHT_EPSILON_KG,
   convertWeight,
@@ -795,10 +795,19 @@ function _startDriveUpload(csv, sessionStartIso) {
       _driveUploadsPending--;
       if (_driveUploadsPending === 0) _setDriveStatus('Saved to Google Drive ✓');
     })
-    .catch(() => {
+    .catch((err) => {
       _driveUploadsPending--;
-      _setDriveStatus('Drive save failed — CSV downloaded instead', true);
-      triggerExport(); // preserve the local-CSV fallback
+      if (err?.gdriveAuth) {
+        // The grant is gone or unusable. Deliberately NOT auto-disconnected:
+        // the retry is silent (prompt:'none' can't render UI), so a transient
+        // failure costs one status line, and only the user turns Drive off.
+        // No CSV fallback either — this isn't data loss, the session is saved
+        // locally; a surprise download at finish would just be noise.
+        _setDriveStatus('Drive needs reconnecting — see Settings', true);
+      } else {
+        _setDriveStatus('Drive save failed — CSV downloaded instead', true);
+        triggerExport(); // preserve the local-CSV fallback
+      }
     });
 }
 
@@ -818,10 +827,12 @@ export function finishWorkout() {
   dbFinishSession(state.sessionId);
   state.finishedAt = new Date();
 
-  // Auto-save to Google Drive (non-blocking — failure falls back to local CSV download)
+  // Auto-save to Google Drive (non-blocking — failure falls back to local CSV
+  // download). 6.6: only when the user connected Drive in Settings. Finishing a
+  // session is always local-first — an unconnected user never sees Google here.
   const csv     = dbExportSessionCSV(state.sessionId);
   const session = dbGetSession(state.sessionId);
-  if (csv && session) _startDriveUpload(csv, session.start_time);
+  if (csv && session && gdriveIsConnected()) _startDriveUpload(csv, session.start_time);
   else _setDriveStatus(null); // nothing to upload — don't show a stale status
 
   document.getElementById('session-summary').textContent =

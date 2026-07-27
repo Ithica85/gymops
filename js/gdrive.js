@@ -20,6 +20,12 @@ const FOLDER_NAME         = 'GymOps';
 const SESSION_DATA_FOLDER = 'Gym Session Data';
 const TOKEN_STORAGE       = 'gymops_gdrive_token';
 const MIGRATION_KEY       = 'gymops_gdrive_migrated'; // set after one-time folder migration
+const ENABLED_KEY         = 'gymops_gdrive_enabled';  // 6.6 — explicit opt-in, set from Settings
+
+// How long a background (non-interactive) token request may hang before we give
+// up. Uploads are chained in workout.js, so a token promise that never settles
+// would stall every later upload — not just its own.
+const TOKEN_TIMEOUT_MS = 15000;
 
 // Reused across calls so Google Identity Services doesn't re-initialise the client.
 let _tokenClient = null;
@@ -46,13 +52,25 @@ function _storeToken(token, expiresIn) {
   localStorage.setItem(TOKEN_STORAGE, JSON.stringify({ token, expiry }));
 }
 
-// Triggers the Google OAuth consent flow and resolves with an access token.
-// prompt: '' means "reuse the existing grant silently if possible; only show
-// the consent UI if the user hasn't previously authorised this scope."
-function _requestToken() {
+// Tags an error as "the Drive grant is gone" so callers can tell a re-auth
+// need (→ prompt the user to reconnect in Settings) apart from a transient
+// network/API failure (→ retry next session).
+function _authError(message) {
+  const err = new Error(message);
+  err.gdriveAuth = true;
+  return err;
+}
+
+// Triggers the Google OAuth token flow and resolves with an access token.
+// prompt: '' shows the consent UI only if this scope was never granted —
+// used for the explicit Connect action in Settings.
+// prompt: 'none' can never render UI; it fails instead. Every background path
+// (i.e. session finish) uses it, so finishing a workout can't turn into a
+// consent screen no matter what state the grant is in (6.6).
+function _requestToken(prompt) {
   return new Promise((resolve, reject) => {
     if (!window.google?.accounts?.oauth2) {
-      reject(new Error('Google Identity Services not loaded'));
+      reject(_authError('Google sign-in unavailable — check your connection.'));
       return;
     }
     if (!_tokenClient) {
@@ -62,21 +80,30 @@ function _requestToken() {
         callback: () => {}, // Overridden per-request below
       });
     }
+    let settled = false;
+    const finish = (fn, arg) => { if (!settled) { settled = true; fn(arg); } };
+
+    // GIS reports OAuth errors through the callback and popup-level failures
+    // (blocked, dismissed) through error_callback — a silent prompt:'none'
+    // request that is refused arrives on one or the other.
     _tokenClient.callback = (response) => {
-      if (response.error) { reject(new Error(response.error)); return; }
+      if (response.error) { finish(reject, _authError(response.error)); return; }
       _storeToken(response.access_token, response.expires_in);
-      resolve(response.access_token);
+      finish(resolve, response.access_token);
     };
-    _tokenClient.requestAccessToken({ prompt: '' });
+    _tokenClient.error_callback = (err) => finish(reject, _authError(err?.type ?? 'popup_failed'));
+
+    setTimeout(() => finish(reject, _authError('Google sign-in timed out.')), TOKEN_TIMEOUT_MS);
+    _tokenClient.requestAccessToken({ prompt });
   });
 }
 
-// Returns a valid access token: uses the stored token if still valid,
-// otherwise triggers a new OAuth request (may show a consent popup on first use).
-async function _getToken() {
+// Returns a valid access token: the stored one if still valid, otherwise a
+// fresh request. interactive:false is the background contract — never shows UI.
+async function _getToken({ interactive } = { interactive: false }) {
   const stored = _getStoredToken();
   if (stored) return stored;
-  return _requestToken();
+  return _requestToken(interactive ? '' : 'none');
 }
 
 // ── Drive API helpers ─────────────────────────────────
@@ -223,6 +250,45 @@ async function _uploadFile(token, folderId, filename, csv) {
   if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
 }
 
+// ── Connection state (6.6) ────────────────────────────
+//
+// Drive is opt-in and owned by Settings. Before 6.6 the first session finish
+// itself triggered the OAuth consent screen — cloud consent interrupting the
+// one moment the app must be local-first. Now nothing touches Google until the
+// user taps Connect on a screen they navigated to deliberately.
+
+// True when the user has connected Drive. Pre-6.6 installs that were already
+// auto-uploading are adopted once, on first read: a stored token or the folder-
+// migration flag both prove a completed grant, so an existing user's uploads
+// keep working without having to reconnect.
+export function gdriveIsConnected() {
+  if (localStorage.getItem(ENABLED_KEY) === null) {
+    const wasUsing = localStorage.getItem(TOKEN_STORAGE) || localStorage.getItem(MIGRATION_KEY);
+    if (wasUsing) localStorage.setItem(ENABLED_KEY, 'true');
+  }
+  return localStorage.getItem(ENABLED_KEY) === 'true';
+}
+
+// Explicit user action from Settings — this is the ONLY path allowed to show a
+// consent screen. Marks the connection enabled only after a token is in hand,
+// so a cancelled consent leaves the app exactly as it was.
+export async function gdriveConnect() {
+  await _requestToken('');
+  localStorage.setItem(ENABLED_KEY, 'true');
+}
+
+// Drops the local grant and tells Google to revoke it. Written as 'false'
+// rather than removed so gdriveIsConnected can't re-adopt a stale migration
+// flag and silently reconnect on the next boot.
+export function gdriveDisconnect() {
+  const token = _getStoredToken();
+  if (token) {
+    try { google.accounts?.oauth2?.revoke(token, () => {}); } catch (_) { /* best effort */ }
+  }
+  localStorage.removeItem(TOKEN_STORAGE);
+  localStorage.setItem(ENABLED_KEY, 'false');
+}
+
 // ── Public API ────────────────────────────────────────
 
 // Uploads a session's CSV to GymOps/Gym Session Data/YYYY-MM/ in Drive.
@@ -231,7 +297,7 @@ async function _uploadFile(token, folderId, filename, csv) {
 // messaging lives with the drive-status line in app.js, not here.
 export async function gdriveUpload(csv, sessionStartIso) {
   try {
-    const token   = await _getToken();
+    const token   = await _getToken({ interactive: false });
     const d       = new Date(sessionStartIso);
     const dateStr = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, '0')}_${String(d.getDate()).padStart(2, '0')}`;
 

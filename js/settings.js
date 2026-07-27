@@ -3,9 +3,10 @@
 // full-database backup & restore
 // ═══════════════════════════════════════════════════════
 
-import { dbExportBackup, dbRestoreBackup, dbValidateBackup } from './db.js';
+import { dbExportBackup, dbResetWorkoutData, dbRestoreBackup, dbValidateBackup } from './db.js';
+import { gdriveConnect, gdriveDisconnect, gdriveIsConnected } from './gdrive.js';
 import { REST_SECS_KEY, UNIT_KEY, localDateStr, state } from './state.js';
-import { downloadFile, showToast } from './ui.js';
+import { downloadFile, onScreenShow, showToast } from './ui.js';
 import { updateInputFields } from './workout.js';
 
 export function setWeightUnit(u) {
@@ -105,6 +106,65 @@ export async function confirmRestore() {
     return;
   }
   location.reload(); // Reboot onto the restored database
+}
+
+// ── Google Drive connection (6.6) ─────────────────────
+//
+// Connecting is a deliberate, reversible action taken on the Settings screen —
+// the only place in the app allowed to raise a Google consent screen. Session
+// finish reads gdriveIsConnected() and stays silent when it's false.
+
+export function renderGDriveStatus() {
+  const connected = gdriveIsConnected();
+  const status    = document.getElementById('gdrive-status');
+  status.textContent = connected ? 'Connected' : 'Not connected';
+  status.classList.toggle('settings-status--on', connected);
+  document.getElementById('btn-gdrive-connect').classList.toggle('hidden', connected);
+  document.getElementById('btn-gdrive-disconnect').classList.toggle('hidden', !connected);
+}
+
+export async function connectGDrive() {
+  const btn = document.getElementById('btn-gdrive-connect');
+  const err = document.getElementById('gdrive-error');
+  err.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+
+  // Caught rather than thrown on: a declined or blocked consent popup is a
+  // normal outcome here, not an error state the user needs a stack trace for.
+  let failure = null;
+  try { await gdriveConnect(); } catch (e) { failure = e; }
+
+  btn.disabled = false;
+  btn.textContent = 'Connect Google Drive';
+  renderGDriveStatus();
+
+  if (failure) {
+    err.textContent = 'Couldn’t connect. Allow pop-ups for this site and try again.';
+    err.classList.remove('hidden');
+  } else {
+    showToast('Google Drive connected');
+  }
+}
+
+export function disconnectGDrive() {
+  gdriveDisconnect();
+  document.getElementById('gdrive-error').classList.add('hidden');
+  renderGDriveStatus();
+  showToast('Google Drive disconnected');
+}
+
+// The Drive card is the one Settings row whose state can change outside the
+// app (a revoked grant, a second device), so it re-reads on every screen show.
+onScreenShow('settings', renderGDriveStatus);
+
+// ── Reset workout data (6.8) ──────────────────────────
+
+// The narrow reset: history goes, everything that isn't history stays.
+// Reloads onto the emptied database, exactly as the full clear does.
+export async function resetWorkoutData() {
+  await dbResetWorkoutData();
+  location.reload();
 }
 
 // ── Plans ─────────────────────────────────────────────
