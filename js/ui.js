@@ -11,9 +11,121 @@ export function onScreenShow(name, fn) { _screenShowHooks[name] = fn; }
 // Shows a named screen (idle / active / completed / settings) and hides all others.
 export function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(`screen-${name}`).classList.add('active');
+  const screen = document.getElementById(`screen-${name}`);
+  screen.classList.add('active');
   _screenShowHooks[name]?.();
   armBackGuard(); // keep the Back-button guard in sync with the new depth
+
+  // 6.3: move focus into the new screen. Without this, focus stays on the
+  // control that navigated — which is now inside a hidden screen — and the next
+  // Tab starts from <body>, so a keyboard user loses their place on every
+  // navigation. The container takes focus rather than a control, so nothing is
+  // implicitly "pressed" and no on-screen keyboard opens. Call sites that want
+  // an input focused (setActiveExercise → focusInputUnlessHero) run after this
+  // and still win.
+  if (typeof screen.focus === 'function') {
+    screen.tabIndex = -1;
+    screen.focus({ preventScroll: true });
+  }
+}
+
+// ── Keyboard-operable rows (6.3) ──────────────────────
+// The picker, the merge sheet and the History list are all built from clickable
+// <li>/<div> elements. A click handler alone makes them mouse/touch-only: they
+// take no focus and a screen reader announces plain text, so the exercise
+// picker — which sits on the path to logging a set — was unreachable without a
+// pointer. Rather than restructure three renderers around real <button>s (and
+// re-do their CSS), give the row the button contract it was already pretending
+// to have. Space is preventDefault-ed because on a focused element it scrolls.
+export function makeRowInteractive(el, onActivate) {
+  el.setAttribute('role', 'button');
+  el.tabIndex = 0;
+  el.addEventListener('click', onActivate);
+  el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    onActivate(e);
+  });
+  return el;
+}
+
+// ── Modal focus management (6.3) ──────────────────────
+// Modals were visual-only: opening one left focus behind on the trigger, so a
+// keyboard user kept tabbing through the screen *underneath* the sheet, and
+// closing one dropped focus to <body> — losing your place entirely.
+//
+// Focus lands on the SHEET, not on its first control, for two reasons: it makes
+// the screen reader announce the dialog's name (the aria-labelledby added in
+// this pass), and focusing the first control would pop the on-screen keyboard
+// in the picker — the exact thing `picker-search` is deliberately never
+// autofocused to avoid. Call sites that DO want an input focused (the "Other"
+// exercise flow, rename) still win: they focus synchronously, and the check
+// below sees focus is already inside and leaves it alone.
+let _focusReturn = null;
+
+function _openModals() {
+  return [...document.querySelectorAll('.modal, .pr-celebration')]
+    .filter(m => !m.classList.contains('hidden'));
+}
+
+function _focusablesIn(root) {
+  const sel = 'button, [href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
+  return [...root.querySelectorAll(sel)]
+    .filter(el => !el.disabled && !el.classList.contains('hidden')
+                && !el.closest('.hidden') && el.offsetParent !== null);
+}
+
+function _onModalsChanged() {
+  const open = _openModals();
+  if (open.length) {
+    if (!_focusReturn) _focusReturn = document.activeElement;
+    const top = open[open.length - 1];
+    if (!top.contains(document.activeElement)) {
+      const sheet = top.querySelector('.modal-sheet') ?? top;
+      sheet.tabIndex = -1;
+      sheet.focus({ preventScroll: true });
+    }
+    return;
+  }
+  // Everything closed — put focus back where it came from, if that element is
+  // still around and still visible (a rename can remove its own trigger).
+  const target = _focusReturn;
+  _focusReturn = null;
+  if (target && document.contains(target) && target.offsetParent !== null) {
+    target.focus({ preventScroll: true });
+  }
+}
+
+// Wired once from boot(), alongside initBackButton. Guarded the same way so the
+// Node test DOM never trips over it.
+export function initModalA11y() {
+  if (typeof document === 'undefined' || typeof MutationObserver !== 'function') return;
+
+  const obs = new MutationObserver(_onModalsChanged);
+  document.querySelectorAll('.modal, .pr-celebration').forEach(m =>
+    obs.observe(m, { attributes: true, attributeFilter: ['class'] }));
+
+  document.addEventListener('keydown', e => {
+    const open = _openModals();
+    if (!open.length) return;
+    const top = open[open.length - 1];
+
+    // Escape closes the frontmost sheet — the keyboard counterpart of the
+    // backdrop tap, and of Back on Android.
+    if (e.key === 'Escape') { _closeTopModal(); return; }
+
+    if (e.key !== 'Tab') return;
+    const items = _focusablesIn(top);
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    // Focus sitting on the sheet itself counts as "before the first item".
+    if (!top.contains(document.activeElement)) { e.preventDefault(); first.focus(); return; }
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === top.querySelector('.modal-sheet'))) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  });
 }
 
 // ── Hardware/browser Back-button integration ──────────

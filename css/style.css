@@ -7,9 +7,19 @@
   --surface2:  #222222;
   --border:    #2c2c2c;
   --text:      #f0f0f0;
-  --muted:     #777;
+  /* 6.3: was #777, which failed AA on every surface (4.34 / 3.97 / 3.55 against
+     --bg / --surface / --surface2). #999 clears 4.5:1 on all three with real
+     headroom (6.82 / 6.10 / 5.58), so a future surface tweak can't silently
+     drop it back under. 76 usages — this is the app's whole secondary tier. */
+  --muted:     #999;
   --accent:    #c8ff57;   /* lime */
-  --danger:    #ff4040;
+  /* Two reds on purpose (6.3). --danger is bright enough to read as TEXT on the
+     dark surfaces (10 such uses); white on it as a BUTTON FILL was only 3.47:1,
+     and .btn-danger's label is 1rem/800 = 16px, which is not WCAG "large text",
+     so 4.5 applies. --danger-solid is the fill: #fff on it is 4.81:1.
+     Darkening the single token instead would have traded one failure for ten. */
+  --danger:       #ff4040;
+  --danger-solid: #d92d2d;
   --radius:    14px;
   --font:      -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
 }
@@ -282,7 +292,7 @@ body {
 .btn-secondary:active { background: var(--border); }
 
 .btn-danger {
-  background: var(--danger);
+  background: var(--danger-solid);
   color: #fff;
   border: none;
   border-radius: var(--radius);
@@ -304,6 +314,32 @@ body {
   cursor: pointer;
   padding: 6px 10px;
   -webkit-appearance: none;
+}
+
+/* ═══════════════════════════════════
+   KEYBOARD FOCUS (6.3)
+   The app had no focus indicator of any kind on buttons — a keyboard or
+   switch user could not tell where they were. :focus-visible (not :focus) so
+   a tap never leaves a ring behind on touch, which is why this was safe to
+   make global. Lime reads against every surface (16.6:1 on --bg) and the
+   offset keeps it clear of the element's own rounding.
+════════════════════════════════════ */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Inside the danger fill the lime ring is illegible; white reads on both the
+   red and the surface behind it. */
+.btn-danger:focus-visible {
+  outline-color: #fff;
+}
+
+/* Picker/merge rows sit flush against each other, so an outset ring would be
+   clipped by the neighbouring row — inset it instead. */
+.exercise-list li:focus-visible {
+  outline-offset: -3px;
 }
 
 /* ═══════════════════════════════════

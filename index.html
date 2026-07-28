@@ -54,7 +54,7 @@
       <p class="idle-plan-line hidden" id="idle-plan-line"></p>
       <div id="reminder-banner" class="reminder-banner hidden">
         <span id="reminder-text" class="reminder-text">Time to train</span>
-        <button class="btn-text reminder-dismiss" id="btn-reminder-dismiss">✕</button>
+        <button class="btn-text reminder-dismiss" id="btn-reminder-dismiss" aria-label="Dismiss training reminder">✕</button>
       </div>
       <div id="plan-expiry-banner" class="plan-expiry-banner hidden">
         <span id="plan-expiry-text" class="plan-expiry-text"></span>
@@ -62,7 +62,7 @@
       </div>
       <div id="plan-nudge-banner" class="plan-nudge-banner hidden">
         <span id="plan-nudge-text" class="plan-nudge-text"></span>
-        <button class="btn-text reminder-dismiss" id="btn-plan-nudge-dismiss">✕</button>
+        <button class="btn-text reminder-dismiss" id="btn-plan-nudge-dismiss" aria-label="Dismiss plan reminder">✕</button>
       </div>
       <!-- First-run orientation (6.1). Shown only with zero completed sessions,
            until dismissed. Routed through IDLE_BANNERS so it can never stack
@@ -82,8 +82,8 @@
            app has proved anything is how install prompts get dismissed. -->
       <div id="install-card" class="install-card hidden">
         <span id="install-text" class="install-text"></span>
-        <button class="btn-text install-action hidden" id="btn-install-app">Add</button>
-        <button class="btn-text reminder-dismiss" id="btn-install-dismiss">✕</button>
+        <button class="btn-text install-action hidden" id="btn-install-app" aria-label="Add GymOps to home screen">Add</button>
+        <button class="btn-text reminder-dismiss" id="btn-install-dismiss" aria-label="Dismiss install prompt">✕</button>
       </div>
       <button class="btn-secondary btn-large hidden" id="btn-resume-idle">Resume Last Workout</button>
       <button class="btn-primary btn-large" id="btn-start">Start Workout</button>
@@ -127,15 +127,15 @@
       <div class="settings-section">
         <span class="settings-label">Weight unit</span>
         <div class="unit-toggle">
-          <button class="unit-btn" id="unit-kg" data-unit="kg">kg</button>
-          <button class="unit-btn" id="unit-lbs" data-unit="lbs">lbs</button>
+          <button class="unit-btn" id="unit-kg" aria-label="Weigh in kilograms" data-unit="kg">kg</button>
+          <button class="unit-btn" id="unit-lbs" aria-label="Weigh in pounds" data-unit="lbs">lbs</button>
         </div>
       </div>
       <div class="settings-section">
         <span class="settings-label">Session Reminder</span>
         <div class="unit-toggle">
-          <button class="reminder-btn" id="reminder-off" data-reminder="false">Off</button>
-          <button class="reminder-btn" id="reminder-on" data-reminder="true">On</button>
+          <button class="reminder-btn" id="reminder-off" aria-label="Turn session reminder off" data-reminder="false">Off</button>
+          <button class="reminder-btn" id="reminder-on" aria-label="Turn session reminder on" data-reminder="true">On</button>
         </div>
         <p class="settings-hint">Shows a nudge at your usual training time.</p>
       </div>
@@ -158,7 +158,7 @@
         <span class="settings-label">Backup</span>
         <button class="btn-secondary" id="btn-backup-download">Back Up All Data</button>
         <button class="btn-secondary" id="btn-restore-backup">Restore from Backup…</button>
-        <input type="file" id="restore-file-input" accept=".json,.txt,application/json,text/plain" class="hidden">
+        <input aria-label="Choose a backup file to restore" type="file" id="restore-file-input" accept=".json,.txt,application/json,text/plain" class="hidden">
         <p class="settings-hint">Backup saves your complete workout database to a file. Restore replaces this device's data with a backup — for a new phone or recovering from data loss.</p>
       </div>
       <div class="settings-section">
@@ -179,7 +179,7 @@
         <!-- Deliberately NOT type="password": Chrome ignores autocomplete="off"
              on password fields and pops the Google Password Manager save prompt
              (5.2.x #2). Masking comes from -webkit-text-security in CSS. -->
-        <input
+        <input aria-label="Anthropic API key"
           type="text"
           id="input-anthropic-key"
           class="ai-key-input"
@@ -236,13 +236,13 @@
 
       <div class="settings-section">
         <span class="settings-label">Plan Name</span>
-        <input type="text" id="plan-name-input" class="plan-text-input" placeholder="e.g. Strength Block Q3">
+        <input aria-label="Plan name" type="text" id="plan-name-input" class="plan-text-input" placeholder="e.g. Strength Block Q3">
       </div>
 
       <div class="settings-section">
         <span class="settings-label">Duration (optional)</span>
         <div class="plan-duration-row">
-          <input type="number" id="plan-duration-input" class="plan-duration-input" placeholder="e.g. 8" min="1" max="52" inputmode="numeric">
+          <input aria-label="Plan duration in weeks" type="number" id="plan-duration-input" class="plan-duration-input" placeholder="e.g. 8" min="1" max="52" inputmode="numeric">
           <span class="plan-duration-label">weeks</span>
         </div>
         <p class="settings-hint">Set a duration to get a review reminder when it expires.</p>
@@ -251,7 +251,7 @@
       <div class="settings-section">
         <span class="settings-label">Sessions per week (optional)</span>
         <div class="plan-duration-row">
-          <input type="number" id="plan-target-sessions-input" class="plan-duration-input" placeholder="e.g. 3" min="1" max="7" inputmode="numeric">
+          <input aria-label="Target sessions per week" type="number" id="plan-target-sessions-input" class="plan-duration-input" placeholder="e.g. 3" min="1" max="7" inputmode="numeric">
           <span class="plan-duration-label">per week</span>
         </div>
         <p class="settings-hint">Set a weekly target to get a nudge when you're falling behind.</p>
@@ -259,9 +259,9 @@
 
       <div class="settings-section">
         <span class="settings-label">Objectives (optional)</span>
-        <input type="text" id="plan-obj-1" class="plan-text-input" placeholder="e.g. Hit 100kg bench press">
-        <input type="text" id="plan-obj-2" class="plan-text-input" placeholder="e.g. Train 3× per week">
-        <input type="text" id="plan-obj-3" class="plan-text-input" placeholder="e.g. Complete 16 sessions">
+        <input aria-label="Objective 1" type="text" id="plan-obj-1" class="plan-text-input" placeholder="e.g. Hit 100kg bench press">
+        <input aria-label="Objective 2" type="text" id="plan-obj-2" class="plan-text-input" placeholder="e.g. Train 3× per week">
+        <input aria-label="Objective 3" type="text" id="plan-obj-3" class="plan-text-input" placeholder="e.g. Complete 16 sessions">
       </div>
 
       <div class="settings-section">
@@ -383,7 +383,7 @@
           <div class="input-row">
             <div class="input-col">
               <span class="input-label" id="label-field1">Weight</span>
-              <input
+              <input aria-labelledby="label-field1"
                 type="text"
                 id="input-weight"
                 class="set-input"
@@ -394,7 +394,7 @@
             </div>
             <div class="input-col">
               <span class="input-label" id="label-field2">Reps</span>
-              <input
+              <input aria-labelledby="label-field2"
                 type="text"
                 id="input-reps"
                 class="set-input"
@@ -406,7 +406,7 @@
           </div>
           <!-- Inline lbs↔kg converter (5.2.x #5) — display-only helper while typing -->
           <p class="weight-convert hidden" id="weight-convert"></p>
-          <p class="input-error hidden" id="input-error">Enter weight and reps</p>
+          <p class="input-error hidden" id="input-error" role="alert">Enter weight and reps</p>
         </div>
 
         <button class="btn-primary btn-large" id="btn-log-set">Log Set</button>
@@ -423,7 +423,7 @@
           <span class="up-next-arrow">→</span>
         </div>
 
-        <p id="progression-signal" class="progression-signal hidden"></p>
+        <p id="progression-signal" class="progression-signal hidden" role="status" aria-live="polite"></p>
 
       </div>
 
@@ -448,7 +448,7 @@
         <!-- Session notes -->
         <div class="notes-section">
           <p class="sets-log-title">Session Notes</p>
-          <textarea
+          <textarea aria-label="Session notes"
             id="session-notes"
             class="notes-input"
             placeholder="e.g. Foam rolling, how you felt, injuries..."
@@ -483,13 +483,13 @@
   <!-- ═══════════════════════════════════
        EXERCISE PICKER (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="exercise-picker" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="exercise-picker" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-backdrop" id="modal-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <p class="modal-title" id="modal-title">Select Exercise</p>
       <div id="picker-controls">
-        <input
+        <input aria-label="Search exercises"
           type="search"
           id="picker-search"
           class="picker-search"
@@ -510,7 +510,7 @@
         <!-- Populated by JS -->
       </ul>
       <div class="other-name-section hidden" id="other-name-section">
-        <input
+        <input aria-label="New exercise name"
           type="text"
           id="other-name-input"
           class="set-input other-name-input"
@@ -538,11 +538,11 @@
   <!-- ═══════════════════════════════════
        CONFIRM FINISH (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="confirm-finish" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-finish" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-finish-title">
     <div class="modal-backdrop" id="confirm-finish-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">End workout?</p>
+      <p id="confirm-finish-title" class="modal-title">End workout?</p>
       <div class="modal-actions">
         <button class="btn-danger btn-large" id="btn-confirm-end">End Workout</button>
         <button class="btn-secondary" id="btn-cancel-end">Cancel</button>
@@ -553,11 +553,11 @@
   <!-- ═══════════════════════════════════
        DISCARD SESSION CONFIRMATION
   ════════════════════════════════════ -->
-  <div id="confirm-discard" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-discard" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-discard-title">
     <div class="modal-backdrop" id="confirm-discard-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Discard session?</p>
+      <p id="confirm-discard-title" class="modal-title">Discard session?</p>
       <p class="modal-body">This will permanently delete your incomplete session.</p>
       <div class="modal-actions">
         <button class="btn-danger btn-large" id="btn-confirm-discard">Discard &amp; Start New</button>
@@ -569,11 +569,11 @@
   <!-- ═══════════════════════════════════
        PLAN DAY SWITCHER (5.2)
   ════════════════════════════════════ -->
-  <div id="day-switch-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="day-switch-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="day-switch-modal-title">
     <div class="modal-backdrop" id="day-switch-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Training day</p>
+      <p id="day-switch-modal-title" class="modal-title">Training day</p>
       <div id="day-switch-list" class="day-switch-list"></div>
       <div class="modal-actions">
         <button class="btn-secondary" id="btn-day-switch-cancel">Cancel</button>
@@ -584,7 +584,7 @@
   <!-- ═══════════════════════════════════
        CURRENT PLAN — read-only viewer (active screen)
   ════════════════════════════════════ -->
-  <div id="plan-view-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="plan-view-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="plan-view-title">
     <div class="modal-backdrop" id="plan-view-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -600,11 +600,11 @@
   <!-- ═══════════════════════════════════
        RESTORE FROM BACKUP — confirmation
   ════════════════════════════════════ -->
-  <div id="confirm-restore" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-restore" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-restore-title">
     <div class="modal-backdrop" id="confirm-restore-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Restore from backup?</p>
+      <p id="confirm-restore-title" class="modal-title">Restore from backup?</p>
       <p class="modal-body" id="restore-summary"></p>
       <p class="modal-body">This replaces all workout data on this device with the backup.</p>
       <div class="modal-actions">
@@ -617,11 +617,11 @@
   <!-- ═══════════════════════════════════
        RECOVERY — start-fresh confirmation
   ════════════════════════════════════ -->
-  <div id="confirm-recovery-fresh" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-recovery-fresh" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-recovery-fresh-title">
     <div class="modal-backdrop" id="confirm-recovery-fresh-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Start fresh?</p>
+      <p id="confirm-recovery-fresh-title" class="modal-title">Start fresh?</p>
       <p class="modal-body">GymOps will restart with an empty workout history. The unreadable data stays preserved on this device until you use "Clear All Data".</p>
       <div class="modal-actions">
         <button class="btn-danger btn-large" id="btn-confirm-recovery-fresh">Start Fresh</button>
@@ -633,11 +633,11 @@
   <!-- ═══════════════════════════════════
        EXPORT DATE RANGE
   ════════════════════════════════════ -->
-  <div id="export-range" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="export-range" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="export-range-title">
     <div class="modal-backdrop" id="export-range-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Export History</p>
+      <p id="export-range-title" class="modal-title">Export History</p>
       <div class="export-date-row">
         <div class="export-date-col">
           <label class="export-date-label" for="export-from">From</label>
@@ -658,12 +658,12 @@
   <!-- ═══════════════════════════════════
        RENAME EXERCISE (5.7)
   ════════════════════════════════════ -->
-  <div id="rename-exercise-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="rename-exercise-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rename-exercise-modal-title">
     <div class="modal-backdrop" id="rename-exercise-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Rename exercise</p>
-      <input
+      <p id="rename-exercise-modal-title" class="modal-title">Rename exercise</p>
+      <input aria-label="New name for this exercise"
         type="text"
         id="rename-exercise-input"
         class="set-input other-name-input"
@@ -685,13 +685,13 @@
        The counterpart to import's "keep as new" default: keeping a variant
        separate is only safe advice because it can be folded in later.
   ════════════════════════════════════ -->
-  <div id="merge-exercise-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="merge-exercise-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="merge-exercise-title">
     <div class="modal-backdrop merge-cancel"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <p class="modal-title" id="merge-exercise-title">Merge into…</p>
       <p class="modal-body" id="merge-exercise-body"></p>
-      <input
+      <input aria-label="Search exercises to merge into"
         type="text"
         id="merge-search"
         class="set-input other-name-input"
@@ -712,16 +712,19 @@
   <!-- ═══════════════════════════════════
        RELEASE NOTES
   ════════════════════════════════════ -->
-  <div id="release-notes" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="release-notes" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="release-notes-title">
     <div class="modal-backdrop" id="release-notes-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">What's New</p>
+      <p id="release-notes-title" class="modal-title">What's New</p>
       <div class="release-notes-scroll">
 
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 6 — Ready for Anyone · July 2026</p>
           <ul class="release-notes-list">
+            <li>Easier to read — secondary text and the labels on destructive buttons now meet the WCAG AA contrast standard on every background in the app</li>
+            <li>Works without a touchscreen — every control is reachable by keyboard, sheets keep focus inside them, Escape closes the top sheet, and focus returns to where you left it</li>
+            <li>Screen-reader support — dialogs, inputs and icon-only buttons all announce properly, and the weight field names its unit</li>
             <li>Import your history from Strong or Hevy — export a CSV from your old app, then Settings → "Import from Strong or Hevy". Years of training come across with their original dates, so every chart and personal best is right from day one</li>
             <li>Import never guesses — exercise names are matched to GymOps names automatically, anything ambiguous asks you first, and Strong exports don't record kg vs lbs so GymOps asks rather than assuming</li>
             <li>Changed your mind? One tap undoes an entire import and puts your data back exactly as it was</li>
@@ -833,7 +836,7 @@
   <!-- ═══════════════════════════════════
        SESSION COMPLETION SIGNAL (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="session-signal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="session-signal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Session summary">
     <div class="modal-backdrop" id="session-signal-backdrop"></div>
     <div class="modal-sheet session-signal-sheet">
       <div class="modal-handle"></div>
@@ -850,11 +853,11 @@
   <!-- ═══════════════════════════════════
        AI SUMMARY (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="ai-summary-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="ai-summary-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ai-summary-modal-title">
     <div class="modal-backdrop" id="ai-summary-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">AI Summary</p>
+      <p id="ai-summary-modal-title" class="modal-title">AI Summary</p>
       <p id="ai-summary-text" class="ai-summary-text"></p>
       <button class="btn-primary btn-large" id="btn-ai-summary-done">Done</button>
     </div>
@@ -863,11 +866,11 @@
   <!-- ═══════════════════════════════════
        INACTIVITY PROMPT (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="inactivity-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="inactivity-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="inactivity-modal-title">
     <div class="modal-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Still working out?</p>
+      <p id="inactivity-modal-title" class="modal-title">Still working out?</p>
       <div class="modal-actions">
         <button class="btn-primary btn-large" id="btn-inactivity-continue">Yes, continue</button>
         <button class="btn-danger" id="btn-inactivity-end">End workout</button>
@@ -880,7 +883,7 @@
        One sheet, four stages. Nothing is written before the Import tap on
        the preview stage, and a snapshot is taken even then.
   ════════════════════════════════════ -->
-  <div id="import-modal" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="import-title">
     <div class="modal-backdrop import-cancel"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
@@ -925,7 +928,7 @@
       </div>
 
       <p class="settings-error hidden" id="import-error"></p>
-      <input type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="hidden">
+      <input aria-label="Choose a Strong or Hevy CSV file" type="file" id="import-file-input" accept=".csv,text/csv,text/plain" class="hidden">
     </div>
   </div>
 
@@ -934,11 +937,11 @@
        The narrow reset. Kept separate from Clear Everything below so the
        common intent ("start over") doesn't require the nuclear option.
   ════════════════════════════════════ -->
-  <div id="confirm-reset-workouts" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-reset-workouts" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-reset-workouts-title">
     <div class="modal-backdrop" id="confirm-reset-workouts-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Reset workout data?</p>
+      <p id="confirm-reset-workouts-title" class="modal-title">Reset workout data?</p>
       <p class="modal-body">Every session, set and plan will be permanently deleted. Your settings, API key and Drive connection are kept.</p>
       <div class="modal-actions">
         <button class="btn-secondary" id="btn-reset-backup-first">Back Up First</button>
@@ -951,11 +954,11 @@
   <!-- ═══════════════════════════════════
        CONFIRM CLEAR EVERYTHING (bottom sheet)
   ════════════════════════════════════ -->
-  <div id="confirm-clear" class="modal hidden" role="dialog" aria-modal="true">
+  <div id="confirm-clear" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-clear-title">
     <div class="modal-backdrop" id="confirm-clear-backdrop"></div>
     <div class="modal-sheet">
       <div class="modal-handle"></div>
-      <p class="modal-title">Clear everything?</p>
+      <p id="confirm-clear-title" class="modal-title">Clear everything?</p>
       <p class="modal-body">This permanently deletes all workout history <em>and</em> everything else stored on this device — settings, your Anthropic API key, and the Google Drive connection. Files already in Drive are not touched.</p>
       <div class="modal-actions">
         <button class="btn-secondary" id="btn-clear-backup-first">Back Up First</button>
@@ -977,7 +980,7 @@
     </div>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <!-- sql.js stays a classic script: it defines the global initSqlJs that db.js reads -->
   <script src="lib/sql-wasm.js"></script>

@@ -6,7 +6,7 @@ import { dbGetExerciseRecency, dbGetSessionPlan, dbGetSetCountForExercise } from
 import { CARDIO_KEYWORDS, EXERCISES, MUSCLE_GROUPS, getExerciseType, state } from './state.js';
 import { _doStartSession, setActiveExercise } from './workout.js';
 import { addExerciseToPlan } from './plans.js';
-import { escapeHTML } from './ui.js';
+import { escapeHTML, makeRowInteractive } from './ui.js';
 
 // Picker sort preference — 'recent' (default) or 'az'. Persisted across sessions.
 let _pickerSort    = localStorage.getItem('gymops_picker_sort') || 'recent';
@@ -91,7 +91,7 @@ function _renderExerciseList() {
     if (_pickerContext !== 'start' && ex.name === state.exercise) li.classList.add('selected');
     if (done) li.classList.add('exercise-done');
 
-    li.addEventListener('click', () => {
+    makeRowInteractive(li, () => {
       if (ex.name === 'Other') {
         document.getElementById('exercise-list').classList.add('hidden');
         document.getElementById('btn-close-picker').classList.add('hidden');

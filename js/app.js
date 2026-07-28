@@ -23,7 +23,7 @@ import {
   initDB,
 } from './db.js';
 import { APP_VERSION, getRestSecs, getWeightUnit, localDateStr, state } from './state.js';
-import { downloadCSV, downloadFile, initBackButton, showScreen, showToast } from './ui.js';
+import { downloadCSV, downloadFile, initBackButton, initModalA11y, showScreen, showToast } from './ui.js';
 import { dismissSessionSignal, renderProgressionSignal } from './signals.js';
 import {
   dismissFirstRunCard,
@@ -137,6 +137,8 @@ async function boot() {
   // Hardware/browser Back-button integration (set the history root before any
   // navigation happens). closeTopModal dismisses the frontmost overlay.
   initBackButton(closeTopModal);
+  // Focus trap, focus return and Escape-to-close for every modal (6.3).
+  initModalA11y();
 
   // Always show idle screen on boot
   const active = dbGetActiveSession();

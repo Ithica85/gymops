@@ -5,7 +5,7 @@
 import { dbGetAllExercises, dbGetExercise, dbGetExerciseSessionHistory, dbGetExercisesWithHistory, dbMergeExercise, dbRenameExercise } from './db.js';
 import { resolveExerciseName } from './aliases.js';
 import { convertWeight, getWeightUnit, state } from './state.js';
-import { onScreenShow, showScreen, showToast } from './ui.js';
+import { makeRowInteractive, onScreenShow, showScreen, showToast } from './ui.js';
 
 // Formats a date for history displays: "2 Jul", with the year appended
 // only when it differs from the current year ("2 Jul 2025").
@@ -47,7 +47,7 @@ function renderHistoryScreen() {
     arrow.textContent = '›';
 
     row.append(name, meta, arrow);
-    row.addEventListener('click', () => openExerciseHistory(r.exercise));
+    makeRowInteractive(row, () => openExerciseHistory(r.exercise));
     list.appendChild(row);
   });
 }
@@ -376,7 +376,8 @@ function _appendMergeGroup(list, label, rows) {
     const li = document.createElement('li');
     li.textContent = ex.name;   // custom names are user-entered free text
     li.classList.toggle('selected', ex.exercise_id === _mergeTarget);
-    li.addEventListener('click', () => {
+    li.setAttribute('aria-pressed', String(ex.exercise_id === _mergeTarget));
+    makeRowInteractive(li, () => {
       _mergeTarget = ex.exercise_id;
       _renderMergeSheet();
     });

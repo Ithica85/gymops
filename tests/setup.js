@@ -48,6 +48,10 @@ function stubElement(id) {
       },
       addEventListener: () => {}, focus: () => {}, blur: () => {},
       click: () => {}, // downloadFile() clicks a created <a>
+      // makeRowInteractive (6.3) gives picker/history rows the button contract
+      attributes: {},
+      setAttribute: function (k, v) { this.attributes[k] = String(v); },
+      getAttribute: function (k) { return this.attributes[k] ?? null; },
       querySelectorAll: () => [], appendChild: () => {}, remove: () => {},
     });
   }
