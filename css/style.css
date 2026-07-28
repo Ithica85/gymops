@@ -2313,3 +2313,63 @@ body {
   margin: 4px auto 0;
   font-size: 0.85rem;
 }
+
+/* ═══════════════════════════════════
+   MERGE EXERCISE (6.2)
+════════════════════════════════════ */
+
+/* The detail screen's actions moved off the header row when Merge joined
+   Rename: at 375px "← Back" plus both buttons leave ~70px for the exercise
+   name, which truncates anything longer than "Dips". Compound selector —
+   .settings-header's 32px margin is declared earlier and would otherwise
+   strand the actions row halfway down the screen. */
+.settings-header.exercise-history-header {
+  margin-bottom: 8px;
+}
+
+.exercise-history-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+/* Long custom names still can't push Back off the row. */
+.exercise-history-header .settings-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same flex-shrink guard the picker's chips row needed: inside a sheet capped
+   at 72vh, anything without it collapses so the scrolling list can grow. */
+#merge-search {
+  flex-shrink: 0;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.exercise-list.merge-list {
+  min-height: 120px;
+}
+
+/* Compound selector: .exercise-list li is (0,1,1) and would otherwise keep its
+   row padding, underline and pointer cursor on a non-tappable note. */
+.exercise-list li.merge-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 14px 12px;
+  border-bottom: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+#merge-exercise-body,
+#merge-exercise-error {
+  flex-shrink: 0;
+}
+
+#merge-exercise-modal .modal-actions {
+  flex-shrink: 0;
+}

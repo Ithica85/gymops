@@ -768,6 +768,63 @@ export function dbRenameExercise(exerciseId, newName) {
   return true;
 }
 
+// Folds one exercise identity into another: every set and plan entry belonging
+// to `fromId` is reassigned to `intoId`, and the source identity row is
+// deleted. The counterpart to import's conservative "keep as new" default —
+// keeping a variant separate is recoverable precisely because this exists.
+//
+// Merging is deliberately NOT the inverse of a rename. Rename keeps one
+// identity and changes its label; merge destroys an identity and moves its
+// history. There is no un-merge, so callers must confirm.
+//
+// The subtle part is set numbering. If a session logged both "Bench Press"
+// (sets 1–2) and "Barbell Bench Press" (sets 1–3), a naive merge leaves that
+// session with two sets numbered 1, two numbered 2 — duplicate set_number
+// within (session, exercise), which every per-set query assumes is unique.
+// Affected sessions are resequenced afterwards, ordered by set_id so the
+// original logging order survives the merge.
+export function dbMergeExercise(fromId, intoId) {
+  if (fromId === intoId) throw new Error('Choose a different exercise to merge into.');
+  const from = _one('SELECT * FROM exercises WHERE exercise_id = ?', [fromId]);
+  const into = _one('SELECT * FROM exercises WHERE exercise_id = ?', [intoId]);
+  if (!from || !into) throw new Error('That exercise no longer exists.');
+
+  // Captured before the update, while the rows still carry the old identity.
+  const sessions = _all(
+    'SELECT DISTINCT session_id FROM sets WHERE exercise_id = ?', [fromId]
+  ).map(r => r.session_id);
+
+  _db.run('UPDATE sets SET exercise_id = ?, exercise = ? WHERE exercise_id = ?',
+    [intoId, into.name, fromId]);
+  _db.run('UPDATE plan_exercises SET exercise_id = ?, exercise = ? WHERE exercise_id = ?',
+    [intoId, into.name, fromId]);
+  _db.run('DELETE FROM exercises WHERE exercise_id = ?', [fromId]);
+
+  // A plan day that listed BOTH exercises now lists the target twice, which
+  // shows as a duplicate row in the plan viewer and double-counts in
+  // adherence. Keep the earliest entry per (plan, day). Scoped to the merged
+  // identity on purpose: a blanket dedupe would group every legacy row whose
+  // exercise_id is still null into one.
+  _db.run(`
+    DELETE FROM plan_exercises
+     WHERE exercise_id = ?
+       AND id NOT IN (
+         SELECT MIN(id) FROM plan_exercises WHERE exercise_id = ? GROUP BY plan_id, day_id
+       )
+  `, [intoId, intoId]);
+
+  for (const sessionId of sessions) {
+    const rows = _all(
+      'SELECT set_id FROM sets WHERE session_id = ? AND exercise_id = ? ORDER BY set_id ASC',
+      [sessionId, intoId]
+    );
+    rows.forEach((r, i) => _db.run('UPDATE sets SET set_number = ? WHERE set_id = ?', [i + 1, r.set_id]));
+  }
+
+  _persist();
+  return { merged: from.name, into: into.name, sessions: sessions.length };
+}
+
 export function dbGetExercise(name) {
   return _one('SELECT * FROM exercises WHERE name = ?', [name]);
 }

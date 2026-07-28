@@ -2,7 +2,8 @@
 // GymOps — Exercise history: list screen, per-exercise detail, inline SVG chart
 // ═══════════════════════════════════════════════════════
 
-import { dbGetExercise, dbGetExerciseSessionHistory, dbGetExercisesWithHistory, dbRenameExercise } from './db.js';
+import { dbGetAllExercises, dbGetExercise, dbGetExerciseSessionHistory, dbGetExercisesWithHistory, dbMergeExercise, dbRenameExercise } from './db.js';
+import { resolveExerciseName } from './aliases.js';
 import { convertWeight, getWeightUnit, state } from './state.js';
 import { onScreenShow, showScreen, showToast } from './ui.js';
 
@@ -331,6 +332,146 @@ export function confirmRenameExercise() {
   closeRenameExercise();
   showToast(`Renamed to "${newName}"`);
   openExerciseHistory(newName);
+}
+
+// ── Merge (6.2) ───────────────────────────────────────
+// The counterpart to import's conservative "keep as new" default. That default
+// is only safe advice because a variant kept separate can be folded in
+// afterwards — this is where that happens.
+//
+// `dbMergeExercise` has no inverse, so the sheet asks twice over: the target
+// must be picked from the list (nothing is typed and loosely matched), and the
+// destructive button stays hidden until one is, then names it.
+
+let _mergeTarget = null;   // exercise_id of the chosen target; null until picked
+let _mergeQuery  = '';
+
+// Splits every other identity into the resolver's near-misses and the rest.
+// Reusing `resolveExerciseName` here is the point of the aliases layer: the
+// names it calls ambiguous are exactly the ones import leaves as new, so its
+// candidate list is the best available guess at what this should fold into.
+function _mergeCandidates(current) {
+  const others = dbGetAllExercises().filter(e => e.exercise_id !== current.exercise_id);
+  const byName = new Map(others.map(e => [e.name, e]));
+
+  const suggested = resolveExerciseName(current.name).candidates
+    .map(c => byName.get(c.name))
+    .filter(Boolean);
+
+  const suggestedIds = new Set(suggested.map(e => e.exercise_id));
+  return { suggested, rest: others.filter(e => !suggestedIds.has(e.exercise_id)) };
+}
+
+function _appendMergeGroup(list, label, rows) {
+  if (!rows.length) return;
+
+  if (label) {
+    const head = document.createElement('li');
+    head.className = 'picker-section-header';
+    head.textContent = label;
+    list.appendChild(head);
+  }
+
+  rows.forEach(ex => {
+    const li = document.createElement('li');
+    li.textContent = ex.name;   // custom names are user-entered free text
+    li.classList.toggle('selected', ex.exercise_id === _mergeTarget);
+    li.addEventListener('click', () => {
+      _mergeTarget = ex.exercise_id;
+      _renderMergeSheet();
+    });
+    list.appendChild(li);
+  });
+}
+
+// Rebuilt on open, on every keystroke in the search field, and on selection —
+// the selected row, the consequence line and the button label all have to
+// agree on one target, so one render owns all three.
+function _renderMergeSheet() {
+  const current = dbGetExercise(_currentExercise);
+  if (!current) return;
+
+  const list = document.getElementById('merge-list');
+  const q    = _mergeQuery.trim().toLowerCase();
+  const hit  = e => !q || e.name.toLowerCase().includes(q);
+  const { suggested, rest } = _mergeCandidates(current);
+  const shownSuggested = suggested.filter(hit);
+  const shownRest      = rest.filter(hit);
+
+  list.innerHTML = '';
+  _appendMergeGroup(list, 'Suggested', shownSuggested);
+  // The second header earns its place only when there is a first one.
+  _appendMergeGroup(list, shownSuggested.length ? 'All exercises' : '', shownRest);
+
+  if (!shownSuggested.length && !shownRest.length) {
+    const empty = document.createElement('li');
+    empty.className = 'merge-empty';
+    empty.textContent = 'No exercises match that search.';
+    list.appendChild(empty);
+  }
+
+  const target = _mergeTarget != null
+    ? [...suggested, ...rest].find(e => e.exercise_id === _mergeTarget)
+    : null;
+  const body = document.getElementById('merge-exercise-body');
+  const btn  = document.getElementById('btn-merge-confirm');
+
+  if (target) {
+    body.textContent =
+      `Every set logged as "${current.name}" moves to "${target.name}", and "${current.name}" disappears. This can't be undone.`;
+    btn.textContent = `Merge into "${target.name}"`;
+    btn.classList.remove('hidden');
+  } else {
+    body.textContent =
+      `Pick the exercise to fold "${current.name}" into. Its history moves across and "${current.name}" disappears — this can't be undone.`;
+    btn.classList.add('hidden');
+  }
+}
+
+export function openMergeExercise() {
+  if (!_currentExercise || !dbGetExercise(_currentExercise)) return;
+
+  _mergeTarget = null;
+  _mergeQuery  = '';
+  document.getElementById('merge-search').value = '';
+  document.getElementById('merge-exercise-error').classList.add('hidden');
+  _renderMergeSheet();
+  // Not autofocused, for the same reason the picker's search isn't: the
+  // keyboard would cover the list the user came here to read.
+  document.getElementById('merge-exercise-modal').classList.remove('hidden');
+}
+
+export function closeMergeExercise() {
+  document.getElementById('merge-exercise-modal').classList.add('hidden');
+  _mergeTarget = null;
+}
+
+export function setMergeQuery(q) {
+  _mergeQuery = String(q ?? '');
+  document.getElementById('merge-exercise-error').classList.add('hidden');
+  _renderMergeSheet();
+}
+
+export function confirmMergeExercise() {
+  if (!_currentExercise || _mergeTarget == null) return;
+  const errorEl = document.getElementById('merge-exercise-error');
+  const current = dbGetExercise(_currentExercise);
+  if (!current) { closeMergeExercise(); return; }
+
+  let result;
+  try {
+    result = dbMergeExercise(current.exercise_id, _mergeTarget);
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+
+  closeMergeExercise();
+  showToast(`Merged into "${result.into}"`);
+  // The name this screen was showing no longer exists, so land on the identity
+  // that now holds the history rather than on an empty detail screen.
+  openExerciseHistory(result.into);
 }
 
 // ── AI Session Summary ────────────────────────────────

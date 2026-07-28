@@ -69,7 +69,7 @@ import {
   undoSet,
   updateLogEmphasis,
 } from './workout.js';
-import { closeRenameExercise, confirmRenameExercise, openRenameExercise } from './history.js';
+import { closeMergeExercise, closeRenameExercise, confirmMergeExercise, confirmRenameExercise, openMergeExercise, openRenameExercise, setMergeQuery } from './history.js';
 import {
   applyOtherPending,
   backFromOtherType,
@@ -413,6 +413,12 @@ async function boot() {
   document.getElementById('rename-exercise-input').addEventListener('input', () => {
     document.getElementById('rename-exercise-error').classList.add('hidden');
   });
+  document.getElementById('btn-merge-exercise').addEventListener('click', openMergeExercise);
+  document.getElementById('btn-merge-confirm').addEventListener('click', confirmMergeExercise);
+  // Backdrop and Cancel share the class — one destructive sheet, one exit.
+  document.querySelectorAll('.merge-cancel')
+    .forEach(el => el.addEventListener('click', closeMergeExercise));
+  document.getElementById('merge-search').addEventListener('input', e => setMergeQuery(e.target.value));
 
   // Plans
   document.getElementById('btn-plans-idle').addEventListener('click', () => showScreen('plans'));
