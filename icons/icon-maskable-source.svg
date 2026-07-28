@@ -1,0 +1,23 @@
+<!--
+  Source art for the maskable PWA icons (icon-maskable-192/512.png).
+  Two deliberate differences from icon-source.svg:
+
+  1. The background is FULL-BLEED (no rx). A maskable icon is cropped to
+     whatever shape the platform uses — circle, squircle, teardrop — so any
+     rounded corner baked into the artwork would crop to transparent edges.
+     The launcher supplies the rounding; the icon must fill its own square.
+
+  2. The mark is scaled to 0.85. The maskable safe zone is the centre circle
+     of 80% diameter (radius 40% of the canvas = 12.8 units here). The mark's
+     half-diagonal at full size is sqrt(11² + 5²) = 12.08 — inside, but only
+     just, and an aggressive mask would graze the plates. At 0.85 it drops to
+     10.3, which clears every mask shape in use.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#181818"/>
+  <g transform="translate(16,16) scale(0.85) translate(-16,-16)">
+    <rect x="10" y="14.5" width="12" height="3" rx="1.5" fill="#c8ff57"/>
+    <rect x="5" y="11" width="5" height="10" rx="2" fill="#c8ff57"/>
+    <rect x="22" y="11" width="5" height="10" rx="2" fill="#c8ff57"/>
+  </g>
+</svg>

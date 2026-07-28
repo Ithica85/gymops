@@ -5,8 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- iOS uses the title below the home-screen icon, not manifest short_name. -->
+  <meta name="apple-mobile-web-app-title" content="GymOps">
+  <meta name="description" content="The fastest workout logger that never loses your history. Log sets in one tap, track progression, import from Strong or Hevy. Works offline; your data stays on your device.">
   <title>GymOps</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- iOS ignores manifest icons entirely — the home-screen icon comes from
+       here, and transparency would be composited onto black, so this points at
+       the full-bleed raster rather than the SVG. -->
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d0d0d">
   <link rel="stylesheet" href="css/style.css">

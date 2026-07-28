@@ -11,7 +11,7 @@
 // with a repo-level upgrade (bump CACHE then) and re-downloading ~1.2MB of
 // wasm on every open would be waste.
 
-const CACHE = 'gymops-v96';
+const CACHE = 'gymops-v97';
 
 const ASSETS = [
   '/',
@@ -36,6 +36,20 @@ const ASSETS = [
   '/js/gdrive.js',
   '/lib/sql-wasm.js',
   '/lib/sql-wasm.wasm',
+  // 6.5 install assets. The manifest and icons were never precached, so an
+  // offline first visit had no icon and no installability. 32KB total.
+  // Screenshots (244KB) are deliberately absent: only the browser's install UI
+  // reads them, which is an online moment by definition, so they shouldn't be
+  // on the critical path of a first install. They still END UP cached — the
+  // network-first handler cache.puts any successful same-origin GET in passing
+  // — which is the intent: not precached, but free once actually fetched.
+  '/manifest.json',
+  '/favicon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 // Slow/flaky network: how long to wait before serving the cached copy.

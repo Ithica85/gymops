@@ -1,0 +1,13 @@
+<!--
+  Source art for the "any"-purpose PWA icons (icon-192.png / icon-512.png).
+  Identical geometry to /favicon.svg — the rounded corners are part of the
+  artwork here, so the icon is shown as drawn and the area outside them stays
+  transparent. Do NOT use this for maskable: a platform mask crops the corners
+  and would expose transparency. See icon-maskable-source.svg.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#181818"/>
+  <rect x="10" y="14.5" width="12" height="3" rx="1.5" fill="#c8ff57"/>
+  <rect x="5" y="11" width="5" height="10" rx="2" fill="#c8ff57"/>
+  <rect x="22" y="11" width="5" height="10" rx="2" fill="#c8ff57"/>
+</svg>

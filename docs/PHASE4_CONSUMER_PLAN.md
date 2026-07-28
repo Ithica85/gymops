@@ -124,7 +124,7 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 - [ ] A stranger can install the PWA, import their Strong/Hevy history, and complete a logged session with zero guidance.
 - [x] No flow ever presents an OAuth consent screen mid-workout or at finish. *(6.6, July 26 2026 — Drive is opt-in from Settings, and the finish-time token request is `prompt: 'none'`, which cannot render UI by contract.)*
 - [ ] A screen-reader user can log a set.
-- [ ] A deploy reaches every client within one app open, without manual hard-refresh.
+- [x] A deploy reaches every client within one app open, without manual hard-refresh. *(6.4, July 22 2026 — network-first SW, verified by a 5-check CDP e2e against a mutable repo copy, and observed in production on the v6.7 and v6.8 deploys of July 27.)*
 
 ### Phase 7 — Distribution & Optionality (unscheduled, gated)
 

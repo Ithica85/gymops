@@ -1,18 +1,67 @@
 {
-  "name": "GymOps",
+  "name": "GymOps — Workout Logger",
   "short_name": "GymOps",
-  "description": "Friction-free workout logger",
+  "description": "The fastest workout logger that never loses your history. Log sets in one tap, track progression, import from Strong or Hevy. Works offline; your data stays on your device.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0d0d0d",
   "theme_color": "#0d0d0d",
+  "categories": ["health", "fitness", "sports"],
   "icons": [
     {
       "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icons/screenshots/01-home.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home screen with your training week, streak and muscle coverage"
+    },
+    {
+      "src": "icons/screenshots/02-workout.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Logging a set — one tap repeats last session's weight and reps"
+    },
+    {
+      "src": "icons/screenshots/03-progress.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Per-exercise progression chart and session history"
     }
   ]
 }
