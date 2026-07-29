@@ -200,6 +200,16 @@
         <a class="btn-secondary btn-link" href="about.html" id="link-about">About GymOps</a>
         <p class="settings-hint">What the app is, where your data lives, and how to get it out again.</p>
       </div>
+      <!-- 6.9 usage counters. No opt-in switch on purpose: nothing here is
+           transmitted, and a consent prompt for a number that never leaves the
+           device would be theatre. The honesty obligation is the hint below. -->
+      <div class="settings-section">
+        <span class="settings-label">Usage</span>
+        <div id="usage-list" class="usage-list"><!-- populated by JS --></div>
+        <p id="usage-summary" class="settings-status hidden"></p>
+        <p id="usage-since" class="settings-hint"></p>
+        <p class="settings-hint">Counted on this device only and never sent anywhere — there is no server to send them to. "Clear Everything" resets them.</p>
+      </div>
       <div class="settings-section">
         <span class="settings-label">Reset</span>
         <button class="btn-secondary" id="btn-reset-workouts">Reset Workout Data</button>
@@ -735,6 +745,7 @@
             <li>Changed your mind? One tap undoes an entire import and puts your data back exactly as it was</li>
             <li>Merge two exercises into one — fold a duplicate or an imported variant into the exercise you already use, and all of its history comes with it (History → pick the exercise → Merge)</li>
             <li>New here? The home screen now says what GymOps is, that your history stays on your device, and what to tap first</li>
+            <li>Settings now shows how you've been using the app — workouts started and finished, sets typed versus logged in one tap, and the like. Counted on this device only and never sent anywhere</li>
             <li>There's now a proper About page — what the app is, how a session goes, where your data lives and how to get it out again. Settings → "About GymOps", and it's a normal web page you can send to anyone who asks what you're using</li>
             <li>Add GymOps to your home screen — offered once you've finished a workout, not before</li>
             <li>Google Drive is now opt-in and lives in Settings — finishing a workout never interrupts you with a Google sign-in, and Drive is a copy of your data, never the original</li>

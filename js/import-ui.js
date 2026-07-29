@@ -25,6 +25,7 @@ import {
 import { parseImport, resolveImportExercises, detectImportSource } from './import.js';
 import { localDateStr } from './state.js';
 import { showToast } from './ui.js';
+import { bumpCounter, COUNTERS } from './counters.js';
 
 // Flow state. Cleared on every open so a cancelled import can't leak into the
 // next one.
@@ -213,6 +214,7 @@ export async function confirmImport() {
   let result;
   try {
     result = dbImportSessions(_parsed.sessions, { unit: _parsed.unit });
+    bumpCounter(COUNTERS.IMPORTS_RUN); // only a write that actually landed counts
   } catch (err) {
     await dbUndoImport(); // roll back a partial write before surfacing anything
     btn.disabled = false;

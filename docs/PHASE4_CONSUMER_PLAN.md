@@ -121,7 +121,7 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 | 6.9 | Privacy-preserving usage counters | Local-only funnel counters (sessions started/completed, feature touches) — enough to reason about activation without telemetry infrastructure. |
 
 **Success criteria for Phase 6:**
-- [ ] A stranger can install the PWA, import their Strong/Hevy history, and complete a logged session with zero guidance.
+- [ ] A stranger can install the PWA, import their Strong/Hevy history, and complete a logged session with zero guidance. *(All nine items shipped as of 6.9, July 28 2026 — every piece of the path exists and 6.9 added the local counters to measure it. Left unticked because the criterion is about a person, not a feature set: no one outside this repo has run it.)*
 - [x] No flow ever presents an OAuth consent screen mid-workout or at finish. *(6.6, July 26 2026 — Drive is opt-in from Settings, and the finish-time token request is `prompt: 'none'`, which cannot render UI by contract.)*
 - [ ] A screen-reader user can log a set. *(6.3, July 27 2026 — names, roles, focus trap/return and a keyboard-only log-a-set run are all verified; deliberately left unticked until a real VoiceOver/TalkBack pass, since this criterion is a claim about screen readers specifically.)*
 - [x] A deploy reaches every client within one app open, without manual hard-refresh. *(6.4, July 22 2026 — network-first SW, verified by a 5-check CDP e2e against a mutable repo copy, and observed in production on the v6.7 and v6.8 deploys of July 27.)*

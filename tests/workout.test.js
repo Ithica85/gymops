@@ -13,6 +13,7 @@ import {
   dbUpdateSessionDay,
 } from '../js/db.js';
 import { EXERCISES, localDateStr, state } from '../js/state.js';
+import { COUNTERS, getCounters, getCounterSummary } from '../js/counters.js';
 import {
   _doStartSession, startSession, beginSessionFlow, resumeSession, logSet, quickLogSet, undoSet,
   finishWorkout, resumeLastWorkout, setActiveExercise, computeUpNext,
@@ -559,5 +560,44 @@ describe('plan day rotation (5.2)', () => {
 
     dbUpdateSessionDay(state.sessionId, days[1].day_id); // chip switch → Pull
     expect(computeUpNext('Lat Pulldown')).toBe('Seated Row');
+  });
+});
+
+// ── Usage counters (6.9) ──────────────────────────────
+// The wiring test in counters.test.js proves the call sites use the constants;
+// these prove the numbers actually move when the real money path runs, which
+// is the only way to catch a bump attached to a branch that never executes.
+describe('usage counters follow the money path', () => {
+  const n = k => getCounters()[k] ?? 0;
+
+  it('counts a started session, its sets, and the finish', async () => {
+    startOnDefault();
+    expect(n(COUNTERS.SESSIONS_STARTED)).toBe(1);
+
+    typeAndLog('60', '8');
+    typeAndLog('60', '8');
+    expect(n(COUNTERS.SETS_MANUAL)).toBe(2);
+
+    await finishWorkout();
+    expect(n(COUNTERS.SESSIONS_COMPLETED)).toBe(1);
+    expect(getCounterSummary().completionRate).toBe(100);
+  });
+
+  // The split is the whole reason both are counted — "is quick-log actually
+  // used" is unanswerable if every set lands in one bucket.
+  it('separates one-tap sets from typed ones', () => {
+    startOnDefault();
+    typeAndLog('60', '8');   // establishes the reference quick-log repeats
+    quickLogSet();
+    expect(n(COUNTERS.SETS_MANUAL)).toBe(1);
+    expect(n(COUNTERS.SETS_QUICK)).toBe(1);
+    expect(getCounterSummary().quickLogShare).toBe(50);
+  });
+
+  it('counts an undo', () => {
+    startOnDefault();
+    typeAndLog('60', '8');
+    undoSet();
+    expect(n(COUNTERS.SETS_UNDONE)).toBe(1);
   });
 });

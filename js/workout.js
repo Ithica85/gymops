@@ -50,6 +50,7 @@ import {
 import { openPicker, openPickerForStart } from './picker.js';
 import { renderPlanAdherence } from './plans.js';
 import { getAnthropicKey } from './settings.js';
+import { bumpCounter, COUNTERS } from './counters.js';
 
 // Debounce handle for the notes textarea. Notes are saved 600ms after the
 // user stops typing, and immediately on blur (e.g. switching apps).
@@ -648,6 +649,7 @@ export function _doStartSession({ exercise = null, type = null, dayId = null } =
   _resetQuickLogConfirm();
 
   state.sessionId = dbCreateSession(getWeightUnit());
+  bumpCounter(COUNTERS.SESSIONS_STARTED);
 
   // Link session to active plan if one exists, landing on the chosen day or
   // the next in rotation (day after the last one trained, cycling).
@@ -827,6 +829,7 @@ export function finishWorkout() {
 
   const count   = dbGetSetCount(state.sessionId);
   dbFinishSession(state.sessionId);
+  bumpCounter(COUNTERS.SESSIONS_COMPLETED);
   state.finishedAt = new Date();
 
   // Auto-save to Google Drive (non-blocking — failure falls back to local CSV
@@ -946,7 +949,10 @@ export function logSet() {
 // set number advance, re-render, log scroll. focus=false skips refocusing the
 // weight input — quick-log must not pop the mobile keyboard, since avoiding
 // typing is its entire purpose.
-function _afterSetLogged(focus = true) {
+function _afterSetLogged(focus = true, source = 'manual') {
+  // 6.9: the single post-insert point every logging path funnels through, so
+  // one bump here can't miss a route the way per-call-site bumps would.
+  bumpCounter(source === 'quick' ? COUNTERS.SETS_QUICK : COUNTERS.SETS_MANUAL);
   const signal = computeProgressionSignal(state.exercise, state.sessionId);
   // Resync setNumber from the DB (the set is already inserted, so this advances it)
   setActiveExercise(state.exercise, state.exerciseType, { render: false });
@@ -1018,6 +1024,7 @@ export function isAllTimePR(exercise, sessionId, weightKg) {
 // Auto-dismisses; never blocks logging. Exercise names are user text — the
 // detail line is set via textContent.
 function celebratePR(displayWeight, unit, exercise) {
+  bumpCounter(COUNTERS.PRS);
   document.getElementById('pr-detail').textContent = `${displayWeight} ${unit} · ${exercise}`;
 
   const confetti = document.getElementById('pr-confetti');
@@ -1205,7 +1212,7 @@ export function quickLogSet() {
   _quickLogLoggedAt = Date.now(); // before _afterSetLogged so its re-render keeps the confirmation
   _showQuickLogConfirm(valueText);
   if (navigator.vibrate) navigator.vibrate(30);
-  _afterSetLogged(false); // no refocus — keep the keyboard down
+  _afterSetLogged(false, 'quick'); // no refocus — keep the keyboard down
 }
 
 // Deletes the most recently logged set of the CURRENT exercise — never the
@@ -1225,6 +1232,8 @@ export function undoSet() {
     setTimeout(clearError, 1500);
     return;
   }
+
+  bumpCounter(COUNTERS.SETS_UNDONE);
 
   // Resync setNumber from the DB (always the current exercise's set now)
   setActiveExercise(state.exercise, state.exerciseType, { render: false });

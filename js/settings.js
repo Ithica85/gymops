@@ -7,6 +7,7 @@ import { dbExportBackup, dbResetWorkoutData, dbRestoreBackup, dbValidateBackup }
 import { gdriveConnect, gdriveDisconnect, gdriveIsConnected } from './gdrive.js';
 import { REST_SECS_KEY, UNIT_KEY, localDateStr, state } from './state.js';
 import { downloadFile, onScreenShow, showToast } from './ui.js';
+import { COUNTER_LABELS, getCounterSummary } from './counters.js';
 import { updateInputFields } from './workout.js';
 
 export function setWeightUnit(u) {
@@ -154,9 +155,47 @@ export function disconnectGDrive() {
   showToast('Google Drive disconnected');
 }
 
-// The Drive card is the one Settings row whose state can change outside the
-// app (a revoked grant, a second device), so it re-reads on every screen show.
+// ── Usage counters (6.9) ──────────────────────────────
+
+// Renders the local funnel. Built with DOM APIs rather than innerHTML — the
+// labels are ours and the values are numbers, but this is the last screen that
+// should acquire a string-concatenation habit.
+export function renderUsageCounters() {
+  const list = document.getElementById('usage-list');
+  const s    = getCounterSummary();
+  list.replaceChildren();
+
+  for (const [key, label] of COUNTER_LABELS) {
+    const row = document.createElement('div');
+    row.className = 'usage-row';
+    const name = document.createElement('span');
+    name.className = 'usage-row-label';
+    name.textContent = label;
+    const value = document.createElement('span');
+    value.className = 'usage-row-value';
+    value.textContent = String(s.counts[key] ?? 0);
+    row.append(name, value);
+    list.appendChild(row);
+  }
+
+  // The two ratios are the point of the whole feature — a raw pile of totals
+  // doesn't answer "do sessions that start get finished". Omitted entirely
+  // rather than shown as 0% when nothing has happened yet.
+  const rates = [];
+  if (s.completionRate != null) rates.push(`${s.completionRate}% of started workouts finished`);
+  if (s.quickLogShare  != null) rates.push(`${s.quickLogShare}% of sets logged in one tap`);
+  const summary = document.getElementById('usage-summary');
+  summary.textContent = rates.join(' · ');
+  summary.classList.toggle('hidden', !rates.length);
+
+  const since = document.getElementById('usage-since');
+  since.textContent = s.since ? `Counting since ${s.since}` : 'Nothing counted yet';
+}
+
+// Counters change constantly while the app is used, so like the Drive card
+// they're read on every visit rather than once at boot.
 onScreenShow('settings', renderGDriveStatus);
+onScreenShow('settings', renderUsageCounters);
 
 // ── Reset workout data (6.8) ──────────────────────────
 

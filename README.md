@@ -2,7 +2,7 @@
 
 A friction-free training companion for lifters who already have a plan.
 
-**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.13
+**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.14
 
 ---
 
@@ -27,7 +27,7 @@ The friction-free philosophy: fewer screens, fewer fields, one tap to log a set.
 | 3 | AI, plans, history, training-companion turn | ✅ Complete July 2026 (v3.0–v3.7) |
 | 4 | Trust & correctness — consumer quality bar | ✅ Complete July 16, 2026 (v4.0–v4.7) |
 | 5 | Identity & program model | ✅ Complete July 23, 2026 (v5.0–v6.2) |
-| 6 | Consumer readiness | 🚧 In progress — 9 of 9 items shipped (v6.0–v6.12); local usage counters remain |
+| 6 | Consumer readiness | ✅ All 9 items shipped July 28, 2026 (v6.0–v6.14); 2 success criteria await real people |
 | 7 | Distribution & optionality | Parked (gated triggers, not dates) |
 
 **North star:** *the fastest logger that never loses your history.*
@@ -99,7 +99,7 @@ Make the data model survive years and fit real training.
 
 **Remaining polish (non-blocking):** surface the plan editor's silent empty-day drop, rename from an active session, post-rename UI refresh.
 
-### Phase 6 — Consumer readiness (v6.0–v6.12, in progress)
+### Phase 6 — Consumer readiness (v6.0–v6.14) ✅
 
 Theme: a stranger can discover, install, migrate to, and use GymOps with no guidance.
 
@@ -115,9 +115,10 @@ Theme: a stranger can discover, install, migrate to, and use GymOps with no guid
 - **6.3 Accessibility pass** — measured contrast fixes (the danger token split in two so the fill could darken without dimming ten text uses), every dialog and input given an accessible name, global `:focus-visible`, focus trap + return + Escape on every modal, and keyboard-operable picker / merge / history rows. Names and roles are verified programmatically and by keyboard; **no real screen reader has been run against it yet**, so that criterion stays unticked
 - **v6.3 feedback batch** — longer PR celebration, quick-log reference reworked to carry the working weight forward, in-session plan viewer, Android Back button wired to the SPA's real depth
 - **6.7 About page** — a real page at [/about.html](https://gymops-two.vercel.app/about.html) explaining what the app is, how a session goes, where your data lives and how to get it out. Linked from Settings; the root URL stays the app, because the daily user must keep booting straight into the logger
+- **6.9 Local usage counters** — Settings → Usage shows the funnel: workouts started vs finished, sets typed vs logged in one tap, imports, PRs. Counted on your device, never transmitted, and there is no server to transmit to
 - **v6.4** — three exercise-picker layout bugs, all one root cause: `.exercise-list li` out-specifying every later single-class rule
 
-**Next:** 6.9 local usage counters — then Phase 6 closes.
+**Two criteria stay open by design:** "a screen-reader user can log a set" needs a real VoiceOver/TalkBack pass, and "a stranger installs, imports and logs with zero guidance" needs an actual stranger. Both are claims about people rather than code.
 
 ---
 
@@ -140,7 +141,7 @@ Theme: a stranger can discover, install, migrate to, and use GymOps with no guid
 
 Active plan: [`docs/PHASE4_CONSUMER_PLAN.md`](docs/PHASE4_CONSUMER_PLAN.md).
 
-**Next:** 6.9 local usage counters — then Phase 6 closes.
+**Two criteria stay open by design:** "a screen-reader user can log a set" needs a real VoiceOver/TalkBack pass, and "a stranger installs, imports and logs with zero guidance" needs an actual stranger. Both are claims about people rather than code.
 
 **Also open (non-blocking Phase 5 polish):** empty-day guard in the plan editor · rename from an active session · post-rename UI refresh.
 
@@ -216,7 +217,7 @@ gymops/
 ├── sw.js               # Service worker (network-first app files)
 ├── icons/              # PWA icons — edit the SVG sources, re-render the PNGs
 ├── scripts/            # Build-time generators (icons, screenshots) — never shipped
-├── tests/              # Vitest suite (287 tests)
+├── tests/              # Vitest suite (305 tests)
 ├── docs/               # Consumer plan, review responses, agentic vision
 └── CLAUDE.md           # Architecture, schema, phase history
 ```

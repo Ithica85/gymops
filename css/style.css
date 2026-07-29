@@ -1099,6 +1099,39 @@ body {
   color: var(--accent);
 }
 
+/* Usage counters (6.9). A label/value pair per row on one line — deliberately
+   plain: this is a readout, not a dashboard, and it sits below every control a
+   user actually came to Settings for. */
+.usage-list {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 4px 14px;
+}
+
+.usage-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.usage-row:last-child { border-bottom: none; }
+
+.usage-row-label {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* Tabular figures so the column of numbers doesn't jitter as digits change. */
+.usage-row-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Inline failure under a Settings action (e.g. a declined Drive consent).
    Inline rather than a toast: the user is looking right at the control that
    failed and needs the instruction to still be there when they retry. */

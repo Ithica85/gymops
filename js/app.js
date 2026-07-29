@@ -97,6 +97,7 @@ import {
   setWeightUnit,
 } from './settings.js';
 import { generateAISummary, hideAISummaryModal } from './ai.js';
+import { bumpCounter, COUNTERS } from './counters.js';
 import {
   closeImport,
   confirmImport,
@@ -134,6 +135,10 @@ async function boot() {
     return;
   }
 
+  // 6.9: counted after the corrupt-DB guard above returns, so a boot that
+  // never reaches a usable app isn't recorded as an open.
+  bumpCounter(COUNTERS.APP_OPENS);
+
   // Hardware/browser Back-button integration (set the history root before any
   // navigation happens). closeTopModal dismisses the frontmost overlay.
   initBackButton(closeTopModal);
@@ -159,7 +164,10 @@ async function boot() {
   const hideDiscardModal = () => document.getElementById('confirm-discard').classList.add('hidden');
   document.getElementById('btn-confirm-discard').addEventListener('click', () => {
     const existing = dbGetActiveSession();
-    if (existing) dbDeleteSession(existing.session_id);
+    if (existing) {
+      dbDeleteSession(existing.session_id);
+      bumpCounter(COUNTERS.SESSIONS_DISCARDED);
+    }
     hideDiscardModal();
     beginSessionFlow(); // re-enters the 5.3 chooser decision, not a bare start
   });

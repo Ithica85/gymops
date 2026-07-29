@@ -22,6 +22,7 @@ import {
 import { SIGNAL_GAP_DAYS, getExerciseType, localDateStr } from './state.js';
 import { escapeHTML, onScreenShow, showScreen } from './ui.js';
 import { IDLE_BANNERS, _weekStart } from './idle.js';
+import { bumpCounter, COUNTERS } from './counters.js';
 
 // Plan adherence (reworked 5.5): measured against the day trained — the
 // session's plan-day exercises (whole plan for day-less legacy sessions;
@@ -465,6 +466,7 @@ export function savePlan() {
     if (existing) dbUpdatePlanStatus(existing.plan_id, 'archived');
     const planId = dbCreatePlan(name, localDateStr(), durationWeeks, objectivesJson, targetSessions);
     dbSavePlanExercises(planId, days);
+    bumpCounter(COUNTERS.PLANS_CREATED); // new plans only — an edit isn't a create
   }
 
   showScreen('plans');

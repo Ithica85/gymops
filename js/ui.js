@@ -6,14 +6,20 @@
 // showScreen() feature-agnostic (same ethos as the IDLE_BANNERS mediator).
 const _screenShowHooks = {};
 
-export function onScreenShow(name, fn) { _screenShowHooks[name] = fn; }
+// A LIST per screen, not one slot. It held a single fn until 6.9, when Settings
+// needed a second hook and silently replaced its first — the Drive card simply
+// stopped refreshing, with nothing to see in any test or console. Registering a
+// hook must never unregister someone else's.
+export function onScreenShow(name, fn) {
+  (_screenShowHooks[name] ??= []).push(fn);
+}
 
 // Shows a named screen (idle / active / completed / settings) and hides all others.
 export function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = document.getElementById(`screen-${name}`);
   screen.classList.add('active');
-  _screenShowHooks[name]?.();
+  _screenShowHooks[name]?.forEach(fn => fn());
   armBackGuard(); // keep the Back-button guard in sync with the new depth
 
   // 6.3: move focus into the new screen. Without this, focus stays on the
