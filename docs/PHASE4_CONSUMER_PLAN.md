@@ -120,7 +120,7 @@ Decisions made 2026-07-14, recorded here as the standing frame for all future ph
 | 6.8 | Reset options split | "Reset workout data" separate from "Clear everything incl. credentials". |
 | 6.9 | Privacy-preserving usage counters | Local-only funnel counters (sessions started/completed, feature touches) — enough to reason about activation without telemetry infrastructure. |
 
-**Success criteria for Phase 6:**
+**Success criteria for Phase 6:** *(the two open ones are claims about people — the protocol for closing them is `ACCEPTANCE_TESTS.md`, which is written to be handed to a tester unedited)*
 - [ ] A stranger can install the PWA, import their Strong/Hevy history, and complete a logged session with zero guidance. *(All nine items shipped as of 6.9, July 28 2026 — every piece of the path exists and 6.9 added the local counters to measure it. Left unticked because the criterion is about a person, not a feature set: no one outside this repo has run it.)*
 - [x] No flow ever presents an OAuth consent screen mid-workout or at finish. *(6.6, July 26 2026 — Drive is opt-in from Settings, and the finish-time token request is `prompt: 'none'`, which cannot render UI by contract.)*
 - [ ] A screen-reader user can log a set. *(6.3, July 27 2026 — names, roles, focus trap/return and a keyboard-only log-a-set run are all verified; deliberately left unticked until a real VoiceOver/TalkBack pass, since this criterion is a claim about screen readers specifically.)*
