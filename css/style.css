@@ -305,6 +305,18 @@ body {
 }
 .btn-danger:active { opacity: 0.8; }
 
+/* An <a> wearing a button class (6.7, Settings → About GymOps). Anchors don't
+   centre their own text or drop their underline, and they size to content
+   rather than filling a flex column — these four lines are the whole gap
+   between a link and the button it sits next to. */
+.btn-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+}
+
 .btn-text {
   background: none;
   border: none;

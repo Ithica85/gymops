@@ -2,7 +2,7 @@
 
 A friction-free training companion for lifters who already have a plan.
 
-**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.10
+**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.11
 
 ---
 
@@ -27,7 +27,7 @@ The friction-free philosophy: fewer screens, fewer fields, one tap to log a set.
 | 3 | AI, plans, history, training-companion turn | ✅ Complete July 2026 (v3.0–v3.7) |
 | 4 | Trust & correctness — consumer quality bar | ✅ Complete July 16, 2026 (v4.0–v4.7) |
 | 5 | Identity & program model | ✅ Complete July 23, 2026 (v5.0–v6.2) |
-| 6 | Consumer readiness | 🚧 In progress — 8 of 9 items shipped (v6.0–v6.10); about page + usage counters remain |
+| 6 | Consumer readiness | 🚧 In progress — 9 of 9 items shipped (v6.0–v6.11); local usage counters remain |
 | 7 | Distribution & optionality | Parked (gated triggers, not dates) |
 
 **North star:** *the fastest logger that never loses your history.*
@@ -99,7 +99,7 @@ Make the data model survive years and fit real training.
 
 **Remaining polish (non-blocking):** surface the plan editor's silent empty-day drop, rename from an active session, post-rename UI refresh.
 
-### Phase 6 — Consumer readiness (v6.0–v6.10, in progress)
+### Phase 6 — Consumer readiness (v6.0–v6.11, in progress)
 
 Theme: a stranger can discover, install, migrate to, and use GymOps with no guidance.
 
@@ -114,9 +114,10 @@ Theme: a stranger can discover, install, migrate to, and use GymOps with no guid
 - **6.5 PWA install polish** — separate `any` and full-bleed maskable icon families, an apple-touch-icon (iOS ignores the manifest), three narrow screenshots for Chrome's rich install UI, and manifest + icons precached so a first visit offline still installs
 - **6.3 Accessibility pass** — measured contrast fixes (the danger token split in two so the fill could darken without dimming ten text uses), every dialog and input given an accessible name, global `:focus-visible`, focus trap + return + Escape on every modal, and keyboard-operable picker / merge / history rows. Names and roles are verified programmatically and by keyboard; **no real screen reader has been run against it yet**, so that criterion stays unticked
 - **v6.3 feedback batch** — longer PR celebration, quick-log reference reworked to carry the working weight forward, in-session plan viewer, Android Back button wired to the SPA's real depth
+- **6.7 About page** — a real page at [/about.html](https://gymops-two.vercel.app/about.html) explaining what the app is, how a session goes, where your data lives and how to get it out. Linked from Settings; the root URL stays the app, because the daily user must keep booting straight into the logger
 - **v6.4** — three exercise-picker layout bugs, all one root cause: `.exercise-list li` out-specifying every later single-class rule
 
-**Next:** 6.7 about/landing page · 6.9 local usage counters
+**Next:** 6.9 local usage counters — then Phase 6 closes.
 
 ---
 
@@ -139,7 +140,7 @@ Theme: a stranger can discover, install, migrate to, and use GymOps with no guid
 
 Active plan: [`docs/PHASE4_CONSUMER_PLAN.md`](docs/PHASE4_CONSUMER_PLAN.md).
 
-**Next:** 6.7 about/landing page · 6.9 local usage counters — then Phase 6 closes.
+**Next:** 6.9 local usage counters — then Phase 6 closes.
 
 **Also open (non-blocking Phase 5 polish):** empty-day guard in the plan editor · rename from an active session · post-rename UI refresh.
 
@@ -211,10 +212,11 @@ gymops/
 ├── js/                 # Feature modules: picker, signals, idle, plans, history,
 │                       #   settings, ai, gdrive, import-ui, state, ui
 ├── api/ai-summary.js   # Anthropic proxy
+├── about.html          # Public about page (6.7) + css/about.css
 ├── sw.js               # Service worker (network-first app files)
 ├── icons/              # PWA icons — edit the SVG sources, re-render the PNGs
 ├── scripts/            # Build-time generators (icons, screenshots) — never shipped
-├── tests/              # Vitest suite (259 tests)
+├── tests/              # Vitest suite (274 tests)
 ├── docs/               # Consumer plan, review responses, agentic vision
 └── CLAUDE.md           # Architecture, schema, phase history
 ```

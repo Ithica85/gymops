@@ -1,0 +1,376 @@
+/* ═══════════════════════════════════════════════════════
+   ABOUT / LANDING PAGE (6.7)
+
+   Loaded after css/style.css, which stays the source of truth for tokens,
+   buttons and the 6.3 focus ring. This file adds only what a scrolling
+   marketing document needs and the app deliberately does not have.
+
+   The app is a fixed-viewport single page — style.css sets
+   `body { height: 100%; overflow: hidden }` so screens can own 100dvh and
+   the sets log can be the only scroller. A document has to undo exactly
+   that, and nothing else: those two lines are the entire coupling between
+   this page and the app's stylesheet.
+════════════════════════════════════════════════════════ */
+
+body.about-page {
+  height: auto;
+  overflow: visible;
+  overflow-x: hidden;          /* nothing may push the page sideways at 375px */
+  -webkit-text-size-adjust: 100%;
+}
+
+.about-page {
+  --about-max: 720px;
+  --about-pad: 20px;
+}
+
+.about-page main {
+  display: block;
+}
+
+/* Shared column. Sections are full-bleed so a tinted band can span the
+   viewport while its text stays on the same measure as everything else. */
+.about-topbar,
+.about-hero,
+.about-section > *,
+.about-closing > *,
+.about-footer {
+  max-width: var(--about-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--about-pad);
+  padding-right: var(--about-pad);
+}
+
+/* ── top bar ───────────────────────────────────────── */
+.about-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.about-wordmark {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.about-topbar-link {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  padding: 6px 2px;
+}
+
+.about-topbar-link:hover { color: var(--accent); }
+
+/* ── hero ──────────────────────────────────────────── */
+.about-hero {
+  padding-top: 32px;
+  padding-bottom: 44px;
+  text-align: center;
+}
+
+.about-hero h1 {
+  font-size: 2rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+}
+
+.about-lead {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 34em;
+  margin: 0 auto;
+}
+
+.about-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* The buttons are <a>, so they need the parts .btn-primary assumes a <button>
+   brings: centring, and no underline. */
+.about-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  min-height: 52px;
+}
+
+.about-cta-note {
+  margin-top: 16px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.about-nowrap { white-space: nowrap; }
+
+/* ── generic section ───────────────────────────────── */
+.about-section {
+  padding-top: 40px;
+  padding-bottom: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.about-section h2,
+.about-closing h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+}
+
+.about-section p {
+  line-height: 1.6;
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+.about-section p:last-child { margin-bottom: 0; }
+
+.about-section--data {
+  background: var(--surface);
+  border-top-color: transparent;
+}
+
+/* ── pull quote ────────────────────────────────────── */
+.about-quote {
+  margin-top: 26px;
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+}
+
+.about-quote p {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* ── steps + screenshots ───────────────────────────── */
+.about-step {
+  margin-top: 32px;
+}
+
+.about-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.about-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.about-step-detail { color: var(--muted); }
+
+.about-shot {
+  margin-top: 18px;
+}
+
+/* Phone frame. The screenshots are 780×1688 (390×844 @2dpr) — capped by height
+   so a tall phone screenshot can't run off a short laptop viewport. */
+.about-shot img {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+/* ── lists ─────────────────────────────────────────── */
+.about-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.about-list li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.about-list li strong { color: var(--text); }
+
+.about-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.6em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.about-note {
+  margin-top: 18px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.about-section .about-note { color: var(--muted); }
+
+/* ── card grids ────────────────────────────────────── */
+.about-grid,
+.about-install {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.about-card {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.about-section--data .about-card { background: var(--surface2); }
+
+.about-card h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.about-card p {
+  font-size: 0.925rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0;
+}
+
+.about-card a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── closing ───────────────────────────────────────── */
+.about-closing {
+  text-align: center;
+  padding-top: 48px;
+  padding-bottom: 52px;
+  border-top: 1px solid var(--border);
+}
+
+.about-closing p {
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.about-closing .about-btn {
+  min-width: 220px;
+}
+
+/* ── footer ────────────────────────────────────────── */
+.about-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+  padding-bottom: 40px;
+  text-align: center;
+}
+
+.about-footer-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 12px;
+}
+
+.about-footer-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 4px 2px;
+}
+
+.about-footer-links a:hover { color: var(--accent); }
+
+.about-footer-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ═══════════════════════════════════════════════════════
+   WIDER VIEWPORTS
+   The app is capped at 480px because it's a phone tool; this page is the
+   one surface a stranger may well open on a laptop first.
+════════════════════════════════════════════════════════ */
+@media (min-width: 700px) {
+  .about-hero {
+    padding-top: 56px;
+    padding-bottom: 60px;
+  }
+
+  .about-hero h1 { font-size: 2.6rem; }
+
+  .about-cta {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .about-cta .about-btn { min-width: 200px; }
+
+  .about-section,
+  .about-closing { padding-top: 56px; padding-bottom: 56px; }
+
+  /* Screenshot beside its text rather than stacked under it. Deliberately the
+     same side every time: three steps read as one sequence, and alternating
+     sides would mean re-finding the text column on each row. */
+  .about-step {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    gap: 32px;
+    align-items: center;
+    margin-top: 44px;
+  }
+
+  .about-shot { margin-top: 0; }
+  .about-shot img { max-width: 240px; }
+
+  .about-grid { grid-template-columns: 1fr 1fr; }
+  .about-install { grid-template-columns: 1fr 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PRINT / REDUCED MOTION
+   No animation on this page by design, so reduced-motion needs nothing.
+════════════════════════════════════════════════════════ */

@@ -11,12 +11,20 @@
 // with a repo-level upgrade (bump CACHE then) and re-downloading ~1.2MB of
 // wasm on every open would be waste.
 
-const CACHE = 'gymops-v98';
+const CACHE = 'gymops-v99';
 
 const ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
+  // 6.7 about page. Precached (20KB) because it's reachable from Settings, and
+  // without it an offline tap on "About GymOps" would hit the navigate fallback
+  // below and silently land the user back on the app shell. Its screenshots
+  // (245KB) stay out for the same reason the install ones do: never on the
+  // critical path, but cached in passing by networkFirst once the page has been
+  // opened online, so only a first visit that is also offline sees alt text.
+  '/about.html',
+  '/css/about.css',
   '/js/app.js',
   '/js/state.js',
   '/js/storage.js',
@@ -50,6 +58,8 @@ const ASSETS = [
   '/icons/icon-maskable-192.png',
   '/icons/icon-maskable-512.png',
   '/icons/apple-touch-icon.png',
+  // NOT cached: /icons/og-card.png — only a social crawler ever fetches it, off
+  // about.html, and never the app itself.
 ];
 
 // Slow/flaky network: how long to wait before serving the cached copy.

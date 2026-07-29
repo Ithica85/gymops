@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GymOps — the fastest workout logger that never loses your history</title>
+  <meta name="description" content="A free, offline-first workout logger for lifters who already have a plan. One tap repeats your last set. Your history stays on your device. Import from Strong or Hevy.">
+  <link rel="canonical" href="https://gymops-two.vercel.app/about.html">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#0d0d0d">
+
+  <!-- 6.7: for a free PWA with no ad budget, a shared link IS the distribution
+       channel — so the card that link renders is part of the page, not decoration. -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gymops-two.vercel.app/about.html">
+  <meta property="og:title" content="GymOps — the fastest workout logger that never loses your history">
+  <meta property="og:description" content="Free, offline-first, no account. One tap repeats your last set. Your history stays on your device — and you can take it with you.">
+  <meta property="og:image" content="https://gymops-two.vercel.app/icons/og-card.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="GymOps — the fastest logger that never loses your history">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- css/style.css is the source of truth for the design language: this page
+       pulls the same tokens, buttons and 6.3 focus ring rather than restating
+       them, so a contrast fix there can never leave this page behind. about.css
+       carries only what a scrolling document needs and the app does not. -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/about.css">
+</head>
+<body class="about-page">
+
+  <header class="about-topbar">
+    <a class="about-wordmark" href="/" aria-label="GymOps home">GymOps</a>
+    <a class="about-topbar-link" href="/">Open the app →</a>
+  </header>
+
+  <main>
+
+    <!-- ═══════════════ HERO ═══════════════ -->
+    <section class="about-hero">
+      <h1>The fastest workout logger that never loses your history.</h1>
+      <p class="about-lead">
+        GymOps is a free training log for people who already know what they're
+        doing in the gym. It logs sets in one tap, keeps your history on your
+        own device, and doesn't try to sell you a programme.
+      </p>
+      <div class="about-cta">
+        <a class="btn-primary about-btn" href="/">Open GymOps</a>
+        <a class="btn-secondary about-btn" href="https://github.com/Ithica85/gymops">View the source</a>
+      </div>
+      <p class="about-cta-note">
+        No account. No install required. Opens straight into a working, empty app —
+        <span class="about-nowrap">nothing to sign up for.</span>
+      </p>
+    </section>
+
+    <!-- ═══════════════ THE IDEA ═══════════════ -->
+    <section class="about-section">
+      <h2>The idea</h2>
+      <p>
+        Most gym apps are built to sell you a training plan, and the log is the
+        thing you tolerate to get at the rest. GymOps assumes you already have a
+        plan — written by you, your coach, or a book — and its whole job is to
+        stay out of your way while you execute it.
+      </p>
+      <p>
+        That shapes every decision. You're mid-set, out of breath, holding a
+        phone with one hand. So the most common action in the app — logging the
+        same weight and reps you did last time — is a single tap, and the
+        keyboard never has to appear.
+      </p>
+      <div class="about-quote">
+        <p>Fewer screens. Fewer fields. One tap to log a set.<br>You're already tired; your app shouldn't be.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ HOW A SESSION GOES ═══════════════ -->
+    <section class="about-section">
+      <h2>How a session goes</h2>
+
+      <div class="about-step">
+        <div class="about-step-text">
+          <h3><span class="about-step-num">1</span> Start</h3>
+          <p>
+            Open the app and press Start. If you're running a multi-day split,
+            the button already names the day you're due — Push, Pull, Legs,
+            whatever you called it — and you can override it in one tap.
+          </p>
+          <p class="about-step-detail">
+            The home screen shows the week you've actually had: days trained,
+            your streak, which muscle groups you've covered, and what your last
+            session left on the table.
+          </p>
+        </div>
+        <figure class="about-shot">
+          <img src="icons/screenshots/01-home.png" width="780" height="1688"
+               alt="GymOps home screen: a week strip with Monday filled in, a four-week streak, muscle-coverage chips for chest and shoulders, and a large lime Start — Push button.">
+        </figure>
+      </div>
+
+      <div class="about-step">
+        <div class="about-step-text">
+          <h3><span class="about-step-num">2</span> Log</h3>
+          <p>
+            The big lime button repeats what you did last time — weight, reps,
+            done. Changing something? Type over it. Cardio logs duration and
+            calories instead, and the app knows which exercises are which.
+          </p>
+          <p class="about-step-detail">
+            Rest timer starts itself after each set and can be nudged ±30
+            seconds. Your last session's numbers sit in the input boxes as ghost
+            text, so you always know what you're chasing.
+          </p>
+        </div>
+        <figure class="about-shot">
+          <img src="icons/screenshots/02-workout.png" width="780" height="1688" loading="lazy"
+               alt="Logging a set in GymOps: a lime Repeat last set button reading 90 kg by 6, weight and reps inputs pre-filled as ghost text, a running rest timer at 1:28, and the session's logged sets below."
+               >
+        </figure>
+      </div>
+
+      <div class="about-step">
+        <div class="about-step-text">
+          <h3><span class="about-step-num">3</span> Finish</h3>
+          <p>
+            One button ends the session and tells you how it went against your
+            own history: volume compared to last time, your best improvement,
+            and how much of the day's plan you actually completed.
+          </p>
+          <p class="about-step-detail">
+            Then it's in your history for good — per-exercise charts, every
+            session, every set. Beat an all-time best and the app makes a
+            proper fuss about it.
+          </p>
+        </div>
+        <figure class="about-shot">
+          <img src="icons/screenshots/03-progress.png" width="780" height="1688" loading="lazy"
+               alt="Exercise history for Barbell Bench Press: best 90 kg, last 90 kg, change plus 10 kg, a rising progression chart from 80 to 90 kg, and the five sessions behind it.">
+        </figure>
+      </div>
+    </section>
+
+    <!-- ═══════════════ YOUR DATA ═══════════════ -->
+    <section class="about-section about-section--data">
+      <h2>Your data stays yours</h2>
+      <p>
+        GymOps has no accounts and no server holding your training. The database
+        lives in your browser, on your phone. Nothing is uploaded unless you
+        switch it on, and nothing is ever sold or measured for advertising.
+      </p>
+      <p>
+        The flip side of local-first is that losing the device has to be
+        survivable, so the app takes that seriously:
+      </p>
+      <ul class="about-list">
+        <li><strong>Back up everything to a file</strong> — one button in Settings writes your whole database out. Restoring it on a new phone brings back every session, plan and set.</li>
+        <li><strong>Export to CSV</strong> — a single session or any date range, in a format a spreadsheet understands.</li>
+        <li><strong>Optional Google Drive</strong> — if you turn it on, each finished session is also saved to your own Drive as a sheet. It's a copy, never the original.</li>
+        <li><strong>Damaged data is quarantined, never overwritten</strong> — if the app can't read your database it stops and offers you the file, instead of silently starting fresh.</li>
+        <li><strong>Storage full is not data loss</strong> — the session keeps working in memory and the app tells you to back up immediately.</li>
+      </ul>
+      <p class="about-note">
+        Because it's a browser app, the one thing that can still take your data
+        is you: clearing site data for the domain deletes it, and iOS can evict
+        the storage of web apps you haven't opened in weeks. That's exactly what
+        the backup file is for — and why the app nags you before anything
+        destructive.
+      </p>
+    </section>
+
+    <!-- ═══════════════ SWITCHING ═══════════════ -->
+    <section class="about-section">
+      <h2>Coming from Strong or Hevy?</h2>
+      <p>
+        Export a CSV from your old app, then open Settings → Import. Years of
+        training come across with their original dates, so your charts and
+        personal bests are correct from the first minute rather than starting
+        from zero.
+      </p>
+      <ul class="about-list">
+        <li><strong>It tells you before it writes.</strong> You see how many sessions and sets it found, the date range, and how many exercise names it matched.</li>
+        <li><strong>It won't guess.</strong> A name it can't match confidently is kept as a new exercise and flagged, rather than quietly merged into the wrong one. Strong's export doesn't record whether you lift in kg or lbs, so the app asks instead of assuming.</li>
+        <li><strong>It undoes.</strong> The whole import reverses in one tap, back to exactly the state you were in.</li>
+        <li><strong>Duplicates are fixable.</strong> If you end up with two names for one lift, merging them moves all the history onto the one you keep.</li>
+      </ul>
+    </section>
+
+    <!-- ═══════════════ FEATURE TOUR ═══════════════ -->
+    <section class="about-section">
+      <h2>What's in it</h2>
+      <div class="about-grid">
+        <div class="about-card">
+          <h3>Logging</h3>
+          <p>One-tap repeat, ghost-text prompts, undo, per-set delete, auto-starting rest timer, session notes, <span id="about-exercise-count">114 exercises</span> with search and muscle-group filters.</p>
+        </div>
+        <div class="about-card">
+          <h3>Plans</h3>
+          <p>Multi-day splits with targets. The app rotates to the right day, keeps the day's exercises in front of you, and measures what you actually completed.</p>
+        </div>
+        <div class="about-card">
+          <h3>Progress</h3>
+          <p>Per-exercise charts, best/last/change, and in-session signals — whether this set beat last week, and whether the session beat the last one.</p>
+        </div>
+        <div class="about-card">
+          <h3>Offline</h3>
+          <p>Installs to your home screen and works with no signal at all. Gym basements were the design target, not an edge case.</p>
+        </div>
+        <div class="about-card">
+          <h3>Accessible</h3>
+          <p>Fully keyboard-operable, labelled for screen readers, AA contrast throughout, and pinch-zoom left switched on.</p>
+        </div>
+        <div class="about-card">
+          <h3>Open source</h3>
+          <p>MIT licensed, no build step, no framework, no tracking scripts. What you read in the repo is what runs on your phone.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ INSTALL ═══════════════ -->
+    <section class="about-section">
+      <h2>Putting it on your phone</h2>
+      <p>
+        GymOps is a web app, so there's no app store and no download. Open it,
+        then add it to your home screen — after that it launches full-screen
+        like any other app and works offline.
+      </p>
+      <div class="about-install">
+        <div class="about-card">
+          <h3>iPhone / iPad</h3>
+          <p>Open <a href="/">gymops-two.vercel.app</a> in Safari, tap the Share button, then <strong>Add to Home Screen</strong>.</p>
+        </div>
+        <div class="about-card">
+          <h3>Android / desktop Chrome</h3>
+          <p>Open the app and use <strong>Install</strong> from the address bar or the browser menu. GymOps also offers it once you've finished your first session.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ HONEST LIMITS ═══════════════ -->
+    <section class="about-section">
+      <h2>What it doesn't do</h2>
+      <p>Worth knowing before you move your training into it:</p>
+      <ul class="about-list">
+        <li><strong>No cross-device sync.</strong> Your history lives on one device. Moving to a new phone is a backup file and a restore, not an automatic thing.</li>
+        <li><strong>No coaching.</strong> It won't write you a programme, pick your weights, or tell you to deload. It measures what you did against what you planned; the training decisions stay yours.</li>
+        <li><strong>No social feed, no leaderboards, no streak guilt.</strong> The numbers are for you.</li>
+        <li><strong>AI is a small optional extra.</strong> There's one post-session written summary, off by default, and it currently needs your own Anthropic API key — so treat it as a bonus rather than a reason to pick the app.</li>
+      </ul>
+      <p class="about-note">
+        It's also honest to say GymOps is a personal tool that grew up in
+        public: built by one lifter, used every week, and improved from real
+        sessions rather than a roadmap meeting.
+      </p>
+    </section>
+
+    <!-- ═══════════════ CLOSING CTA ═══════════════ -->
+    <section class="about-closing">
+      <h2>Log your reps. Own your data.</h2>
+      <p>Free, no account, works offline. Takes about ten seconds to try.</p>
+      <a class="btn-primary about-btn" href="/">Open GymOps</a>
+    </section>
+
+  </main>
+
+  <footer class="about-footer">
+    <p class="about-footer-links">
+      <a href="/">App</a>
+      <a href="https://github.com/Ithica85/gymops">GitHub</a>
+      <a href="https://substack.com/@dan1608272">Substack</a>
+    </p>
+    <p class="about-footer-meta">
+      MIT licensed · <span id="about-version">a web app, updated continuously</span>
+    </p>
+  </footer>
+
+  <!-- The two numbers on this page that would otherwise rot — the version and
+       the catalogue size — are read from the app itself. state.js is
+       import-free and DB-free, so this costs a cached module and no work.
+       Both have truthful static fallbacks if the script never runs. -->
+  <script type="module">
+    import { APP_VERSION, EXERCISES } from './js/state.js';
+    const v = document.getElementById('about-version');
+    if (v) v.textContent = 'GymOps ' + APP_VERSION;
+    // "Other" is the custom-exercise escape hatch, not something you can pick
+    // off a list — it's the one entry with no muscle group, so filtering on
+    // that keeps this number the same 114 the catalogue actually offers.
+    const c = document.getElementById('about-exercise-count');
+    if (c) c.textContent = EXERCISES.filter(e => e.muscleGroup).length + ' exercises';
+  </script>
+
+</body>
+</html>

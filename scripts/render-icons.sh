@@ -33,6 +33,27 @@ HTML
     "file://$html" >/dev/null 2>&1
 }
 
+# Same idea, non-square: the 6.7 link-preview card is 1200×630, not an icon.
+render_rect() {
+  local w="$1" h="$2" src="$3" out="$4"
+  local html="$WORK/wrap-$(basename "$out" .png).html"
+  cat > "$html" <<HTML
+<!doctype html><meta charset="utf-8">
+<style>
+  html,body { margin:0; padding:0; width:${w}px; height:${h}px; overflow:hidden; }
+  img { display:block; width:${w}px; height:${h}px; }
+</style>
+<img src="file://${src}">
+HTML
+
+  "$CHROME" --headless=new --disable-gpu --hide-scrollbars \
+    --default-background-color=0d0d0dff \
+    --force-device-scale-factor=1 \
+    --window-size="${w},${h}" \
+    --screenshot="$out" \
+    "file://$html" >/dev/null 2>&1
+}
+
 SRC_ANY="$REPO/icons/icon-source.svg"
 SRC_MASK="$REPO/icons/icon-maskable-source.svg"
 
@@ -47,6 +68,10 @@ render 512 "$SRC_MASK" "$REPO/icons/icon-maskable-512.png" no
 # iOS home screen. iOS ignores the manifest, applies its own rounding, and
 # composites transparency onto black — so this uses the full-bleed art.
 render 180 "$SRC_MASK" "$REPO/icons/apple-touch-icon.png" no
+
+# 6.7 link preview. Only ever fetched by a social/chat crawler off about.html —
+# never by the app, so it stays out of the service worker precache.
+render_rect 1200 630 "$REPO/icons/og-source.svg" "$REPO/icons/og-card.png"
 
 echo "--- rendered ---"
 for f in "$REPO"/icons/*.png; do
