@@ -280,20 +280,44 @@ let _editingDays = [];
 
 const _newDay = () => ({ dayId: null, name: '', exercises: [] });
 
-export function openNewPlan() {
-  _editingPlanId = null;
-  _editingDays   = [_newDay()];
-  document.getElementById('plan-editor-title').textContent    = 'New Plan';
-  document.getElementById('plan-name-input').value            = '';
-  document.getElementById('plan-duration-input').value        = '';
-  document.getElementById('plan-target-sessions-input').value = '';
-  document.getElementById('plan-obj-1').value                 = '';
-  document.getElementById('plan-obj-2').value                 = '';
-  document.getElementById('plan-obj-3').value                 = '';
+// THE single way the plan editor is opened. Every entry point is a draft:
+// "new" is an empty one, "edit" is one loaded from the DB, and anything that
+// proposes a plan (an importer, voice, an agent) is one it built — none of them
+// write anything, they populate the editor and the user taps Save.
+//
+// This exists because the parked AI-importer branch needed a third way in and
+// copied openNewPlan's twelve lines verbatim to get it. Two near-identical
+// copies of "reset these nine fields" was already one too many; the fix is one
+// body with the differences named, not a third copy.
+function _openEditor({
+  planId = null,
+  title,
+  name = '',
+  durationWeeks = '',
+  targetSessions = '',
+  objectives = [],
+  days,
+  showArchive = false,
+} = {}) {
+  _editingPlanId = planId;
+  // A plan with no days can't be edited — the editor needs at least one card
+  // to hang "+ Add Exercise" off. Callers may pass none and get an empty day.
+  _editingDays   = days?.length ? days : [_newDay()];
+  document.getElementById('plan-editor-title').textContent    = title;
+  document.getElementById('plan-name-input').value            = name ?? '';
+  document.getElementById('plan-duration-input').value        = durationWeeks ?? '';
+  document.getElementById('plan-target-sessions-input').value = targetSessions ?? '';
+  document.getElementById('plan-obj-1').value                 = objectives?.[0] ?? '';
+  document.getElementById('plan-obj-2').value                 = objectives?.[1] ?? '';
+  document.getElementById('plan-obj-3').value                 = objectives?.[2] ?? '';
   document.getElementById('plan-save-error').classList.add('hidden');
-  document.getElementById('btn-archive-plan').classList.add('hidden');
+  document.getElementById('btn-archive-plan').classList.toggle('hidden', !showArchive);
   renderPlanEditorDays();
   showScreen('plan-editor');
+}
+
+export function openNewPlan() {
+  _openEditor({ title: 'New Plan' });
 }
 
 function openEditPlan(planId) {
@@ -307,29 +331,29 @@ function openEditPlan(planId) {
     exercise: e.exercise, type: getExerciseType(e.exercise),
     targetSets: e.target_sets, targetReps: e.target_reps,
   });
-  _editingPlanId = planId;
-  _editingDays   = days.map(d => ({
+  let editingDays = days.map(d => ({
     dayId: d.day_id, name: d.name,
     exercises: exs.filter(e => e.day_id === d.day_id).map(toDraft),
   }));
   // Safety nets, not expected paths: a plan with no day rows loads flat; any
   // exercise pointing at a missing day surfaces on the first day instead of
   // silently vanishing from the editor.
-  if (!_editingDays.length) _editingDays = [_newDay()];
+  if (!editingDays.length) editingDays = [_newDay()];
   const dayIds = new Set(days.map(d => d.day_id));
-  _editingDays[0].exercises.push(...exs.filter(e => !dayIds.has(e.day_id)).map(toDraft));
+  editingDays[0].exercises.push(...exs.filter(e => !dayIds.has(e.day_id)).map(toDraft));
 
-  document.getElementById('plan-editor-title').textContent = plan.name;
-  document.getElementById('plan-name-input').value         = plan.name;
-  document.getElementById('plan-duration-input').value     = plan.duration_weeks ?? '';
-  document.getElementById('plan-target-sessions-input').value = plan.target_sessions_per_week ?? '';
-  document.getElementById('plan-obj-1').value              = objectives[0] ?? '';
-  document.getElementById('plan-obj-2').value              = objectives[1] ?? '';
-  document.getElementById('plan-obj-3').value              = objectives[2] ?? '';
-  document.getElementById('plan-save-error').classList.add('hidden');
-  document.getElementById('btn-archive-plan').classList.toggle('hidden', plan.status !== 'active');
-  renderPlanEditorDays();
-  showScreen('plan-editor');
+  _openEditor({
+    planId,
+    title: plan.name,
+    name: plan.name,
+    durationWeeks: plan.duration_weeks,
+    targetSessions: plan.target_sessions_per_week,
+    objectives,
+    days: editingDays,
+    // Only an active plan can be archived from here — the button is meaningless
+    // on one that already is.
+    showArchive: plan.status === 'active',
+  });
 }
 
 // Stacked day sections: name input + exercise rows + per-day "+ Add Exercise".

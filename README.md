@@ -2,7 +2,7 @@
 
 A friction-free training companion for lifters who already have a plan.
 
-**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.12
+**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.13
 
 ---
 
@@ -216,7 +216,7 @@ gymops/
 ├── sw.js               # Service worker (network-first app files)
 ├── icons/              # PWA icons — edit the SVG sources, re-render the PNGs
 ├── scripts/            # Build-time generators (icons, screenshots) — never shipped
-├── tests/              # Vitest suite (280 tests)
+├── tests/              # Vitest suite (287 tests)
 ├── docs/               # Consumer plan, review responses, agentic vision
 └── CLAUDE.md           # Architecture, schema, phase history
 ```

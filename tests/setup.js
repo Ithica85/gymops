@@ -52,7 +52,15 @@ function stubElement(id) {
       attributes: {},
       setAttribute: function (k, v) { this.attributes[k] = String(v); },
       getAttribute: function (k) { return this.attributes[k] ?? null; },
+      // renderPlanEditorDays builds a day card then reaches back into it for
+      // the name input — a fresh stub per call, since the real one is a
+      // different element each time.
+      querySelector: () => stubElement('_qs' + Math.random()),
       querySelectorAll: () => [], appendChild: () => {}, remove: () => {},
+      // renderPlanEditorDays assembles day cards in a detached container and
+      // then swaps them in wholesale: `replaceChildren(...container.children)`.
+      // The stub builds no tree, so children is simply empty.
+      children: [], replaceChildren: () => {},
     });
   }
   return elements.get(id);
