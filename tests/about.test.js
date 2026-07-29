@@ -42,6 +42,27 @@ describe('about page ↔ app stylesheet coupling', () => {
   it('applies that class to the body element', () => {
     expect(about).toMatch(/<body[^>]*class="[^"]*about-page/);
   });
+
+  // One rule insets every direct child of a section into the text column. A
+  // child that re-declares the `padding` or `margin` SHORTHAND cancels that —
+  // same specificity, declared later — and slides to the screen edge on its
+  // own while its siblings stay put. Shipped exactly this in .about-list
+  // (`padding: 0`) and .about-quote (`padding-left` on a full-width wrapper,
+  // which striped the accent bar down the edge of the display).
+  const COLUMN_CHILDREN = ['.about-list', '.about-quote', '.about-grid', '.about-install', '.about-note'];
+
+  it('has the column-inset rule', () => {
+    expect(css).toMatch(/\.about-section > \*[^{]*\{[^}]*padding-left:\s*var\(--about-pad\)/);
+  });
+
+  it.each(COLUMN_CHILDREN)('%s sets individual sides, never a box shorthand', selector => {
+    // Rules where this class is the whole selector — descendant rules like
+    // `.about-quote p` sit inside the padded box and may do as they like.
+    const re = new RegExp(`(^|\\n)\\s*${selector.replace('.', '\\.')}\\s*(,[^{]*)?\\{([^}]*)\\}`, 'g');
+    for (const m of css.matchAll(re)) {
+      expect(m[3], `${selector}: ${m[3].trim()}`).not.toMatch(/(^|;)\s*(padding|margin):/);
+    }
+  });
 });
 
 describe('offline + assets', () => {

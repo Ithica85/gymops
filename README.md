@@ -2,7 +2,7 @@
 
 A friction-free training companion for lifters who already have a plan.
 
-**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.11
+**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.12
 
 ---
 
@@ -27,7 +27,7 @@ The friction-free philosophy: fewer screens, fewer fields, one tap to log a set.
 | 3 | AI, plans, history, training-companion turn | ✅ Complete July 2026 (v3.0–v3.7) |
 | 4 | Trust & correctness — consumer quality bar | ✅ Complete July 16, 2026 (v4.0–v4.7) |
 | 5 | Identity & program model | ✅ Complete July 23, 2026 (v5.0–v6.2) |
-| 6 | Consumer readiness | 🚧 In progress — 9 of 9 items shipped (v6.0–v6.11); local usage counters remain |
+| 6 | Consumer readiness | 🚧 In progress — 9 of 9 items shipped (v6.0–v6.12); local usage counters remain |
 | 7 | Distribution & optionality | Parked (gated triggers, not dates) |
 
 **North star:** *the fastest logger that never loses your history.*
@@ -99,7 +99,7 @@ Make the data model survive years and fit real training.
 
 **Remaining polish (non-blocking):** surface the plan editor's silent empty-day drop, rename from an active session, post-rename UI refresh.
 
-### Phase 6 — Consumer readiness (v6.0–v6.11, in progress)
+### Phase 6 — Consumer readiness (v6.0–v6.12, in progress)
 
 Theme: a stranger can discover, install, migrate to, and use GymOps with no guidance.
 
@@ -216,7 +216,7 @@ gymops/
 ├── sw.js               # Service worker (network-first app files)
 ├── icons/              # PWA icons — edit the SVG sources, re-render the PNGs
 ├── scripts/            # Build-time generators (icons, screenshots) — never shipped
-├── tests/              # Vitest suite (274 tests)
+├── tests/              # Vitest suite (280 tests)
 ├── docs/               # Consumer plan, review responses, agentic vision
 └── CLAUDE.md           # Architecture, schema, phase history
 ```

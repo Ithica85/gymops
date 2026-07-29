@@ -29,7 +29,12 @@ body.about-page {
 }
 
 /* Shared column. Sections are full-bleed so a tinted band can span the
-   viewport while its text stays on the same measure as everything else. */
+   viewport while its text stays on the same measure as everything else.
+   TRAP: this is what insets every direct child of a section, so a child rule
+   that uses the `padding` or `margin` SHORTHAND silently opts itself out of
+   the column — same specificity (0,1,0), declared later, wins. It doesn't look
+   like a broken rule, it looks like one element drifting to the screen edge.
+   Set the single side you mean (margin-top, padding-left) instead. */
 .about-topbar,
 .about-hero,
 .about-section > *,
@@ -148,10 +153,12 @@ body.about-page {
 }
 
 /* ── pull quote ────────────────────────────────────── */
+/* The accent rule lives on the <p>, not the wrapper: a border always paints at
+   its element's edge, so putting it on the full-width wrapper would stripe the
+   very edge of the screen no matter how the wrapper is padded. On the inner
+   paragraph it starts where the body text starts. */
 .about-quote {
   margin-top: 26px;
-  border-left: 3px solid var(--accent);
-  padding-left: 16px;
 }
 
 .about-quote p {
@@ -159,6 +166,8 @@ body.about-page {
   font-weight: 700;
   line-height: 1.45;
   margin: 0;
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
 }
 
 /* ── steps + screenshots ───────────────────────────── */
@@ -209,10 +218,12 @@ body.about-page {
 }
 
 /* ── lists ─────────────────────────────────────────── */
+/* No `padding: 0` here even though a <ul> normally needs it — style.css's
+   reset already zeroed it, and re-declaring the shorthand would cancel the
+   column inset above and drag the whole list to the screen edge. */
 .about-list {
   list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
+  margin-top: 4px;
 }
 
 .about-list li {
