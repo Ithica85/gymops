@@ -107,6 +107,19 @@ describe('accessible names in index.html', () => {
       if (m[1].trim() === '✕') expect(m[0]).toMatch(/aria-label=/);
     }
   });
+
+  // An error that BLOCKS an action has to announce itself, or a screen-reader
+  // user taps the button, nothing happens, and nothing says why. These two are
+  // the app's blocking validation errors: logging a set, and saving a plan
+  // (blocking since 5.10 — before that, Save went through and the error only
+  // ever reported a missing name).
+  it('blocking validation errors announce themselves', () => {
+    const tagFor = id => [...html.matchAll(/<p\b[^>]*>/gs)]
+      .map(m => m[0]).find(t => t.includes(`id="${id}"`));
+    for (const id of ['input-error', 'plan-save-error']) {
+      expect(tagFor(id), id).toMatch(/role="alert"/);
+    }
+  });
 });
 
 describe('makeRowInteractive', () => {

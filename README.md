@@ -2,7 +2,7 @@
 
 A friction-free training companion for lifters who already have a plan.
 
-**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.14
+**Live:** [gymops-two.vercel.app](https://gymops-two.vercel.app) · **App version:** v6.15
 
 ---
 
@@ -83,7 +83,7 @@ The consumer turn starts here: make history hard to lose by accident.
 - **Layer 1 integration tests** — log → undo → resume → finish against a real in-memory sql.js DB
 - Debt batch: shared `AudioContext`, toasts, local calendar dates
 
-### Phase 5 — Identity & program model (v5.0–v6.2) ✅
+### Phase 5 — Identity & program model (v5.0–v6.2, closeout v6.15) ✅
 
 Make the data model survive years and fit real training.
 
@@ -143,7 +143,7 @@ Active plan: [`docs/PHASE4_CONSUMER_PLAN.md`](docs/PHASE4_CONSUMER_PLAN.md).
 
 **Two criteria stay open by design:** "a screen-reader user can log a set" needs a real VoiceOver/TalkBack pass, and "a stranger installs, imports and logs with zero guidance" needs an actual stranger. Both are claims about people rather than code.
 
-**Also open (non-blocking Phase 5 polish):** empty-day guard in the plan editor · rename from an active session · post-rename UI refresh.
+**Phase 5 polish is closed** (July 29, 2026): the plan editor now names an empty training day instead of dropping it, post-rename refresh was verified as already correct, and rename-from-an-active-session was refused — the active screen keeps its pixels for logging.
 
 **Re-queued behind consumer readiness:** weekly AI summary · shareable AI post · plan iterations · push notifications · mid-session unit switch · watch companion (needs native)
 

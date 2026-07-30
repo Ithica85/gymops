@@ -301,6 +301,20 @@ function openExerciseHistory(exercise) {
 // mid-edit. Success re-runs openExerciseHistory under the new name — history
 // follows through the denormalised exercise column dbRenameExercise updated,
 // so the detail screen and its chart are already correct.
+//
+// Nothing else needs refreshing after a rename (5.12, audited 2026-07-29): the
+// picker rebuilds `_recencyRanks` on open, and history/plans/idle all re-query.
+// The one in-memory copy of an exercise name is `state.exercise`, and it can't
+// go stale from here — this screen is only reachable from idle, so a live or
+// just-finished session can't be showing while the modal is open (the active
+// screen is a Back-root, the completed screen exits one-way to idle, and
+// resumeLastWorkout's finish-time copy is only read from that screen).
+//
+// That is a reachability argument, not a guarantee about the cache. Adding a
+// rename entry point to the active session — the parked, deliberately refused
+// 5.11 — breaks it, and the fix belongs with that change: call
+// setActiveExercise(newName, state.exerciseType) or the active screen keeps
+// announcing the old name until the exercise is switched.
 
 export function openRenameExercise() {
   if (!_currentExercise) return;

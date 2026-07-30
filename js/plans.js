@@ -281,6 +281,18 @@ let _editingDays = [];
 
 const _newDay = () => ({ dayId: null, name: '', exercises: [] });
 
+// An unnamed day is labelled by its position — the same label savePlan persists,
+// so the name in an error message is the name the day ends up with.
+const _dayLabel = (day, i) => day.name.trim() || `Day ${i + 1}`;
+
+// The generic problem, restored whenever it's the one being reported: savePlan
+// overwrites this text for the per-day case (5.10), and the two must not blend.
+const PLAN_SAVE_ERROR_DEFAULT = 'Enter a plan name and at least one exercise.';
+
+const _listJoin = xs => xs.length <= 1
+  ? (xs[0] ?? '')
+  : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+
 // THE single way the plan editor is opened. Every entry point is a draft:
 // "new" is an empty one, "edit" is one loaded from the DB, and anything that
 // proposes a plan (an importer, voice, an agent) is one it built — none of them
@@ -311,7 +323,9 @@ function _openEditor({
   document.getElementById('plan-obj-1').value                 = objectives?.[0] ?? '';
   document.getElementById('plan-obj-2').value                 = objectives?.[1] ?? '';
   document.getElementById('plan-obj-3').value                 = objectives?.[2] ?? '';
-  document.getElementById('plan-save-error').classList.add('hidden');
+  const errorEl = document.getElementById('plan-save-error');
+  errorEl.textContent = PLAN_SAVE_ERROR_DEFAULT; // a per-day message must not outlive its draft
+  errorEl.classList.add('hidden');
   document.getElementById('btn-archive-plan').classList.toggle('hidden', !showArchive);
   renderPlanEditorDays();
   showScreen('plan-editor');
@@ -435,15 +449,29 @@ export function addDayToPlan() {
 export function savePlan() {
   const name     = document.getElementById('plan-name-input').value.trim();
   const errorEl  = document.getElementById('plan-save-error');
+  const fail     = msg => { errorEl.textContent = msg; errorEl.classList.remove('hidden'); };
 
-  // Empty day names default to their position; days with no exercises are
-  // dropped (an accidental "+ Add Day" shouldn't block saving).
-  const days = _editingDays
-    .map((d, i) => ({ dayId: d.dayId, name: d.name.trim() || `Day ${i + 1}`, exercises: d.exercises }))
-    .filter(d => d.exercises.length);
+  const days = _editingDays.map((d, i) => ({ dayId: d.dayId, name: _dayLabel(d, i), exercises: d.exercises }));
+  const empty = days.filter(d => !d.exercises.length);
 
-  if (!name || !days.length) {
-    errorEl.classList.remove('hidden');
+  // Nothing to save at all — the name is the more fundamental fix, so it's
+  // reported first even when days are also empty. A brand-new plan's single
+  // untouched day lands here too: "add an exercise" beats naming "Day 1" at a
+  // user who hasn't added anything yet.
+  if (!name || empty.length === days.length) {
+    fail(PLAN_SAVE_ERROR_DEFAULT);
+    return;
+  }
+
+  // 5.10: these days used to be dropped silently, so "+ Add Day" → Save lost the
+  // day with nothing said — and the plan looked saved, because it was. Save now
+  // waits instead: both ways out are one tap (add an exercise, or ✕ the day).
+  // Day names are user text and this element is written via textContent only.
+  if (empty.length) {
+    const labels = _listJoin(empty.map(d => `"${d.name}"`));
+    fail(empty.length === 1
+      ? `${labels} has no exercises. Add one, or remove the day.`
+      : `${labels} have no exercises. Add one to each, or remove them.`);
     return;
   }
   errorEl.classList.add('hidden');
