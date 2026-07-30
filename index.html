@@ -484,6 +484,10 @@
     <div class="completed-container">
       <p class="completed-label">Workout Complete</p>
       <p class="completed-summary" id="session-summary">5 sets logged</p>
+      <!-- All-time PRs set this session. Above adherence because it's the most
+           motivating fact of the workout, and it persists after the session
+           signal sheet is dismissed. -->
+      <p class="completed-prs hidden" id="session-prs"></p>
       <p class="completed-plan-adherence hidden" id="plan-adherence"></p>
       <p class="drive-status hidden" id="drive-status" aria-live="polite"></p>
       <div class="completed-actions">
@@ -733,6 +737,13 @@
       <div class="modal-handle"></div>
       <p id="release-notes-title" class="modal-title">What's New</p>
       <div class="release-notes-scroll">
+
+        <div class="release-notes-entry">
+          <p class="release-notes-version">Session Debrief · July 2026</p>
+          <ul class="release-notes-list">
+            <li>Personal bests now stay on the finish screen — set an all-time best early in a workout and it's still there when you finish, instead of only flashing up at the moment you hit it</li>
+          </ul>
+        </div>
 
         <div class="release-notes-entry">
           <p class="release-notes-version">Phase 6 — Ready for Anyone · July 2026</p>

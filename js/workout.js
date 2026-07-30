@@ -45,6 +45,7 @@ import {
   computeProgressionSignal,
   computeSessionSignal,
   renderProgressionSignal,
+  renderSessionPRs,
   renderSessionSignal,
 } from './signals.js';
 import { openPicker, openPickerForStart } from './picker.js';
@@ -845,6 +846,9 @@ export function finishWorkout() {
 
   document.getElementById('btn-resume').classList.remove('hidden');
   document.getElementById('btn-ai-summary').classList.toggle('hidden', !getAnthropicKey());
+  // Must run AFTER dbFinishSession — computeSessionPRs excludes this session
+  // explicitly, so ordering is safe either way, but the sets have to be in.
+  renderSessionPRs(state.sessionId);
   renderPlanAdherence(state.sessionId);
   showScreen('completed');
 

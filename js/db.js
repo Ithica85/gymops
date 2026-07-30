@@ -1247,13 +1247,26 @@ export function dbGetLastSessionExerciseOrder() {
 // or null if the exercise has never been logged in one. The current session is
 // checked separately (dbGetSessionBestForExercise) so a PR beaten twice in one
 // session celebrates both times.
-export function dbGetAllTimeBestForExercise(exercise) {
+// `excludeSessionId` omits one session from the comparison. Needed by the
+// completed-screen PR summary: `dbFinishSession` has already flipped the session
+// to 'completed' by the time that renders, so without this the session is its own
+// baseline and no PR can ever be detected. (`isAllTimePR` doesn't need it — it
+// runs mid-session, while the row is still 'active' and excluded anyway.)
+//
+// Deliberately `!=` and not the `< beforeSessionId` used by
+// dbGetRecentSessionsBestForExercise below: the question here is "did this
+// session beat every OTHER session", so a session with a higher id must still
+// count. Don't "fix" this to match its neighbour.
+export function dbGetAllTimeBestForExercise(exercise, excludeSessionId = null) {
+  const excludeClause = excludeSessionId != null ? 'AND s.session_id != ?' : '';
+  const params = excludeSessionId != null ? [exercise, excludeSessionId] : [exercise];
   return _one(`
     SELECT MAX(CASE WHEN st.unit = 'lbs' THEN st.weight / 2.2046 ELSE st.weight END) AS best_kg
     FROM sets st
     JOIN sessions s ON s.session_id = st.session_id
     WHERE s.status = 'completed' AND st.exercise = ? AND st.weight IS NOT NULL
-  `, [exercise])?.best_kg ?? null;
+    ${excludeClause}
+  `, params)?.best_kg ?? null;
 }
 
 // ── Idle dashboard queries ───────────────────────────

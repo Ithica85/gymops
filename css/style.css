@@ -1404,6 +1404,18 @@ body {
   padding: 0;
 }
 
+/* All-time PRs set this session (Agent 1 debrief). Accent, unlike the muted
+   adherence line below it — this is the one line on the screen that should
+   catch the eye, and it echoes the lime of the PR celebration it follows. */
+.completed-prs {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 8px;
+  white-space: pre-line; /* multiple PRs list one per line — see renderSessionPRs */
+  line-height: 1.45;
+}
+
 .completed-plan-adherence {
   font-size: 0.85rem;
   color: var(--muted);

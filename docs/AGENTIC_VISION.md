@@ -196,15 +196,21 @@ Running stage 2 before stage 1 is how a platform question becomes a wasted sprin
 >
 > Treat that as a **strongly negative prior, not a guarantee**: it is a statement of platform intent, not a live capability test on current iOS. That gap is the entire reason stage 1 exists and the entire reason it stays cheap. If the canary confirms the bug, voice drops from this rung and its row in the table above is deleted rather than left as aspiration.
 
+**Status 2026-07-29 — audited against the shipped app before building, and most of this rung already existed under other names.** Session brief: *next plan day* ships twice (`renderIdlePlanLine`, `renderStartControls`); *last trained* ships (`renderIdleHook`). Structured debrief: *volume vs last* ships (`computeSessionSignal.volumeLine`); *skipped plan work* ships twice (`signal.exerciseLine`, `renderPlanAdherence`). The audit found exactly **one** genuine gap, now closed:
+
+- **All-time PR summary — SHIPPED** (`v6.17` / `gymops-v105`). `isAllTimePR` only fired the in-session celebration, so a PR set on the first exercise was never mentioned again. `computeSessionPRs`/`renderSessionPRs` put a persistent line on the completed screen, with rules mirroring `isAllTimePR` exactly and a test that drives a real session through both and asserts they name the same exercises — a debrief that contradicts the confetti is worse than no debrief.
+- **Voice prefill — PARKED, not dropped.** The stage-1 canary needs an installed A2HS instance on current iOS; the owner's verification device is Android, where the API works and therefore answers nothing. Left unbuilt at zero cost, settleable in five minutes if an iPhone appears. Note this parks **four of the seven exit bars below**, which are voice-only.
+- **Still open:** *thin coverage* as an actionable statement (the chips are current-week-only and reset Monday, so nothing tracks a three-week gap), and whether the brief should become an `IDLE_BANNERS` entry at all — see the caveat on that bar.
+
 **Exit:**
 
-- [ ] A stranger with no key and no account can use every capability on this rung.
+- [x] A stranger with no key and no account can use every capability on this rung. *(Nothing on this rung reads a key or an account; the PR summary is pure local SQL.)*
 - [ ] Voice prefill cannot log a set; it fills inputs and the user taps, with the same confirm affordance as manual entry.
 - [ ] The `_manualIntent` interaction (§3) is resolved — prefill does not silently reorder the active screen's hierarchy.
 - [ ] Denying microphone permission produces **zero UI change** beyond the mic control disabling itself. No modal on the active screen; prefill has unit tests asserting the emphasis classes are unchanged.
-- [ ] Session brief renders through `IDLE_BANNERS`, and the idle screen never stacks banners.
-- [ ] Layer 1 unchanged in latency and offline behaviour; a full session is completable with the whole rung disabled.
-- [ ] Zero model spend attributable to this rung.
+- [ ] Session brief renders through `IDLE_BANNERS`, and the idle screen never stacks banners. **⚠️ Caveat found in the 2026-07-29 audit — this bar may be wrong as written.** The mediator is *exclusive*: `checkIdleBanners` picks one winner and hides the rest. The brief's content already renders as always-on dashboard, so making it a banner would (a) suppress it whenever a plan nudge, expiry or reminder fires, and (b) duplicate what sits visibly above it. The instruction reads as written to prevent *a competing card*, which the existing dashboard already avoids. **Owner decision pending: consolidate the dashboard (recommended) or follow the letter.** Non-stacking itself holds structurally today, though no test asserts it directly — `first-run.test.js` pins priority positions only.
+- [x] Layer 1 unchanged in latency and offline behaviour; a full session is completable with the whole rung disabled. *(The PR summary is read-only, runs after `dbFinishSession`, and touches nothing on the active screen.)*
+- [x] Zero model spend attributable to this rung. *(No model call exists on it — the rung is deterministic by construction.)*
 
 ---
 

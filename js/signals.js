@@ -4,6 +4,7 @@
 
 import {
   dbFinishSession,
+  dbGetAllTimeBestForExercise,
   dbGetPreviousCompletedSession,
   dbGetRecentSessionsBestForExercise,
   dbGetSessionBestForExercise,
@@ -11,7 +12,7 @@ import {
   dbGetSessionRepsExercises,
   dbGetSessionVolume,
 } from './db.js';
-import { SIGNAL_GAP_DAYS, WEIGHT_EPSILON_KG, getExerciseType, getWeightUnit } from './state.js';
+import { SIGNAL_GAP_DAYS, WEIGHT_EPSILON_KG, convertWeight, getExerciseType, getWeightUnit } from './state.js';
 
 // Deterministic rule engine — returns a signal string or null.
 // Priority order: P1 (long-term) > P2 (session best) > P3 (last session) > P4 (negative).
@@ -181,6 +182,56 @@ export function computeSessionSignal(sessionId) {
     improvementLine,
     interpretation: _sessionInterpretation({ daysSincePrev, volumeDeltaRatio, improvementCount, bestDeltaKg }),
   };
+}
+
+// ── All-time PR summary (Agent 1 structured debrief) ──
+//
+// The in-session celebration is a moment: five seconds of confetti, then gone.
+// Nothing carried it to the end of the session, so you could set an all-time
+// best on your first exercise and forty minutes later the completed screen
+// would say "12 sets logged" and nothing else. This is the one thing the Agent 1
+// audit found genuinely missing rather than already shipped under another name.
+//
+// The rules MIRROR isAllTimePR (js/workout.js) deliberately: kg-normalised,
+// epsilon-guarded, weighted exercises only, and a first-ever exercise is never a
+// PR because it has nothing to beat. If these two ever disagree, the completed
+// screen contradicts a celebration the user just watched — worse than saying
+// nothing at all (§7 philosophy test). Change one, change both.
+export function computeSessionPRs(sessionId) {
+  const unit = getWeightUnit();
+  return dbGetSessionRepsExercises(sessionId).flatMap(exercise => {
+    const bestKg = dbGetSessionBestForExercise(sessionId, exercise);
+    if (bestKg == null) return [];
+    const priorKg = dbGetAllTimeBestForExercise(exercise, sessionId); // excludes this session
+    if (priorKg == null) return [];                       // first time doing it — not a PR
+    if (bestKg <= priorKg + WEIGHT_EPSILON_KG) return [];
+    return [{ exercise, weight: convertWeight(bestKg, 'kg', unit), unit }];
+  });
+}
+
+// Persists on the completed screen rather than living in the #session-signal
+// sheet, which one tap dismisses forever — a PR is the most durable fact of a
+// session and shouldn't be the most transient thing on screen.
+export function renderSessionPRs(sessionId) {
+  const el  = document.getElementById('session-prs');
+  const prs = computeSessionPRs(sessionId);
+  if (!prs.length) {
+    el.textContent = ''; // cleared, not just hidden — a stale PR must not reappear next session
+    el.classList.add('hidden');
+    return;
+  }
+  // NBSP between the number and its unit so a wrap can never split "100 kg".
+  const fmt = p => `${p.exercise} ${p.weight}\u00A0${p.unit}`;
+  // One PR is a headline and fits on a line. Several become a list, one per
+  // line: a dot-separated run-on wraps mid-item at 375px and no choice of
+  // separator fixes that — the break POINT is the problem, not the glyph.
+  // Rendered with `white-space: pre-line`, the same mechanism the plan-adherence
+  // line directly below already uses.
+  // Exercise names are user text: textContent, never innerHTML.
+  el.textContent = prs.length === 1
+    ? `\u{1F3C6} All-time PR — ${fmt(prs[0])}`
+    : `\u{1F3C6} All-time PRs\n${prs.map(fmt).join('\n')}`;
+  el.classList.remove('hidden');
 }
 
 export function renderSessionSignal(signal) {
