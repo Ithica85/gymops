@@ -11,7 +11,7 @@
 // with a repo-level upgrade (bump CACHE then) and re-downloading ~1.2MB of
 // wasm on every open would be waste.
 
-const CACHE = 'gymops-v103';
+const CACHE = 'gymops-v104';
 
 const ASSETS = [
   '/',
@@ -37,6 +37,11 @@ const ASSETS = [
   '/js/history.js',
   '/js/settings.js',
   '/js/ai.js',
+  // Agent 0 policy budgets. Cached because js/ai.js imports it — an offline AI
+  // tap would otherwise fail on a missing module. Its sibling js/agent/tools.js
+  // is deliberately NOT here: nothing imports it yet, so caching it would put
+  // dead bytes on every device (test-guarded in tests/agent-policy.test.js).
+  '/js/agent/policy.js',
   '/js/db.js',
   '/js/aliases.js',
   '/js/import.js',

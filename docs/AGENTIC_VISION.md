@@ -159,11 +159,15 @@ Conversely, history Q&A chat was the first user-visible rung and is now the last
 
 **Exit (binary — replaces the first draft's “test-guarded enough”):**
 
-- [ ] A test asserts the tool registry exposes **zero** write-capable tools; adding one fails CI unless it declares a confirm surface.
-- [ ] A test asserts `logSet` / `quickLogSet` are absent from the registry.
-- [ ] The model proxy rejects unauthenticated requests.
-- [ ] An install credential is minted, persisted and required by the proxy; rate limits apply per credential **and** per IP/ASN; a global monthly cap and kill switch exist and are tested.
-- [ ] Every outbound model call has a timeout; a hung call cannot leave UI in a loading state.
+- [x] A test asserts the tool registry exposes **zero** write-capable tools; adding one fails CI unless it declares a confirm surface. *(2026-07-29, `js/agent/tools.js` + `tests/agent-policy.test.js`. Stronger than the bar asks: `validateRegistry()` runs at import, so a policy-violating registry cannot even load — verified by adding an unconfirmed write tool and watching the module refuse to import.)*
+- [x] A test asserts `logSet` / `quickLogSet` are absent from the registry. *(2026-07-29. Implemented as a named refusal, not an omission: `NEVER_AGENT_CALLABLE` rejects them **even when they declare a confirm surface**, since the objection is the capability, not the missing confirm.)*
+- [ ] The model proxy rejects unauthenticated requests. **← blocked on a storage decision (see below)**
+- [ ] An install credential is minted, persisted and required by the proxy; rate limits apply per credential **and** per IP/ASN; a global monthly cap and kill switch exist and are tested. **← blocked on the same decision**
+- [x] Every outbound model call has a timeout; a hung call cannot leave UI in a loading state. *(2026-07-29. This was a **live defect**, not a policy gap: `js/ai.js` used bare `fetch` with no deadline anywhere in `js/`, so an upstream stall left the AI summary modal reading "Generating…" indefinitely. Now `fetchWithTimeout` at 15s (§6) client-side plus `AbortSignal.timeout(13000)` on the function's own upstream hop — server deadline deliberately under the client's so the browser gets a real 504 message rather than hitting its own abort. Browser-verified against a never-settling fetch: the request is genuinely aborted and the modal resolves to "Took too long to respond", distinct from the network-failure copy.)*
+
+**Status 2026-07-29 — three of five bars green, and the remaining two are one decision.** Exits 3 and 4 both require **durable server-side state** (a counter per credential, a counter per IP/ASN, a global monthly total, a kill-switch flag). This project has never had a backend beyond a stateless Vercel function — `CLAUDE.md` states "No other backend" as a constraint — so closing them means deliberately crossing that line, which is an owner decision, not an implementation detail. Vercel KV and Vercel Postgres no longer exist as first-party products; the current options are a Marketplace store (Upstash Redis is the conventional fit for rate limiting) or Edge Config for the flag with something else for the counters.
+
+**The standing tripwire is verified, not assumed:** an unauthenticated `POST /api/ai-summary` with no `apiKey` returned `400 No API key configured` against production on 2026-07-29, proving `ANTHROPIC_API_KEY` is still unset and the open-proxy exposure remains latent rather than live. The §4.1 order therefore still holds, and BYOK keeps working in the meantime exactly as intended.
 
 ---
 

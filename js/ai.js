@@ -5,6 +5,7 @@
 import { dbGetAllSets, dbGetPlanDays, dbGetRecentSessionsBestForExercise, dbGetSessionPlan } from './db.js';
 import { getWeightUnit, state } from './state.js';
 import { getAnthropicKey } from './settings.js';
+import { fetchWithTimeout, isTimeout } from './agent/policy.js';
 
 // Builds a compact text description of the completed session for the prompt.
 // Groups sets by exercise in first-occurrence order, then summarises each.
@@ -94,8 +95,13 @@ export async function generateAISummary() {
 
   const context = _buildSessionContext(state.sessionId);
 
+  // Agent 0 failure contract: the call is bounded. Without a timeout an upstream
+  // hang leaves this modal reading "Generating…" forever with no way back except
+  // dismissing it — a loading state a user cannot clear is the thing exit bar 5
+  // forbids. Anthropic is reached through our own function, so a stall can come
+  // from either hop; only a client-side deadline covers both.
   try {
-    const resp = await fetch('/api/ai-summary', {
+    const resp = await fetchWithTimeout('/api/ai-summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ context, apiKey: key }),
@@ -111,9 +117,13 @@ export async function generateAISummary() {
 
     textEl.className = 'ai-summary-text';
     textEl.textContent = data.text ?? 'Summary unavailable — great workout either way!';
-  } catch (_) {
+  } catch (err) {
+    // A timeout is not a connectivity problem, and telling the user to check a
+    // working connection sends them after the wrong fault.
     textEl.className = 'ai-summary-text error';
-    textEl.textContent = 'Network error. Check your connection and try again.';
+    textEl.textContent = isTimeout(err)
+      ? 'Took too long to respond. Your workout is saved — try again in a moment.'
+      : 'Network error. Check your connection and try again.';
   }
 }
 
